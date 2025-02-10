@@ -11,6 +11,10 @@ add_executable(gs_train
         rasterizer/rasterizer_impl.h
 
         main.cpp
+        Scene.cu
+        Scene.h
+        scene_io.cpp
+        scene_io.h
 )
 
 target_include_directories(gs_train PRIVATE

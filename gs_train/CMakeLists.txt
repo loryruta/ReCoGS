@@ -46,3 +46,10 @@ set(VIDEO_SOURCES
 add_library(gs_train STATIC ${LIB_SOURCES})
 target_include_directories(gs_train PUBLIC ${CMAKE_SOURCE_DIR}/gs_train)
 target_link_libraries(gs_train PUBLIC glm json)
+
+# ----------------------------------------------------------------
+# Tests
+# ----------------------------------------------------------------
+
+add_executable(test_img_opt test/test_img_opt.cu ${VIDEO_SOURCES})
+target_link_libraries(test_img_opt PRIVATE gs_train glad glfw)

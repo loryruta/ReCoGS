@@ -3,7 +3,8 @@
 #include <cstdio>
 #include <cstdlib>
 
-#define GSE_CHECK_STATE(condition, ...) gs_train::check_state(condition, #condition, __FILE__, __LINE__)
+#define CHECK_STATE(condition, ...) gs_train::check_state(condition, #condition, __FILE__, __LINE__)
+#define CHECK_ARG CHECK_STATE
 
 namespace gs_train
 {
@@ -13,5 +14,16 @@ inline void check_state(bool condition, char const* condition_str, char const* f
         fprintf(stderr, "[ERROR] State check failed: %s (%s:%d)\n", condition_str, file, line);
         exit(1);
     }
+}
+
+template <typename INT>
+#ifdef __CUDACC__
+__forceinline__ __host__ __device__ INT div_ceil(INT a, INT b)
+#else
+INT div_ceil(INT a, INT b)
+#endif
+{
+    if (a == 0) return 0;
+    return 1 + ((a - 1) / b); // if a != 0
 }
 } // namespace gs_train

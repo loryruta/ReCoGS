@@ -20,9 +20,14 @@ set(LIB_SOURCES
         scene_io.h
 )
 
-target_include_directories(gs_train PRIVATE
-        ${CMAKE_SOURCE_DIR}/gs_train
-        ${CMAKE_SOURCE_DIR}/third_party/glm
+set(VIDEO_SOURCES
+        video/DrawTexture.cpp
+        video/DrawTexture.h
+        video/gl_utils.h
+        video/GLMappedResource.cu
+        video/GLMappedResource.h
+        video/GLWindow.cpp
+        video/GLWindow.h
 )
 
 add_library(gs_train STATIC ${LIB_SOURCES})

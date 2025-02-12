@@ -1,0 +1,121 @@
+#include "adam.h"
+
+#include <cassert>
+#include <cstdint>
+
+#include <glm/glm.hpp>
+
+#include "utils/cuda_utils.h"
+#include "utils/misc_utils.h"
+
+#define NUM_THREADS 1024
+
+using namespace gs_train;
+
+namespace
+{
+__global__ void step_kernel( //
+    size_t N,
+    int t,
+    float** inout_params,
+    const float** grads,
+    const float* lrs,
+    float* m,
+    float* v,
+    float beta1,
+    float beta2,
+    float eps,
+    float weight_decay,
+    bool amsgrad,
+    bool maximize)
+{
+    uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= N) return;
+    float param = *inout_params[i];
+    float gt = *grads[i];
+    m[i] = beta1 * m[i] + (1.0f - beta1) * gt;
+    v[i] = beta2 * v[i] + (1.0f - beta2) * gt * gt;
+    float mhat = m[i] / (1.0f - glm::pow(beta1, t));
+    float vhat = v[i] / (1.0f - glm::pow(beta2, t));
+    param = param - lrs[i] * (mhat / (glm::sqrt(vhat) + eps));
+    *inout_params[i] = param;
+}
+
+__global__ void init_kernel( //
+    size_t N,
+    const Adam::ParamSet* param_sets,
+    size_t num_param_sets,
+    float** out_params,
+    float** out_grads,
+    float* out_lrs,
+    float* out_m,
+    float* out_v)
+{
+    uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= N) return;
+    size_t param_set_idx = 0;
+    size_t start_param_idx = 0;
+    for (; param_set_idx < num_param_sets; ++param_set_idx) {
+        if ((start_param_idx + param_sets->num_params) > i) break;
+        start_param_idx += param_sets->num_params;
+    }
+    assert(param_set_idx < num_param_sets); // Wrong algorithm otherwise
+    const Adam::ParamSet& param_set = param_sets[param_set_idx];
+    assert(i >= start_param_idx && (i - start_param_idx) < param_set.num_params);
+    out_params[i] = param_set.params + (i - start_param_idx);
+    out_grads[i] = param_set.grads + (i - start_param_idx);
+    out_lrs[i] = param_set.lr;
+    out_m[i] = 0.0f;
+    out_v[i] = 0.0f;
+}
+} // namespace
+
+Adam::Adam(std::span<ParamSet> param_sets, const Options& options) : m_options(options)
+{
+    m_N = 0;
+    for (const ParamSet& param_set : param_sets) {
+        CHECK_ARG(param_set.is_valid(), "Parameter set isn't valid");
+        m_N += param_set.num_params;
+    }
+    CHECK_CUDA(cudaMalloc(&m_params, m_N * sizeof(float*)));
+    CHECK_CUDA(cudaMalloc(&m_grads, m_N * sizeof(float*)));
+    CHECK_CUDA(cudaMalloc(&m_lrs, m_N * sizeof(float)));
+    CHECK_CUDA(cudaMalloc(&m_m, m_N * sizeof(float)));
+    CHECK_CUDA(cudaMalloc(&m_v, m_N * sizeof(float)));
+
+    /* Linearize parameters sets */
+    const Adam::ParamSet* param_set_d = to_device_array(param_sets);
+    dim3 num_blocks(m_N, size_t(NUM_THREADS));
+    dim3 block_dim = NUM_THREADS;
+    init_kernel<<<num_blocks, block_dim>>>(m_N, param_set_d, param_sets.size(), m_params, m_grads, m_lrs, m_m, m_v);
+}
+
+Adam::~Adam()
+{
+    CHECK_CUDA(cudaFree(m_params));
+    CHECK_CUDA(cudaFree(m_grads));
+    CHECK_CUDA(cudaFree(m_lrs));
+    CHECK_CUDA(cudaFree(m_m));
+    CHECK_CUDA(cudaFree(m_v));
+}
+
+void Adam::step()
+{
+    dim3 num_blocks = div_ceil(m_N, size_t(NUM_THREADS));
+    dim3 block_dim = NUM_THREADS;
+    step_kernel<<<num_blocks, block_dim>>>( //
+        m_N,
+        m_t,
+        m_params,
+        (const float**) m_grads,
+        m_lrs,
+        m_m,
+        m_v,
+        m_options.beta1,
+        m_options.beta2,
+        m_options.eps,
+        m_options.weight_decay,
+        m_options.amsgrad,
+        m_options.maximize);
+    ++m_t;
+}

@@ -13,7 +13,16 @@ set(LIB_SOURCES
         rasterizer/rasterizer_impl.cu
         rasterizer/rasterizer_impl.h
 
-        main.cpp
+        utils/buffer.h
+        utils/cuda_utils.h
+        utils/image_layout_transition.h
+        utils/misc_utils.h
+        utils/stb_image.cpp
+        utils/stb_image.h
+        utils/stb_image_write.h
+
+        adam.cu
+        adam.h
         Camera.cpp
         Camera.h
         Scene.cu

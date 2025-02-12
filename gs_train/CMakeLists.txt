@@ -25,6 +25,8 @@ set(LIB_SOURCES
         adam.h
         Camera.cpp
         Camera.h
+        gs_loss.cu
+        gs_loss.h
         Scene.cu
         Scene.h
         scene_io.cpp

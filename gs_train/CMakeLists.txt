@@ -14,6 +14,8 @@ set(LIB_SOURCES
         rasterizer/rasterizer_impl.h
 
         main.cpp
+        Camera.cpp
+        Camera.h
         Scene.cu
         Scene.h
         scene_io.cpp

@@ -25,4 +25,8 @@ add_subdirectory(${THIRD_PARTY_DIR}/glfw)
 add_library(glm INTERFACE)
 target_include_directories(glm INTERFACE ${THIRD_PARTY_DIR}/glm)
 
+# json
+add_library(json INTERFACE)
+target_include_directories(json INTERFACE ${THIRD_PARTY_DIR}/json/include)
+
 add_subdirectory(gs_train)

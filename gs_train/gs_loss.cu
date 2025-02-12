@@ -30,9 +30,8 @@ __global__ void forward_kernel_1( //
     if (i >= BCHW) return;
 
     float abs = std::abs(img_pred[i] - img_gt[i]);
-
     atomicAdd(out_L1_avg, abs / float(BCHW));
-    atomicAdd(out_Ldssim_avg, ssim_map[i] / float(BCHW)); // TODO not sure about ssim_map indexing
+    atomicAdd(out_Ldssim_avg, ssim_map[i] / float(BCHW));
 }
 
 __global__ void forward_kernel_2( //
@@ -41,17 +40,17 @@ __global__ void forward_kernel_2( //
     const float* Ldssim_avg,
     float* out_loss)
 {
-    *out_loss = (1.0f - lambda) * (*L1_avg) ;//+ lambda * (*Ldssim_avg); TODO DEBUG
+    *out_loss = (1.0f - lambda) * (*L1_avg) + lambda * (1.0f - *Ldssim_avg);
 }
 
 float* GSLoss::forward(int B, int C, int H, int W, const float* img_pred, const float* img_gt)
 {
     float* ssim_map = m_fused_ssim.forward(FUSEDSSIM_C1, FUSEDSSIM_C2, B, C, H, W, img_pred, img_gt, true /* train */);
     size_t BCHW = B * C * H * W;
-    dim3 num_blocks = div_ceil(BCHW, size_t(NUM_THREADS));
-    dim3 block_dim = NUM_THREADS;
     CHECK_CUDA(cudaMemset(m_L1_avg, 0, sizeof(float)));
     CHECK_CUDA(cudaMemset(m_Ldssim_avg, 0, sizeof(float)));
+    dim3 num_blocks = div_ceil(BCHW, size_t(NUM_THREADS));
+    dim3 block_dim = NUM_THREADS;
     forward_kernel_1<<<num_blocks, block_dim>>>(BCHW, img_pred, img_gt, ssim_map, m_L1_avg, m_Ldssim_avg);
     forward_kernel_2<<<1, 1>>>(k_lambda, m_L1_avg, m_Ldssim_avg, m_loss);
     return m_loss;
@@ -77,8 +76,8 @@ __global__ void backward_kernel( //
     if (i >= BCHW) return;
     float dif = img_pred[i] - img_gt[i];
     float sgn = dif > 1e-8f ? 1.0f : (dif < -1e-8f ? -1.0f : 0.0f);
-    // TODO using dLdssim_dy directly, am I ignoring mean?
-    out_dL_dy[i] = (1.0f / float(BCHW)) * (1.0f - lambda) * sgn ;//+ lambda * dLdssim_dy[i]; TODO DEBUG
+    float invN = 1.0f / float(BCHW);
+    out_dL_dy[i] = invN * ((1.0f - lambda) * sgn - lambda * dLdssim_dy[i]);
 }
 
 void GSLoss::backward( //
@@ -93,12 +92,9 @@ void GSLoss::backward( //
     size_t BCHW = B * C * H * W;
     m_dL_dmap.resize(BCHW * sizeof(float));
     /* Compute dLdssim/dy */
-    // Fill dL/dmap with 1s, so the output of FusedSSIM backward is dLdssim/dy.
-    // This because the input dL/dmap is multiplied to dLdssim/dy because of the reverse-mode auto-diff
     dim3 num_blocks = div_ceil(BCHW, size_t(NUM_THREADS));
     dim3 block_dim = NUM_THREADS;
-    fill_kernel<float>
-        <<<num_blocks, block_dim>>>(BCHW, 1.0f, m_dL_dmap.data_ptr<float>()); // TODO fill with lambda (see formulation)
+    fill_kernel<float><<<num_blocks, block_dim>>>(BCHW, 1.0f, m_dL_dmap.data_ptr<float>());
     float* dLdssim_dy =
         m_fused_ssim.backward(FUSEDSSIM_C1, FUSEDSSIM_C2, B, C, H, W, img_pred, img_gt, m_dL_dmap.data_ptr<float>());
     /* Compute dL/dy */

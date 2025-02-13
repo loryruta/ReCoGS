@@ -25,6 +25,8 @@ set(LIB_SOURCES
         adam.h
         Camera.cpp
         Camera.h
+        gs_func.cu
+        gs_func.h
         gs_loss.cu
         gs_loss.h
         Scene.cu
@@ -34,6 +36,8 @@ set(LIB_SOURCES
 )
 
 set(VIDEO_SOURCES
+        video/CudaImageVisualizer.cu
+        video/CudaImageVisualizer.h
         video/DrawTexture.cpp
         video/DrawTexture.h
         video/gl_utils.h
@@ -53,3 +57,6 @@ target_link_libraries(gs_train PUBLIC glm json)
 
 add_executable(test_img_opt test/test_img_opt.cu ${VIDEO_SOURCES})
 target_link_libraries(test_img_opt PRIVATE gs_train glad glfw)
+
+add_executable(test_gs_opt test/test_gs_opt.cu ${VIDEO_SOURCES})
+target_link_libraries(test_gs_opt PRIVATE gs_train glad glfw)

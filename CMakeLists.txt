@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.29)
-project(gs_editor LANGUAGES C CXX CUDA)
+project(recogs LANGUAGES C CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 20)
 
@@ -29,4 +29,4 @@ target_include_directories(glm INTERFACE ${THIRD_PARTY_DIR}/glm)
 add_library(json INTERFACE)
 target_include_directories(json INTERFACE ${THIRD_PARTY_DIR}/json/include)
 
-add_subdirectory(gs_train)
+add_subdirectory(recogs)

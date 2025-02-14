@@ -61,7 +61,14 @@ set(VIDEO_SOURCES
 
 add_library(recogs_lib STATIC ${LIB_SOURCES} ${VIDEO_SOURCES})
 target_include_directories(recogs_lib PUBLIC ${CMAKE_SOURCE_DIR}/recogs)
-target_link_libraries(recogs_lib PUBLIC glm json glad glfw)
+target_link_libraries(recogs_lib
+        fmt::fmt
+        glfw
+        glm::glm
+        imgui::imgui
+        nlohmann_json::nlohmann_json
+        onnxruntime::onnxruntime
+        glad)
 
 # main
 add_executable(recogs main.cu)

@@ -1,0 +1,19 @@
+{
+  "name": "recogs",
+  "description": "A tool for recoloring 3DGS scenes",
+  "version-string": "0.1.9",
+  "dependencies": [
+    "catch2",
+    "glfw3",
+    "glm",
+    "fmt",
+    {
+      "name": "imgui",
+      "features": [
+        "opengl3-binding",
+        "glfw-binding"
+      ]
+    },
+    "nlohmann-json"
+  ]
+}

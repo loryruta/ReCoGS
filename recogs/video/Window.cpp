@@ -49,11 +49,11 @@ Window::~Window()
     }
 }
 
-std::pair<int, int> Window::framebuffer_size() const
+glm::ivec2 Window::framebuffer_size() const
 {
-    int width, height;
-    glfwGetFramebufferSize(m_handle, &width, &height);
-    return {width, height};
+    glm::ivec2 fb_size;
+    glfwGetFramebufferSize(m_handle, &fb_size.x, &fb_size.y);
+    return fb_size;
 }
 
 void Window::make_context()

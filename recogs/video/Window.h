@@ -33,7 +33,9 @@ public:
 
     [[nodiscard]] GLFWwindow* handle() const { return m_handle; };
 
-    [[nodiscard]] std::pair<int, int> framebuffer_size() const;
+    void set_title(const std::string& title) const { glfwSetWindowTitle(m_handle, title.c_str()); }
+
+    [[nodiscard]] glm::ivec2 framebuffer_size() const;
 
     void make_context(); // TODO dependent on OpenGL code
 

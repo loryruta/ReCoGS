@@ -13,6 +13,12 @@ set(LIB_SOURCES
         rasterizer/rasterizer_impl.cu
         rasterizer/rasterizer_impl.h
 
+        ui/MainScreen.cu
+        ui/MainScreen.h
+        ui/Screen.h
+#        ui/SelectionScreen.cu
+#        ui/SelectionScreen.h
+
         utils/DeviceBuffer.h
         utils/cuda_utils.h
         utils/image_layout_transition.h
@@ -23,6 +29,8 @@ set(LIB_SOURCES
 
         adam.cu
         adam.h
+        App.cu
+        App.h
         GSCamera.cu
         GSCamera.h
         GSCameraController.cu
@@ -35,6 +43,8 @@ set(LIB_SOURCES
         Scene.h
         scene_io.cu
         scene_io.h
+#        Selection2d.cu
+#        Selection2d.h
 )
 
 set(VIDEO_SOURCES
@@ -49,17 +59,17 @@ set(VIDEO_SOURCES
         video/Window.h
 )
 
-add_library(recogs_lib STATIC ${LIB_SOURCES})
+add_library(recogs_lib STATIC ${LIB_SOURCES} ${VIDEO_SOURCES})
 target_include_directories(recogs_lib PUBLIC ${CMAKE_SOURCE_DIR}/recogs)
 target_link_libraries(recogs_lib PUBLIC glm json glad glfw)
 
 # main
-add_executable(recogs main.cu ${VIDEO_SOURCES})
+add_executable(recogs main.cu)
 target_link_libraries(recogs PRIVATE recogs_lib)
 
 # ----------------------------------------------------------------
 # Tests
 # ----------------------------------------------------------------
 
-add_executable(test_img_opt test/test_img_opt.cu ${VIDEO_SOURCES})
+add_executable(test_img_opt test/test_img_opt.cu)
 target_link_libraries(test_img_opt PRIVATE recogs_lib)

@@ -40,8 +40,11 @@ void CudaImageVisualizer::worker()
 {
     m_window->make_context();
 
-    auto [W, H] = m_window->framebuffer_size(); // TODO we're assuming the window size doesn't change
-    GLMappedResource gl_mapped_resource(W, H);
+    // TODO Assuming window size doesn't change
+    const glm::ivec2 fb_size = m_window->framebuffer_size();
+    const int W = fb_size.x;
+    const int H = fb_size.y;
+    GLMappedResource gl_mapped_resource(fb_size.x, fb_size.y);
     DrawTexture draw_texture{};
 
     float* vis_img_d = nullptr; // (H, W, 4)
@@ -65,8 +68,7 @@ void CudaImageVisualizer::worker()
         CHECK_CUDA(cudaDeviceSynchronize()); // TODO this will block all device operations, sync on stream
 
         gl_mapped_resource.write(vis_img_d);
-        auto [fb_w, fb_h] = m_window->framebuffer_size();
-        draw_texture.draw(gl_mapped_resource.texture(), 0, 0, fb_w, fb_h);
+        draw_texture.draw(gl_mapped_resource.texture(), 0, 0, W, H);
 
         m_window->swap_buffers();
     }

@@ -6,12 +6,15 @@
 
 namespace gs_train
 {
-struct DeviceBuffer {       // TODO rename to DeviceBuffer
+/// A RAII wrapper for a buffer held in device memory
+struct DeviceBuffer {
     const char* const name; // For debugging
     void* data_d = nullptr;
     size_t size = 0;
 
     explicit DeviceBuffer(const char* name) : name(name ? name : "unnamed") {}
+    DeviceBuffer(const DeviceBuffer&) = delete;
+    DeviceBuffer(DeviceBuffer&&) = default;
     ~DeviceBuffer() = default; // TODO DELETE THE BUFFER!
 
     template <typename T>

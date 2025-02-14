@@ -11,6 +11,15 @@
 
 namespace gs_train
 {
+namespace detail
+{
+template <typename FUNCTION>
+__global__ void dispatch_single_thread_kernel(FUNCTION function)
+{
+    function();
+}
+} // namespace detail
+
 inline void check_cuda_error(cudaError_t error, char const* file, int line)
 {
     if (error != cudaSuccess) {
@@ -74,4 +83,9 @@ void dump_device_buffer(const T* buffer, size_t num_elements, const char* out_fi
     fclose(f);
 }
 
+template <typename FUNCTION>
+void dispatch_single_thread(FUNCTION function)
+{
+    detail::dispatch_single_thread_kernel<FUNCTION><<<1, 1>>>(function);
+}
 } // namespace gs_train

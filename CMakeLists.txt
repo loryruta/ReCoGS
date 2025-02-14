@@ -29,3 +29,4 @@ set(onnxruntime_DIR "${THIRD_PARTY_DIR}/onnxruntime/lib64/cmake/onnxruntime")
 find_package(onnxruntime REQUIRED CONFIG)
 
 add_subdirectory(recogs)
+add_subdirectory(recogs_test)

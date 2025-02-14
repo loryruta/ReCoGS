@@ -8,6 +8,7 @@
 #include "video/DrawTexture.h"
 #include "video/GLMappedResource.h"
 #include "video/Window.h"
+#include "utils/image/Image.h"
 
 namespace gs_train
 {
@@ -28,8 +29,10 @@ public:
     std::unique_ptr<Window> m_window;
     std::unique_ptr<GLMappedResource> m_gl_mapped_resource{};
     std::unique_ptr<DrawTexture> m_draw_texture{}; // Lazily initialized because needs OpenGL
-    DeviceBuffer m_colorbuffer_b4hw{"colorbuffer_b3hw"};
-    DeviceBuffer m_colorbuffer_bhw4{"colorbuffer_bhw3"};
+    using ColorbufferCHW = Image<4, float, ImageMemoryLayout::CHW>;
+    using ColorbufferHWC = Image<4, float, ImageMemoryLayout::HWC>;
+    std::unique_ptr<ColorbufferCHW> m_colorbuffer_chw;
+    std::unique_ptr<ColorbufferHWC> m_colorbuffer_hwc;
 
     /* Stats */
     double m_fps = 0.0;

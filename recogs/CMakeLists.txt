@@ -1,5 +1,8 @@
 
 set(LIB_SOURCES
+        #depth_estimators/PCVNet.cu
+        #depth_estimators/PCVNet.h
+
         fused_ssim/ssim.cu
         fused_ssim/ssim.h
         fused_ssim/ssim_if.cu
@@ -19,9 +22,17 @@ set(LIB_SOURCES
 #        ui/SelectionScreen.cu
 #        ui/SelectionScreen.h
 
+        utils/image/image.cu
+        utils/image/Image.h
+        utils/image/image_cast.h
+        utils/image/image_fill.h
+        utils/image/image_flip.h
+        utils/image/image_load.h
+        utils/image/image_rotate.h
+        utils/image/image_save.h
+        utils/image/image_visit_transform.h
         utils/DeviceBuffer.h
         utils/cuda_utils.h
-        utils/image_layout_transition.h
         utils/misc_utils.h
         utils/stb_image.cpp
         utils/stb_image.h

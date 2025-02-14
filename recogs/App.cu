@@ -4,7 +4,7 @@
 
 #include "scene_io.h"
 #include "ui/MainScreen.h"
-#include "utils/image_layout_transition.h"
+#include "utils/image/image_cast.h"
 
 using namespace gs_train;
 
@@ -76,22 +76,16 @@ void App::start()
         if (m_screen) m_screen->update(dt);
 
         /* Render */
-        if (m_screen) m_screen->render(m_colorbuffer_b4hw.data_ptr<float>());
+        if (m_screen) m_screen->render(m_colorbuffer_chw->data_d());
 
         /* Transit colorbuffer from BCHW to BHWC */
-        transit_image_layout<ImageLayout::BCHW, ImageLayout::BHWC>(
-            1,         // B
-            4,         // C; Allocated is 4, written by 3DGS is 3; However, alpha is ignored when screen-quad drawing
-            fb_size.y, // H
-            fb_size.x, // W
-            m_colorbuffer_b4hw.data_ptr<float>(),
-            m_colorbuffer_bhw4.data_ptr<float>());
+        image_cast(*m_colorbuffer_chw, *m_colorbuffer_hwc);
 
         /* Display */
         glClearColor(0, 0, 1, 0);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        m_gl_mapped_resource->write(m_colorbuffer_bhw4.data_ptr<float>());
+        m_gl_mapped_resource->write(m_colorbuffer_hwc->data_d());
         m_draw_texture->draw(m_gl_mapped_resource->texture(), 0, 0, fb_size.x, fb_size.y);
 
         /* */
@@ -105,6 +99,6 @@ void App::resize_screenbuffers(int width, int height)
 {
     m_gl_mapped_resource = std::make_unique<GLMappedResource>(width, height);
 
-    m_colorbuffer_b4hw.resize(width * height * 4 * sizeof(float));
-    m_colorbuffer_bhw4.resize(width * height * 4 * sizeof(float));
+    m_colorbuffer_chw = std::make_unique<ColorbufferCHW>(ColorbufferCHW::malloc(width, height));
+    m_colorbuffer_hwc = std::make_unique<ColorbufferHWC>(ColorbufferHWC::malloc(width, height));
 }

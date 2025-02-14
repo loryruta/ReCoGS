@@ -3,7 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-#define CHECK_STATE(condition, ...) gs_train::check_state(condition, #condition, __FILE__, __LINE__)
+#define CHECK_STATE(condition, ...) gs_train::check_state(!!(condition), #condition, __FILE__, __LINE__)
 #define CHECK_ARG CHECK_STATE
 
 namespace gs_train

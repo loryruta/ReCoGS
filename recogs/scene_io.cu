@@ -27,7 +27,7 @@ Scene gs_train::read_scene_from_ply(const std::filesystem::path& scene_ply)
     std::string line;
     std::string str;
 
-    size_t num_vertices = 0;
+    int num_vertices = 0;
 
     // clang-format off
     std::getline(is, line); require_line(line, "ply");
@@ -105,22 +105,31 @@ Scene gs_train::read_scene_from_ply(const std::filesystem::path& scene_ply)
     std::getline(is, line); require_line(line, "end_header");
     // clang-format on
 
+    /* Read scene data */
+    std::vector<float> means(num_vertices * 3);
+    std::vector<float> normals(num_vertices * 3);
+    std::vector<float> shs(num_vertices * 16 * 3);
+    std::vector<float> opacities(num_vertices);
+    std::vector<float> scales(num_vertices * 3);
+    std::vector<float> rotations(num_vertices * 4);
+    for (size_t i = 0; i < num_vertices; ++i) {
+        is.read((char*) (means.data() + i * 3), 3 * sizeof(float));
+        is.read((char*) (normals.data() + i * 3), 3 * sizeof(float));
+        is.read((char*) (shs.data() + i * 48), 48 * sizeof(float));
+        is.read((char*) (opacities.data() + i), sizeof(float));
+        is.read((char*) (scales.data() + i * 3), 3 * sizeof(float));
+        is.read((char*) (rotations.data() + i * 4), 4 * sizeof(float));
+    }
+
+    /* Upload to GPU */
     Scene scene{};
     scene.num_vertices = num_vertices;
-    scene.means = new float[num_vertices * 3];
-    scene.normals = new float[num_vertices * 3];
-    scene.shs = new float[num_vertices * 16 * 3];
-    scene.opacities = new float[num_vertices];
-    scene.scales = new float[num_vertices * 3];
-    scene.rotations = new float[num_vertices * 4];
-    for (size_t i = 0; i < num_vertices; ++i) {
-        is.read((char*) &scene.means[i * 3], 3 * sizeof(float));
-        is.read((char*) &scene.normals[i * 3], 3 * sizeof(float));
-        is.read((char*) &scene.shs[i * 16 * 3], 16 * 3 * sizeof(float));
-        is.read((char*) &scene.opacities[i], sizeof(float));
-        is.read((char*) &scene.scales[i * 3], 3 * sizeof(float));
-        is.read((char*) &scene.rotations[i * 4], 4 * sizeof(float));
-    }
+    scene.means.fit_data(means.data(), num_vertices * 3);
+    // scene.normals.fit_data(normals.data(), num_vertices * 3);
+    scene.shs.fit_data(shs.data(), num_vertices * 16 * 3);
+    scene.opacities.fit_data(opacities.data(), num_vertices);
+    scene.scales.fit_data(scales.data(), num_vertices * 3);
+    scene.rotations.fit_data(rotations.data(), num_vertices * 4);
     return scene;
 }
 
@@ -194,12 +203,13 @@ void gs_train::write_scene_to_ply(const Scene& scene, const std::filesystem::pat
     of << "property float rot_3\n";
     of << "end_header\n";
 
-    for (size_t i = 0; i < scene.num_vertices; ++i) {
-        of.write((const char*) &scene.means[i * 3], 3 * sizeof(float));
-        of.write((const char*) &scene.normals[i * 3], 3 * sizeof(float));
-        of.write((const char*) &scene.shs[i * 16 * 3], 16 * 3 * sizeof(float));
-        of.write((const char*) &scene.opacities[i], sizeof(float));
-        of.write((const char*) &scene.scales[i * 3], 3 * sizeof(float));
-        of.write((const char*) &scene.rotations[i * 4], 4 * sizeof(float));
-    }
+    // TODO :'(
+    //    for (size_t i = 0; i < scene.num_vertices; ++i) {
+    //        of.write((const char*) &scene.means[i * 3], 3 * sizeof(float));
+    //        of.write((const char*) &scene.normals[i * 3], 3 * sizeof(float));
+    //        of.write((const char*) &scene.shs[i * 16 * 3], 16 * 3 * sizeof(float));
+    //        of.write((const char*) &scene.opacities[i], sizeof(float));
+    //        of.write((const char*) &scene.scales[i * 3], 3 * sizeof(float));
+    //        of.write((const char*) &scene.rotations[i * 4], 4 * sizeof(float));
+    //    }
 }

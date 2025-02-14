@@ -1,4 +1,4 @@
-#include "gs_func.h"
+#include "GSFunc.h"
 
 #include "rasterizer/rasterizer.h"
 
@@ -7,24 +7,27 @@ using namespace gs_train;
 namespace
 {
 template <typename T>
-std::function<char*(size_t N)> resize_functional(Buffer& buffer)
+std::function<char*(size_t N)> resize_functional(DeviceBuffer& buffer)
 {
-    return [&buffer](size_t N) -> char* { CHECK_STATE(buffer.resize(N * sizeof(T))); };
+    return [&buffer](size_t N) -> char* {
+        CHECK_STATE(buffer.resize(N * sizeof(T)));
+        return buffer.data_ptr<char>();
+    };
 }
 } // namespace
 
 int GSFunc::forward(int W,
                     int H,
-                    float* background,
+                    const float* background,
                     int num_vertices,
-                    float* means,
-                    float* shs,
-                    float* opacities,
-                    float* scales,
-                    float* rotations,
-                    float* viewmatrix,
-                    float* projmatrix,
-                    float* campos,
+                    const float* means,
+                    const float* shs,
+                    const float* opacities,
+                    const float* scales,
+                    const float* rotations,
+                    const float* viewmatrix,
+                    const float* projmatrix,
+                    const float* campos,
                     float tan_fovx,
                     float tan_fovy,
                     float* out_colorbuffer)
@@ -59,5 +62,3 @@ int GSFunc::forward(int W,
     );
     return num_rendered;
 }
-
-GSFunc

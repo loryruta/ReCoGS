@@ -13,7 +13,7 @@ set(LIB_SOURCES
         rasterizer/rasterizer_impl.cu
         rasterizer/rasterizer_impl.h
 
-        utils/buffer.h
+        utils/DeviceBuffer.h
         utils/cuda_utils.h
         utils/image_layout_transition.h
         utils/misc_utils.h
@@ -23,15 +23,17 @@ set(LIB_SOURCES
 
         adam.cu
         adam.h
-        Camera.cpp
-        Camera.h
-        gs_func.cu
-        gs_func.h
+        GSCamera.cu
+        GSCamera.h
+        GSCameraController.cu
+        GSCameraController.h
+        GSFunc.cu
+        GSFunc.h
         gs_loss.cu
         gs_loss.h
         Scene.cu
         Scene.h
-        scene_io.cpp
+        scene_io.cu
         scene_io.h
 )
 
@@ -43,17 +45,21 @@ set(VIDEO_SOURCES
         video/gl_utils.h
         video/GLMappedResource.cu
         video/GLMappedResource.h
-        video/GLWindow.cpp
-        video/GLWindow.h
+        video/Window.cpp
+        video/Window.h
 )
 
-add_library(recogs STATIC ${LIB_SOURCES})
-target_include_directories(recogs PUBLIC ${CMAKE_SOURCE_DIR}/gs_train)
-target_link_libraries(recogs PUBLIC glm json)
+add_library(recogs_lib STATIC ${LIB_SOURCES})
+target_include_directories(recogs_lib PUBLIC ${CMAKE_SOURCE_DIR}/recogs)
+target_link_libraries(recogs_lib PUBLIC glm json glad glfw)
+
+# main
+add_executable(recogs main.cu ${VIDEO_SOURCES})
+target_link_libraries(recogs PRIVATE recogs_lib)
 
 # ----------------------------------------------------------------
 # Tests
 # ----------------------------------------------------------------
 
 add_executable(test_img_opt test/test_img_opt.cu ${VIDEO_SOURCES})
-target_link_libraries(test_img_opt PRIVATE recogs glad glfw)
+target_link_libraries(test_img_opt PRIVATE recogs_lib)

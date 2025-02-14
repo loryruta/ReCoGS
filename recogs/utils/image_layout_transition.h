@@ -40,7 +40,7 @@ __global__ void image_layout_transition_kernel(int B, int C, int H, int W, const
 
 /// Transition the image from a source layout to another layout (e.g. from BHWC to BCHW)
 template <ImageLayout SRC_LAYOUT, ImageLayout DST_LAYOUT, typename T>
-void image_layout_transition(int B, int C, int H, int W, const T* img, T* out_img)
+void transit_image_layout(int B, int C, int H, int W, const T* img, T* out_img)
 {
     static_assert(SRC_LAYOUT != DST_LAYOUT, "SRC_LAYOUT is equal to DST_LAYOUT: transition is pointless");
 

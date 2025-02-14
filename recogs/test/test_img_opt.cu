@@ -12,14 +12,14 @@
 #include "utils/stb_image.h"
 #include "video/DrawTexture.h"
 #include "video/GLMappedResource.h"
-#include "video/GLWindow.h"
+#include "video/Window.h"
 
 using namespace gs_train;
 
 /// Prediction visualization code
 /// \param img
 ///     The image to display; with shape (1, 4, H, W)
-void vis_main(GLWindow& window, int H, int W, float* img)
+void vis_main(Window& window, int H, int W, float* img)
 {
     window.make_context();
 
@@ -36,7 +36,7 @@ void vis_main(GLWindow& window, int H, int W, float* img)
         glClear(GL_COLOR_BUFFER_BIT);
 
         /* Transit the image to BHWC */
-        image_layout_transition<ImageLayout::BCHW, ImageLayout::BHWC>(1, 4, H, W, img, img_bhwc);
+        transit_image_layout<ImageLayout::BCHW, ImageLayout::BHWC>(1, 4, H, W, img, img_bhwc);
         CHECK_CUDA(cudaDeviceSynchronize());
 
         gl_mapped_resource.write(img_bhwc);
@@ -67,7 +67,7 @@ float* load_gt_image(const std::filesystem::path& gt_filepath, int& B, int& C, i
     /* Transition from BHWC to BCHW */
     float* img_gt_bchw_d;
     CHECK_CUDA(cudaMalloc(&img_gt_bchw_d, BCHW * sizeof(float)));
-    image_layout_transition<ImageLayout::BHWC, ImageLayout::BCHW>(B, C, H, W, img_gt_bhwc_d, img_gt_bchw_d);
+    transit_image_layout<ImageLayout::BHWC, ImageLayout::BCHW>(B, C, H, W, img_gt_bhwc_d, img_gt_bchw_d);
     CHECK_CUDA(cudaDeviceSynchronize());
     CHECK_CUDA(cudaFree(img_gt_bhwc_d));
 
@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
     std::unique_ptr<Adam> adam = std::make_unique<Adam>(param_sets, options);
     printf("Adam optimizer initialized\n");
 
-    GLWindow window(W, H, "Image Optimization Test", false);
+    Window window(W, H, "Image Optimization Test", false);
     std::thread vis_thread([&]() { vis_main(window, H, W, img_pred); });
 
     // Optimization loop

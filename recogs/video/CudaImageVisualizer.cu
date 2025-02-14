@@ -6,7 +6,7 @@
 
 using namespace gs_train;
 
-CudaImageVisualizer::CudaImageVisualizer(std::shared_ptr<GLWindow> window) : m_window(std::move(window)) {}
+CudaImageVisualizer::CudaImageVisualizer(std::shared_ptr<Window> window) : m_window(std::move(window)) {}
 
 CudaImageVisualizer::~CudaImageVisualizer() { stop(); }
 
@@ -74,6 +74,6 @@ void CudaImageVisualizer::worker()
 
 std::unique_ptr<CudaImageVisualizer> CudaImageVisualizer::create(int width, int height, const char* title)
 {
-    std::shared_ptr<GLWindow> window = std::make_shared<GLWindow>(width, height, title, false /* resizable */);
+    std::shared_ptr<Window> window = std::make_shared<Window>(width, height, title, false /* resizable */);
     return std::make_unique<CudaImageVisualizer>(window);
 }

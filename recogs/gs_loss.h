@@ -11,16 +11,16 @@ private:
 
     FusedSSIM m_fused_ssim;
 
-    Buffer m_tmp_buffer{"gsloss/tmp_buffer"};
+    DeviceBuffer m_tmp_buffer{"gsloss/tmp_buffer"};
     /* Forward */
     float* m_L1_avg{};
     float* m_Ldssim_avg{};
     /// Forward output
     float* m_loss{};
     /* Backward */
-    Buffer m_dL_dmap{"gsloss/dL_dmap"};
+    DeviceBuffer m_dL_dmap{"gsloss/dL_dmap"};
     /// Backward output: gradient of loss w.r.t. image prediction
-    Buffer m_dL_dy{"gsloss/dL_dy"};
+    DeviceBuffer m_dL_dy{"gsloss/dL_dy"};
 
 public:
     explicit GSLoss();

@@ -19,8 +19,8 @@ public:
     [[nodiscard]] GLuint texture() const { return m_texture; }
 
     /// Write CUDA image data to the GL texture.
-    /// \param data_d
-    ///     Pointer to image data with memory layout (H, W, 4).
-    void write(float* data_d);
+    /// \param image_d
+    ///     Device image data with memory layout (H, W, 4).
+    void write(float* image_d);
 };
 } // namespace gs_train

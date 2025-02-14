@@ -1,6 +1,6 @@
-#include "gs_func.h"
+#include "GSFunc.h"
 
-#include "Camera.h"
+#include "GSCamera.h"
 #include "scene_io.h"
 #include "utils/cuda_utils.h"
 #include "video/CudaImageVisualizer.h"

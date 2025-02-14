@@ -4,7 +4,7 @@
 #include <memory>
 #include <thread>
 
-#include "GLWindow.h"
+#include "Window.h"
 
 namespace gs_train
 {
@@ -13,7 +13,7 @@ class CudaImageVisualizer
 private:
     using AdaptImageFunc = std::function<void(int image_w, int image_h, const float* img_d, float* out_img_d)>;
 
-    std::shared_ptr<GLWindow> m_window;
+    std::shared_ptr<Window> m_window;
 
     int m_image_w = -1;
     int m_image_h = -1;
@@ -25,7 +25,7 @@ private:
     std::unique_ptr<std::thread> m_thread;
 
 public:
-    explicit CudaImageVisualizer(std::shared_ptr<GLWindow> window);
+    explicit CudaImageVisualizer(std::shared_ptr<Window> window);
     ~CudaImageVisualizer();
 
     [[nodiscard]] auto window() const { return m_window; }

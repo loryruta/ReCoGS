@@ -2,19 +2,19 @@
 
 #include "ssim.h"
 
-#include "utils/buffer.h"
+#include "utils/DeviceBuffer.h"
 
 namespace gs_train
 {
 class FusedSSIM
 {
 private:
-    Buffer m_ssim_map{"fusedssim/ssim_map"};
-    Buffer m_dm_dmu1{"fusedssim/dm_dmu1"};
-    Buffer m_dm_dsigma1_sq{"fusedssim/dm_dsigma1_sq"};
-    Buffer m_dm_dsigma12{"fusedssim/dm_dsigma12"};
+    DeviceBuffer m_ssim_map{"fusedssim/ssim_map"};
+    DeviceBuffer m_dm_dmu1{"fusedssim/dm_dmu1"};
+    DeviceBuffer m_dm_dsigma1_sq{"fusedssim/dm_dsigma1_sq"};
+    DeviceBuffer m_dm_dsigma12{"fusedssim/dm_dsigma12"};
 
-    Buffer m_dL_dimg1{"fusedssim/dL_dimg1"};
+    DeviceBuffer m_dL_dimg1{"fusedssim/dL_dimg1"};
 
 public:
     explicit FusedSSIM() = default;

@@ -1,17 +1,16 @@
 #pragma once
 
+#include "utils/DeviceBuffer.h"
+
 namespace gs_train
 {
 struct Scene {
     int num_vertices;
-    float* means;
-    float* normals;
-    float* shs;
-    float* opacities;
-    float* scales;
-    float* rotations;
-
-    Scene to_host();
-    Scene to_device();
+    DeviceBuffer means{"Scene/means"};
+    //DeviceBuffer normals{"Scene/normals"};
+    DeviceBuffer shs{"Scene/shs"};
+    DeviceBuffer opacities{"Scene/opacities"};
+    DeviceBuffer scales{"Scene/scales"};
+    DeviceBuffer rotations{"Scene/rotations"};
 };
-} // namespace gs_editor
+} // namespace gs_train

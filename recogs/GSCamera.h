@@ -30,8 +30,8 @@ public:
 
     explicit GSCamera();
 
-    [[nodiscard]] float tan_fovy() const { return 1.0f / fy; }
     [[nodiscard]] float tan_fovx() const { return 1.0f / fx; }
+    [[nodiscard]] float tan_fovy() const { return 1.0f / fy; }
 
     [[nodiscard]] glm::vec3 right() const { return rotation * glm::vec3(1, 0, 0); }
     [[nodiscard]] glm::vec3 up() const { return rotation * glm::vec3(0, 1, 0); };

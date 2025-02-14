@@ -1,10 +1,12 @@
 #pragma once
 
+#include "GSCamera.h"
+#include "Scene.h"
 #include "gs_loss.h"
 
 namespace gs_train
 {
-class GSFunc
+class GSRasterizer
 {
     GSLoss m_gs_loss;
 
@@ -13,10 +15,13 @@ class GSFunc
     DeviceBuffer m_image_buffer{"GSFunc/image_buffer"};
 
 public:
-    explicit GSFunc() = default;
-    ~GSFunc() = default;
+    explicit GSRasterizer() = default;
+    ~GSRasterizer() = default;
 
-    /// \return Number of gaussians rendered. If zero, backward pass shall be skipped
+    /// \param[out] out_colorbuffer
+    ///     Output colorbuffer of shape (3, H, W)
+    /// \return
+    ///     Number of gaussians rendered. If zero, backward pass shall be skipped
     int forward(int W,
                 int H,
                 const float* background,
@@ -32,5 +37,9 @@ public:
                 float tan_fovx,
                 float tan_fovy,
                 float* out_colorbuffer);
+
+    /// \param[out] out_colorbuffer
+    ///     Output colorbuffer of shape (3, H, W)
+    int forward(const float* background_d, const Scene& scene, const GSCamera& camera, float* out_colorbuffer);
 };
 } // namespace gs_train

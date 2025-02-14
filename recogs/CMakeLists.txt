@@ -27,8 +27,8 @@ set(LIB_SOURCES
         GSCamera.h
         GSCameraController.cu
         GSCameraController.h
-        GSFunc.cu
-        GSFunc.h
+        GSRasterizer.cu
+        GSRasterizer.h
         gs_loss.cu
         gs_loss.h
         Scene.cu

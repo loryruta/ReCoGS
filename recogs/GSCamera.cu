@@ -48,3 +48,14 @@ void GSCamera::update()
     m_projmatrix.upload(glm::value_ptr(viewproj), 16);
     m_campos.upload(glm::value_ptr(position), 3);
 }
+
+GSCamera& GSCamera::operator=(const GSCamera& other)
+{
+    position = other.position;
+    rotation = other.rotation;
+    fx = other.fx;
+    fy = other.fy;
+    width = other.width;
+    height = other.height;
+    return *this;
+}

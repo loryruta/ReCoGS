@@ -41,7 +41,10 @@ public:
     uint32_t const height;
     bool owned = true;
 
-    explicit Image(uint32_t width, uint32_t height, T* data_d) : width(width), height(height), m_data_d(data_d) {}
+    explicit Image(uint32_t width, uint32_t height, T* data_d = nullptr)
+        : width(width), height(height), m_data_d(data_d)
+    {
+    }
 
     /// Copy the image to a non-owning reference.
     Image(const Image& other) //
@@ -66,8 +69,8 @@ public:
 #endif
     }
 
-    [[nodiscard]] glm::uvec2 size() const { return {width, height}; }
-    [[nodiscard]] T* data_d() const { return m_data_d; }
+    [[nodiscard]] __host__ __device__ glm::uvec2 size() const { return {width, height}; }
+    [[nodiscard]] __host__ __device__ T* data_d() const { return m_data_d; }
 
     /// Read the pixel at (x, y)
     __device__ Value value(uint32_t x, uint32_t y) const
@@ -114,10 +117,19 @@ public:
         to_host(out_data.data());
     }
 
+    /// Allocate a image owning new data (uninitialized).
     __host__ static Image malloc(uint32_t width, uint32_t height)
     {
         Image image(width, height, nullptr);
         CHECK_CUDA(cudaMalloc(&image.m_data_d, width * height * C * sizeof(T)));
+        return image;
+    }
+
+    /// Create a non-owning reference to the provided data.
+    __host__ static Image ref(uint32_t width, uint32_t height, T* data_d)
+    {
+        Image image(width, height, data_d);
+        image.owned = false;
         return image;
     }
 };
@@ -126,8 +138,10 @@ using Image4i = Image<4, int, ImageMemoryLayout::CHW>;
 using Image3i = Image<3, int, ImageMemoryLayout::CHW>;
 using Image3u = Image<3, uint32_t, ImageMemoryLayout::CHW>;
 using Image1i = Image<1, int, ImageMemoryLayout::CHW>;
+using Image1uHWC = Image<1, uint8_t, ImageMemoryLayout::HWC>;
 using Image1u = Image<1, uint8_t, ImageMemoryLayout::CHW>;
 using Image4f = Image<4, float, ImageMemoryLayout::CHW>;
+using Image1fHWC = Image<1, float, ImageMemoryLayout::HWC>;
 using Image1fCHW = Image<1, float, ImageMemoryLayout::CHW>;
 using Image3fCHW = Image<3, float, ImageMemoryLayout::CHW>;
 

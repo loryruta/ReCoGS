@@ -29,6 +29,9 @@ public:
     int height = 720;
 
     explicit GSCamera();
+    GSCamera(const GSCamera&) = delete; // TODO define
+    GSCamera(GSCamera&&) = default;
+    ~GSCamera() = default;
 
     [[nodiscard]] float tan_fovx() const { return 1.0f / fx; }
     [[nodiscard]] float tan_fovy() const { return 1.0f / fy; }
@@ -45,5 +48,7 @@ public:
 
     /// Update computed values such as view and projection matrices
     void update();
+
+    GSCamera& operator=(const GSCamera& other);
 };
 } // namespace gs_train

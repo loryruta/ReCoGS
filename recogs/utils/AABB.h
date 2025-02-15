@@ -28,6 +28,9 @@ struct AABB {
     explicit AABB(const Point& min, const Point& max) : min(min), max(max) {};
     ~AABB() = default;
 
+    /// Check whether the AABB is valid, that is if min <= max.
+    __host__ __device__ bool valid() const { return min.x <= max.x && min.y <= max.y; }
+
     __host__ __device__ glm::vec<LENGTH, T> size() const { return max - min; }
 
     __host__ __device__ void expand(const Point& point)

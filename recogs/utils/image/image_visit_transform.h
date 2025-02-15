@@ -13,7 +13,7 @@ __global__ static void image_visit_transform_kernel(IMAGE image, CALLBACK callba
     uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
     uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
     if (x >= image.width || y >= image.height) return;
-    auto ret_val = callback(image, x, y);
+    auto ret_val = callback(image, x, y); // TODO doesn't work with void
     if constexpr (std::is_same_v<decltype(ret_val), typename IMAGE::Value>) {
         image.set_value(x, y, ret_val);
     } else { // void or anything else

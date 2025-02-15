@@ -1,6 +1,8 @@
 
 
 add_executable(recogs_test
+        depth_estimators/test_estimate_depth.cu
+
         utils/image/test_image_copy.cu
         utils/image/test_image_downsample.cu
         utils/image/test_image_flip.cu

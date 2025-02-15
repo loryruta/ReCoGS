@@ -41,6 +41,31 @@ public:
     uint32_t const height;
     bool owned = true;
 
+    explicit Image(uint32_t width, uint32_t height, T* data_d) : width(width), height(height), m_data_d(data_d) {}
+
+    /// Copy the image to a non-owning reference.
+    Image(const Image& other) //
+        : width(other.width), height(other.height), m_data_d(other.m_data_d), owned(false)
+    {
+    }
+
+    /// Move the image to a new owning/non-owning reference, invalidating the moved reference.
+    Image(Image&& other) noexcept //
+        : width(other.width), height(other.height), m_data_d(other.m_data_d), owned(other.owned)
+    {
+        other.m_data_d = nullptr;
+    }
+
+    /// On destruction, if a owning and valid reference, destroy the image.
+    ~Image()
+    {
+#ifndef __CUDA_ARCH__
+        if (owned && m_data_d) {
+            CHECK_CUDA(cudaFree(m_data_d));
+        }
+#endif
+    }
+
     [[nodiscard]] glm::uvec2 size() const { return {width, height}; }
     [[nodiscard]] T* data_d() const { return m_data_d; }
 
@@ -91,36 +116,10 @@ public:
 
     __host__ static Image malloc(uint32_t width, uint32_t height)
     {
-        Image image(width, height);
+        Image image(width, height, nullptr);
         CHECK_CUDA(cudaMalloc(&image.m_data_d, width * height * C * sizeof(T)));
         return image;
     }
-
-    /// Copy the image to a non-owning reference.
-    Image(const Image& other) //
-        : width(other.width), height(other.height), m_data_d(other.m_data_d), owned(false)
-    {
-    }
-
-    /// Move the image to a new owning/non-owning reference, invalidating the moved reference.
-    Image(Image&& other) noexcept //
-        : width(other.width), height(other.height), m_data_d(other.m_data_d), owned(other.owned)
-    {
-        other.m_data_d = nullptr;
-    }
-
-    /// On destruction, if a owning and valid reference, destroy the image.
-    ~Image()
-    {
-#ifndef __CUDA_ARCH__
-        if (owned && m_data_d) {
-            CHECK_CUDA(cudaFree(m_data_d));
-        }
-#endif
-    }
-
-private:
-    explicit Image(uint32_t width, uint32_t height) : width(width), height(height) {}
 };
 
 using Image4i = Image<4, int, ImageMemoryLayout::CHW>;
@@ -129,9 +128,7 @@ using Image3u = Image<3, uint32_t, ImageMemoryLayout::CHW>;
 using Image1i = Image<1, int, ImageMemoryLayout::CHW>;
 using Image1u = Image<1, uint8_t, ImageMemoryLayout::CHW>;
 using Image4f = Image<4, float, ImageMemoryLayout::CHW>;
-using Image3f = Image<3, float, ImageMemoryLayout::CHW>;
-using Image1f = Image<1, float, ImageMemoryLayout::CHW>;
-using ColorBuffer = Image4f;
-using DepthBuffer = Image1f;
+using Image1fCHW = Image<1, float, ImageMemoryLayout::CHW>;
+using Image3fCHW = Image<3, float, ImageMemoryLayout::CHW>;
 
 } // namespace gs_train

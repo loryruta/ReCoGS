@@ -3,6 +3,7 @@
 #include "Image.h"
 
 #include "image_cast.h"
+#include "image_copy.h"
 #include "image_downsample.h"
 #include "image_fill.h"
 #include "image_flip.h"

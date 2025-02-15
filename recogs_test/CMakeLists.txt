@@ -1,6 +1,7 @@
 
 
 add_executable(recogs_test
+        utils/image/test_image_copy.cu
         utils/image/test_image_downsample.cu
         utils/image/test_image_flip.cu
         #utils/image/test_image_reduce.cu

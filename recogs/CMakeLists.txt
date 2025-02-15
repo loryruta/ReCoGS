@@ -37,6 +37,7 @@ set(LIB_SOURCES
         utils/stb_image.cpp
         utils/stb_image.h
         utils/stb_image_write.h
+        utils/Stopwatch.h
 
         adam.cu
         adam.h

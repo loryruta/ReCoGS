@@ -84,7 +84,9 @@ target_link_libraries(recogs_lib PUBLIC
         imgui::imgui
         nlohmann_json::nlohmann_json
         onnxruntime::onnxruntime
-        glad)
+        glad
+        trt::nvinfer
+        trt::nvonnxparser)
 
 # main
 add_executable(recogs main.cu)

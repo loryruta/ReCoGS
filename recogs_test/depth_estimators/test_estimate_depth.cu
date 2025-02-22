@@ -20,8 +20,8 @@ void init_camera_to_camera0_train_scene(GSCamera& camera, glm::ivec2 resolution)
     float aspect = float(resolution.y) / 1090.0f;
     camera.fx = 1159.588073303806f / (1959 * 0.5f) * aspect;
     camera.fy = 1164.6601287484507f / (1090 * 0.5f) * aspect;
-    camera.width = 1080;
-    camera.height = 720;
+    camera.width = resolution.x;
+    camera.height = resolution.y;
     camera.update();
 }
 

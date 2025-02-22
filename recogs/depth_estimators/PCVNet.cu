@@ -10,6 +10,19 @@ using namespace gs_train;
 // Reference:
 // https://github.com/NVIDIA/ProViz-AI-Samples/blob/master/onnxruntime_cpp_samples/dml_provider/src/OrtBuffer.cpp
 
+namespace
+{
+void check_ort(OrtStatusPtr status)
+{
+    if (status != nullptr) {
+        const char* msg = Ort::GetApi().GetErrorMessage(status);
+        printf("[ERROR] [PCVNet] %s\n", msg);
+        Ort::GetApi().ReleaseStatus(status);
+        exit(1);
+    }
+}
+} // namespace
+
 PCVNet::PCVNet(App& app) : m_app(app)
 {
     std::filesystem::path model_filename = "pcvnet.onnx";
@@ -17,21 +30,32 @@ PCVNet::PCVNet(App& app) : m_app(app)
 
     m_env = std::make_unique<Ort::Env>();
 
+    const auto& api = Ort::GetApi();
+
     Ort::SessionOptions session_options = Ort::SessionOptions{};
     session_options.SetLogSeverityLevel(ORT_LOGGING_LEVEL_ERROR);
-    OrtCUDAProviderOptions cuda_provider_options{};
-    cuda_provider_options.device_id = 0;
-    cuda_provider_options.user_compute_stream = CU_STREAM_LEGACY;
-    // session_options.AppendExecutionProvider_CUDA(cuda_provider_options);
-    OrtTensorRTProviderOptions tensorrt_provider_options{};
-    tensorrt_provider_options.device_id = 0;
-    // tensorrt_provider_options.trt_fp16_enable = true; // Bad qualitative results!
-    tensorrt_provider_options.trt_max_partition_iterations = 1000;
-    tensorrt_provider_options.trt_min_subgraph_size = 1;
-    tensorrt_provider_options.trt_max_workspace_size = (size_t) 5 * (1024 * 1024 * 1024); // Up to 5GB for optimization
-    tensorrt_provider_options.trt_engine_cache_enable = true;
-    tensorrt_provider_options.trt_engine_cache_path = ".trt_cache";
-    session_options.AppendExecutionProvider_TensorRT(tensorrt_provider_options);
+    session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+
+    /* CUDA options */
+    OrtCUDAProviderOptionsV2* cuda_options;
+    check_ort(api.CreateCUDAProviderOptions(&cuda_options));
+    std::vector<const char*> keys{
+        "cudnn_conv_use_max_workspace",
+        "use_tf32",
+        "do_copy_in_default_stream"
+    };
+    std::vector<const char*> values{
+        "1",
+        "0",
+        "1"
+    };
+    check_ort(api.UpdateCUDAProviderOptions(cuda_options, keys.data(), values.data(), keys.size()));
+    cudaStream_t cuda_stream;
+    CHECK_CUDA(cudaStreamCreate(&cuda_stream));
+    // This implicitly sets "has_user_compute_stream"
+    check_ort(api.UpdateCUDAProviderOptionsWithValue(cuda_options, "user_compute_stream", cuda_stream));
+    check_ort(api.SessionOptionsAppendExecutionProvider_CUDA_V2(session_options, cuda_options));
+    api.ReleaseCUDAProviderOptions(cuda_options);
 
     Stopwatch stopwatch;
     m_session = std::make_unique<Ort::Session>(*m_env, model_filename.c_str(), session_options);
@@ -73,14 +97,17 @@ void PCVNet::forward(const ImageT& im0, const ImageT& im1, Image1fCHW& disparity
         output_shape,
         4,
         ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT);
-    Ort::IoBinding iobinding{*m_session};
+
+    Ort::IoBinding iobinding(*m_session);
     iobinding.BindInput("im0", im0_ort);
     iobinding.BindInput("im1", im1_ort);
     iobinding.BindOutput("disparity_map", output_ort);
+
     {
         Stopwatch stopwatch;
 
         Ort::RunOptions run_options{};
+        run_options.AddConfigEntry("disable_synchronize_execution_providers", "1");
         m_session->Run(run_options, iobinding);
 
         printf("[DEBUG] [PCVNet] Forward took %s\n", stopwatch.elapsed_time_str().c_str());

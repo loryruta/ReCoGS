@@ -27,6 +27,8 @@ set(LIB_SOURCES
         utils/image/image.cu
         utils/image/Image.h
         utils/image/image_cast.h
+        utils/image/image_copy.h
+        utils/image/image_downsample.h
         utils/image/image_fill.h
         utils/image/image_flip.h
         utils/image/image_load.h
@@ -75,7 +77,7 @@ set(VIDEO_SOURCES
 
 add_library(recogs_lib STATIC ${LIB_SOURCES} ${VIDEO_SOURCES})
 target_include_directories(recogs_lib PUBLIC ${CMAKE_SOURCE_DIR}/recogs)
-target_link_libraries(recogs_lib
+target_link_libraries(recogs_lib PUBLIC
         fmt::fmt
         glfw
         glm::glm

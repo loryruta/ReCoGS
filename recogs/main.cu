@@ -15,6 +15,14 @@ int main(int argc, char* argv[])
     }
     ++argv;
 
+    int runtime_version;
+    CHECK_CUDA(cudaRuntimeGetVersion(&runtime_version));
+    printf("[INFO ] CUDA runtime version: %d\n", runtime_version);
+
+    int driver_version;
+    CHECK_CUDA(cudaDriverGetVersion(&driver_version));
+    printf("[INFO ] CUDA driver version: %d\n", driver_version);
+
     App::Params app_params{};
     app_params.scene_ply = std::filesystem::absolute(argv[0]);
 

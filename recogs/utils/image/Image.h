@@ -65,6 +65,7 @@ public:
 #ifndef __CUDA_ARCH__
         if (owned && m_data_d) {
             CHECK_CUDA(cudaFree(m_data_d));
+            m_data_d = nullptr;
         }
 #endif
     }
@@ -144,5 +145,6 @@ using Image4f = Image<4, float, ImageMemoryLayout::CHW>;
 using Image1fHWC = Image<1, float, ImageMemoryLayout::HWC>;
 using Image1fCHW = Image<1, float, ImageMemoryLayout::CHW>;
 using Image3fCHW = Image<3, float, ImageMemoryLayout::CHW>;
+using Image3fHWC = Image<3, float, ImageMemoryLayout::HWC>;
 
 } // namespace gs_train

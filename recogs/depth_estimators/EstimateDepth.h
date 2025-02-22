@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 
 #include "GSCamera.h"
-#include "PCVNet.h"
+#include "PCVNetEngine.h"
 #include "Scene.h"
 #include "utils/image/Image.h"
 #include "utils/image/image_copy.h"
@@ -29,7 +29,7 @@ private:
     App& m_app;
     const Options m_options;
 
-    std::unique_ptr<PCVNet> m_pcvnet;
+    std::unique_ptr<PCVNetEngine> m_pcvnet_engine;
 
     GSCamera m_rview;
     DeviceBuffer m_im0{"EstimateDepth/im0"};
@@ -39,7 +39,7 @@ private:
     DeviceBuffer m_depth{"EstimateDepth/depth"};
 
 public:
-    explicit EstimateDepth(App& app, const Options& options);
+    explicit EstimateDepth(App& app, Options options);
     ~EstimateDepth() = default;
 
     Image1fCHW operator()( //

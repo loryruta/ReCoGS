@@ -52,9 +52,17 @@ __global__ void prepare_pcvnet_input_kernel( //
 }
 } // namespace
 
-EstimateDepth::EstimateDepth(App& app, const Options& options) : m_app(app), m_options(options)
+EstimateDepth::EstimateDepth(App& app, Options options) : m_app(app), m_options(std::move(options))
 {
-    m_pcvnet = std::make_unique<PCVNet>(m_app);
+    PCVNetEngine::Options pcvnet_engine_options{};
+    pcvnet_engine_options.onnx_filepath = "pcvnet_quant.onnx";
+    pcvnet_engine_options.optprofile_min_image_size = glm::ivec2(200, 200);
+    pcvnet_engine_options.optprofile_opt_image_size = glm::ivec2(1080, 720);
+    pcvnet_engine_options.optprofile_max_image_size = glm::ivec2(1920, 1080); // 1080p
+    pcvnet_engine_options.engine_filepath = "pcvnet.engine";
+    pcvnet_engine_options.fp16 = true;
+    m_pcvnet_engine = std::make_unique<PCVNetEngine>(pcvnet_engine_options);
+    m_pcvnet_engine->build_or_load();
 }
 
 Image1fCHW EstimateDepth::operator()( //
@@ -66,19 +74,18 @@ Image1fCHW EstimateDepth::operator()( //
 {
     int W = camera.width;
     int H = camera.height;
-    if (!region.valid()) {
-        region = AABB2i(glm::ivec2(0), glm::ivec2(W, H));
-    }
+    if (!region.valid()) region = AABB2i(glm::ivec2(0), glm::ivec2(W, H));
 
-    // Render scene to im0, im1
+    // Render im0
     m_im0.resize(W * H * 3 * sizeof(float));
     m_im1.resize(W * H * 3 * sizeof(float));
     Image3fCHW im0 = Image3fCHW::ref(W, H, m_im0.data_ptr<float>());
-    Image3fCHW im1 = Image3fCHW::ref(W, H, m_im1.data_ptr<float>());
     m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), camera, m_im0.data_ptr<float>());
+    // Render im1
     m_rview = camera;
     m_rview.position += (axis == Axis::H ? camera.right() : camera.up()) * b;
     m_rview.update();
+    Image3fCHW im1 = Image3fCHW::ref(W, H, m_im1.data_ptr<float>());
     m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), m_rview, m_im1.data_ptr<float>());
     if (m_options.debug) {
         image_save_png(im0, fmt::format("estimatedepth-{}im0.png", m_options.image_prefix));
@@ -106,7 +113,7 @@ Image1fCHW EstimateDepth::operator()( //
     // IMPORTANT: must be dispatched on the same CUDA stream
     m_depth.resize(out_region_w * out_region_h * sizeof(float));
     Image1fCHW depth = Image1fCHW::ref(out_region_w, out_region_h, m_depth.data_ptr<float>());
-    m_pcvnet->forward(pcvnet_im0, pcvnet_im1, depth);
+    m_pcvnet_engine->infer(pcvnet_im0, pcvnet_im1, depth);
 
     // TODO manage vertical stereo matching
 

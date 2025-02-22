@@ -1,0 +1,55 @@
+#pragma once
+
+#include <filesystem>
+
+#include <glm/glm.hpp>
+
+#include "NvInfer.h"
+#include "utils/image/Image.h"
+
+namespace gs_train
+{
+
+struct PCVNetEngine {
+public:
+    struct Options {
+        std::filesystem::path onnx_filepath;
+        glm::ivec2 optprofile_min_image_size;
+        glm::ivec2 optprofile_opt_image_size;
+        glm::ivec2 optprofile_max_image_size;
+        std::filesystem::path engine_filepath;
+        bool fp16 = false;
+
+        void validate() const;
+    };
+
+private:
+    const Options m_options;
+
+    std::unique_ptr<nvinfer1::ILogger> m_logger;
+
+    std::unique_ptr<nvinfer1::IRuntime> m_runtime;
+    std::unique_ptr<nvinfer1::ICudaEngine> m_engine;
+    std::unique_ptr<nvinfer1::IExecutionContext> m_context;
+
+    std::vector<const char*> m_io_names;
+    std::vector<void*> m_io_buffers;
+    int m_im0_tensor_idx = -1;
+    int m_im1_tensor_idx = -1;
+    int m_disparity_map_tensor_idx = -1;
+
+    //= std::unique_ptr<nvinfer1::IRuntime>{nvinfer1::createInferRuntime(m_logger)};
+
+public:
+    explicit PCVNetEngine(Options options);
+    ~PCVNetEngine() = default;
+
+    void build_or_load();
+    void infer(const Image3fCHW& im0, const Image3fCHW& im1, Image1fCHW& out_disparity_map, cudaStream_t stream = 0);
+
+private:
+    void build();
+    void load();
+};
+
+} // namespace gs_train

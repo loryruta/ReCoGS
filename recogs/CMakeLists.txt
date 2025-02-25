@@ -2,8 +2,6 @@
 set(LIB_SOURCES
         depth_estimators/EstimateDepth.cu
         depth_estimators/EstimateDepth.h
-        depth_estimators/PCVNet.cu
-        depth_estimators/PCVNet.h
         depth_estimators/PCVNetEngine.cu
         depth_estimators/PCVNetEngine.h
 

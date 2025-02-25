@@ -18,7 +18,6 @@ public:
         glm::ivec2 optprofile_opt_image_size;
         glm::ivec2 optprofile_max_image_size;
         std::filesystem::path engine_filepath;
-        bool fp16 = false;
 
         void validate() const;
     };
@@ -32,20 +31,21 @@ private:
     std::unique_ptr<nvinfer1::ICudaEngine> m_engine;
     std::unique_ptr<nvinfer1::IExecutionContext> m_context;
 
-    std::vector<const char*> m_io_names;
-    std::vector<void*> m_io_buffers;
-    int m_im0_tensor_idx = -1;
-    int m_im1_tensor_idx = -1;
-    int m_disparity_map_tensor_idx = -1;
-
-    //= std::unique_ptr<nvinfer1::IRuntime>{nvinfer1::createInferRuntime(m_logger)};
-
 public:
+    // PCVNet TensorRT engine is built and optimized to work with fixed size input of the following dimensions.
+    // Or alternatively, their rotated version (i.e. 90deg rotated; HxW) to support vertical stereo matching
+    static constexpr uint32_t k_io_width = 1088;
+    static constexpr uint32_t k_io_height = 768;
+
     explicit PCVNetEngine(Options options);
     ~PCVNetEngine() = default;
 
     void build_or_load();
-    void infer(const Image3fCHW& im0, const Image3fCHW& im1, Image1fCHW& out_disparity_map, cudaStream_t stream = 0);
+    void infer( //
+        const Image3fCHW& im0,
+        const Image3fCHW& im1,
+        Image1fCHW& out_disparity_map,
+        cudaStream_t stream = 0);
 
 private:
     void build();

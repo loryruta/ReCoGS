@@ -126,60 +126,70 @@ void PCVNetEngine::build()
         CHECK_STATE(parser, "Failed to create the ONNX parser");
         CHECK_STATE(parser->parse(onnx_filedata.data(), onnx_filesize), "TensorRT can't parse the ONNX file");
     } // Free the memory taken by the ONNX model (and the parser)
+    CHECK_STATE(network->getNbInputs() == 2, "Expected 2 inputs: im0 and im1");
+    CHECK_STATE(network->getNbOutputs() == 1, "Expected 1 output: disparity_map");
+    CHECK_STATE(std::strcmp(network->getInput(0)->getName(), "im0") == 0, "Expected input 0 to be im0");
+    CHECK_STATE(std::strcmp(network->getInput(1)->getName(), "im1") == 0, "Expected input 1 to be im1");
+    CHECK_STATE(std::strcmp(network->getOutput(0)->getName(), "disparity_map") == 0,
+                "Expected output 0 to be disparity_map");
 
     auto builder_cfg = std::unique_ptr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
     CHECK_STATE(builder_cfg, "Failed to create TensorRT builder config");
 
-    // Build the optimization profile for PCVNet
-    printf("[DEBUG] [PCVNetEngine] Creating the TensorRT optimization profile\n");
-    nvinfer1::IOptimizationProfile* opt_profile = builder->createOptimizationProfile();
-    size_t num_inputs = network->getNbInputs();
-    CHECK_STATE(num_inputs == 2, "Unexpected number of inputs: %zu", num_inputs);
-    for (int i = 0; i < num_inputs; ++i) {
-        nvinfer1::ITensor* input = network->getInput(i);
-        std::string input_name = input->getName();
-        nvinfer1::Dims input_dims = input->getDimensions();
-        // Validation
-        CHECK_STATE(input_name == "im0" || input_name == "im1", "Unexpected input name: %s", input_name.c_str());
-        // Input shape is expected to be (-1, 3, -1, -1) (dynamic batch, image height and width)
-        CHECK_STATE(input_dims.nbDims == 4, "Invalid number of dimensions for input");
-        CHECK_STATE(input_dims.d[0] == UINT64_MAX && input_dims.d[1] == 3 && input_dims.d[2] == UINT64_MAX &&
-                        input_dims.d[3] == UINT64_MAX,
-                    "im0 or im1 shape is invalid");
-        printf("[DEBUG] [PCVNetEngine] Setting dimensions for input \"%s\"\n", input_name.c_str());
-        // Minimum optimization profile
-        nvinfer1::Dims min_dims = input_dims;
-        min_dims.d[0] = 1;
-        min_dims.d[2] = m_options.optprofile_min_image_size.y;
-        min_dims.d[3] = m_options.optprofile_min_image_size.x;
-        opt_profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMIN, min_dims);
-        // Optimal optimization profile
-        nvinfer1::Dims opt_dims = input_dims;
-        opt_dims.d[0] = 1;
-        opt_dims.d[2] = m_options.optprofile_opt_image_size.y;
-        opt_dims.d[3] = m_options.optprofile_opt_image_size.x;
-        opt_profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kOPT, opt_dims);
-        // Maximum optimization profile
-        nvinfer1::Dims max_dims = input_dims;
-        max_dims.d[0] = 1;
-        max_dims.d[2] = m_options.optprofile_max_image_size.y;
-        max_dims.d[3] = m_options.optprofile_max_image_size.x;
-        opt_profile->setDimensions(input_name.c_str(), nvinfer1::OptProfileSelector::kMAX, max_dims);
-    }
+    nvinfer1::IOptimizationProfile* opt_profile{};
+    nvinfer1::Dims opt_dims{};
+
+    // Create the optimization profile for horizontal input
+    opt_profile = builder->createOptimizationProfile();
+    opt_dims.nbDims = 4;
+    opt_dims.d[0] = 1;
+    opt_dims.d[1] = 3;
+    opt_dims.d[2] = k_io_height;
+    opt_dims.d[3] = k_io_width;
+    opt_profile->setDimensions("im0", nvinfer1::OptProfileSelector::kMIN, opt_dims);
+    opt_profile->setDimensions("im0", nvinfer1::OptProfileSelector::kOPT, opt_dims);
+    opt_profile->setDimensions("im0", nvinfer1::OptProfileSelector::kMAX, opt_dims);
+    opt_profile->setDimensions("im1", nvinfer1::OptProfileSelector::kMIN, opt_dims);
+    opt_profile->setDimensions("im1", nvinfer1::OptProfileSelector::kOPT, opt_dims);
+    opt_profile->setDimensions("im1", nvinfer1::OptProfileSelector::kMAX, opt_dims);
+    opt_dims.d[1] = 1;
+    opt_profile->setDimensions("disparity_map", nvinfer1::OptProfileSelector::kMIN, opt_dims);
+    opt_profile->setDimensions("disparity_map", nvinfer1::OptProfileSelector::kOPT, opt_dims);
+    opt_profile->setDimensions("disparity_map", nvinfer1::OptProfileSelector::kMAX, opt_dims);
     builder_cfg->addOptimizationProfile(opt_profile);
+
+    // Create the optimization profile for vertical input
+    opt_profile = builder->createOptimizationProfile();
+    opt_dims.nbDims = 4;
+    opt_dims.d[0] = 1;
+    opt_dims.d[1] = 3;
+    opt_dims.d[2] = k_io_width;
+    opt_dims.d[3] = k_io_height;
+    opt_profile->setDimensions("im0", nvinfer1::OptProfileSelector::kMIN, opt_dims);
+    opt_profile->setDimensions("im0", nvinfer1::OptProfileSelector::kOPT, opt_dims);
+    opt_profile->setDimensions("im0", nvinfer1::OptProfileSelector::kMAX, opt_dims);
+    opt_profile->setDimensions("im1", nvinfer1::OptProfileSelector::kMIN, opt_dims);
+    opt_profile->setDimensions("im1", nvinfer1::OptProfileSelector::kOPT, opt_dims);
+    opt_profile->setDimensions("im1", nvinfer1::OptProfileSelector::kMAX, opt_dims);
+    opt_dims.d[1] = 1;
+    opt_profile->setDimensions("disparity_map", nvinfer1::OptProfileSelector::kMIN, opt_dims);
+    opt_profile->setDimensions("disparity_map", nvinfer1::OptProfileSelector::kOPT, opt_dims);
+    opt_profile->setDimensions("disparity_map", nvinfer1::OptProfileSelector::kMAX, opt_dims);
+    builder_cfg->addOptimizationProfile(opt_profile);
+
     // Enable DataType::kBF16 layer selection, with FP32 fallback.
     // This flag is only supported by NVIDIA Ampere and later GPUs
-    // TODO builder_cfg->setFlag(nvinfer1::BuilderFlag::kBF16); My GPU doesn't support bfloat16 :')
-    // This level determines how much effort TensorRT would take to find a better solution for performance
-    // TODO builder_cfg->setTilingOptimizationLevel(nvinfer1::TilingOptimizationLevel::kFULL);
-    // Set the CUDA stream that is used to profile this network
-    cudaStream_t profile_stream{};
-    CHECK_CUDA(cudaStreamCreate(&profile_stream));
-    builder_cfg->setProfileStream(profile_stream);
+    // TODO My GPU doesn't support bfloat16 :')
+    builder_cfg->setFlag(nvinfer1::BuilderFlag::kFP16);
+
+    // This level determines how much effort TensorRT would take to find a better solution for performance.
+    // NOTE: only seen working with kNONE; otherwise "Skipping tactic" and the plan doesn't build
+    // builder_cfg->setTilingOptimizationLevel(nvinfer1::TilingOptimizationLevel::kFULL);
+
+    printf("[DEBUG] [PCVNetEngine] Tiling optimization level: %d\n", builder_cfg->getTilingOptimizationLevel());
+    builder_cfg->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE, (size_t) 6 * (1 << 30) /* 6GB */);
 
     // Build the engine
-    // If this call fails, it is suggested to increase the logger verbosity to kVERBOSE and try rebuilding the
-    // engine. Doing so will provide you with more information on why exactly it is failing
     printf("[INFO ] [PCVNetEngine] Building the TensorRT engine (might take several minutes)...\n");
     fflush(stdout); // So we know the program arrived here!
     std::unique_ptr<nvinfer1::IHostMemory> plan{builder->buildSerializedNetwork(*network, *builder_cfg)};
@@ -188,8 +198,6 @@ void PCVNetEngine::build()
     std::ofstream engine_file(m_options.engine_filepath, std::ofstream::binary);
     engine_file.write(reinterpret_cast<const char*>(plan->data()), (std::streamsize) plan->size());
     printf("[INFO ] [PCVNetEngine] TensorRT engine written to: %s\n", m_options.engine_filepath.c_str());
-
-    CHECK_CUDA(cudaStreamDestroy(profile_stream));
 }
 
 void PCVNetEngine::load()
@@ -217,75 +225,36 @@ void PCVNetEngine::load()
     m_context = std::unique_ptr<nvinfer1::IExecutionContext>(m_engine->createExecutionContext());
     CHECK_STATE(m_context, "Failed to create TensorRT context");
 
-    cudaStream_t stream;
-    CHECK_CUDA(cudaStreamCreate(&stream));
-
+    // Validate I/O tensors
     size_t num_io_tensors = m_engine->getNbIOTensors();
-    m_io_buffers.resize(num_io_tensors);
+    CHECK_STATE(num_io_tensors, num_io_tensors == 3, "Expected 3 I/O tensors: im0, im1 and disparity_map");
     for (int i = 0; i < num_io_tensors; ++i) {
-        const char* tensor_name = m_engine->getIOTensorName(i);
-        nvinfer1::TensorIOMode tensor_mode = m_engine->getTensorIOMode(tensor_name);
-        nvinfer1::Dims tensor_shape = m_engine->getTensorShape(tensor_name);
-        nvinfer1::DataType tensor_datatype = m_engine->getTensorDataType(tensor_name);
-        nvinfer1::TensorLocation tensor_location = m_engine->getTensorLocation(tensor_name);
+        std::string name = m_engine->getIOTensorName(i);
+        nvinfer1::TensorIOMode mode = m_engine->getTensorIOMode(name.c_str());
+        nvinfer1::Dims shape = m_engine->getTensorShape(name.c_str());
+        nvinfer1::DataType datatype = m_engine->getTensorDataType(name.c_str());
+        nvinfer1::TensorLocation location = m_engine->getTensorLocation(name.c_str());
 
-        printf("[DEBUG] [PCVNetEngine] %s tensor \"%s\" #%d (%s) of shape %s",
-               to_string(tensor_mode).c_str(),
-               tensor_name,
-               i,
-               to_string(tensor_location).c_str(),
-               to_string(tensor_shape).c_str());
-
-        if (tensor_mode == nvinfer1::TensorIOMode::kINPUT && std::strcmp(tensor_name, "im0") == 0) {
-            m_im0_tensor_idx = i;
-            printf(" - deferred\n");
-            continue;
-        } else if (tensor_mode == nvinfer1::TensorIOMode::kINPUT && std::strcmp(tensor_name, "im1") == 0) {
-            m_im1_tensor_idx = i;
-            printf(" - deferred\n");
-            continue;
-        } else if (tensor_mode == nvinfer1::TensorIOMode::kOUTPUT && std::strcmp(tensor_name, "disparity_map") == 0) {
-            m_disparity_map_tensor_idx = i;
-            printf(" - deferred\n");
-            continue;
+        if (name == "im0") {
+            CHECK_STATE(mode == nvinfer1::TensorIOMode::kINPUT, "im0 must be a input tensor");
+            CHECK_STATE(shape.nbDims == 4 && shape.d[0] == 1 && shape.d[1] == 3 && shape.d[2] == -1 && shape.d[3] == -1,
+                        "im0 shape must be (1, 3, -1, -1)");
+        } else if (name == "im1") {
+            CHECK_STATE(mode == nvinfer1::TensorIOMode::kINPUT, "im1 must be a input tensor");
+            CHECK_STATE(shape.nbDims == 4 && shape.d[0] == 1 && shape.d[1] == 3 && shape.d[2] == -1 && shape.d[3] == -1,
+                        "im1 shape must be (1, 3, -1, -1)");
+        } else if (name == "disparity_map") {
+            CHECK_STATE(mode == nvinfer1::TensorIOMode::kOUTPUT, "disparity_map must be an output tensor");
+            //            CHECK_STATE(shape.nbDims == 4 && shape.d[0] == 1 && shape.d[1] == 1 && shape.d[2] == -1 &&
+            //            shape.d[3] == -1,
+            //                        "disparity_map shape must be (1, 1, -1, -1)");
+        } else {
+            throw IllegalStateException("Unrecognized tensor \"%s\""); // TODO name
         }
 
-        // Calculate the buffer size
-        size_t buffer_size = 1;
-        for (int d = 0; d < tensor_shape.nbDims; ++d) {
-            int64_t dim = tensor_shape.d[d];
-            if (dim <= 0) {
-                if (d == 0) {
-                    dim = 1;
-                } else if (d == 2) {
-                    dim = m_options.optprofile_max_image_size.y;
-                } else if (d == 3) {
-                    dim = m_options.optprofile_max_image_size.x;
-                } else {
-                    throw IllegalStateException("Unknown how to allocate dynamic dimension: %d"); // TODO %d
-                }
-            }
-            buffer_size *= dim;
-        }
-        buffer_size *= sizeof(float);
-
-        // TODO FP16? At the moment we're only supporting float32
-        CHECK_STATE(tensor_datatype == nvinfer1::DataType::kFLOAT, "Unexpected tensor data type");
-
-        void* buffer;
-        CHECK_CUDA(cudaMalloc(&buffer, buffer_size));
-        printf(" - allocated %zu bytes\n", buffer_size);
-        m_io_buffers[i] = buffer;
-        bool status;
-        status = m_context->setTensorAddress(tensor_name, m_io_buffers.at(i)), assert(status);
+        CHECK_STATE(datatype == nvinfer1::DataType::kFLOAT, "%s must be a FLOAT tensor", name);
+        CHECK_STATE(location == nvinfer1::TensorLocation::kDEVICE, "%s must be a DEVICE tensor", name);
     }
-
-    CHECK_ARG(m_im0_tensor_idx >= 0, "im0 input tensor not found");
-    CHECK_ARG(m_im1_tensor_idx >= 0, "im1 input tensor not found");
-    CHECK_ARG(m_disparity_map_tensor_idx >= 0, "disparity_map output tensor not found");
-
-    CHECK_CUDA(cudaStreamSynchronize(stream));
-    CHECK_CUDA(cudaStreamDestroy(stream));
 }
 
 void PCVNetEngine::build_or_load()
@@ -306,10 +275,15 @@ void PCVNetEngine::infer(const Image3fCHW& im0,
 {
     assert(im0.size() == im1.size());
     assert(im0.size() == out_disparity_map.size());
+    bool is_rotated = im0.width == k_io_height;
+    if (is_rotated) {
+        assert(im0.height == k_io_width);
+    } else {
+        assert(im0.width == k_io_width && im0.height == k_io_height);
+    }
+
     // IMPORTANT: input/output size must be divisible by 32 or:
     // "Cask Pooling Runner Execute Failure"
-    assert(im0.width % 32 == 0);
-    assert(im0.height % 32 == 0);
 
     // Set input dimensions (width and height are dynamically sized)
     nvinfer1::Dims dims{};
@@ -329,5 +303,6 @@ void PCVNetEngine::infer(const Image3fCHW& im0,
     status = m_context->setTensorAddress("disparity_map", out_disparity_map.data_d()), assert(status);
 
     // Run inference
+    m_context->setOptimizationProfileAsync(is_rotated /* horizontal vs vertical optimization profile */, stream);
     status = m_context->enqueueV3(stream), assert(status);
 }

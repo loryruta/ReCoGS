@@ -20,7 +20,7 @@ public:
     struct Options {
         /// If set, all images generated during the depth estimation process will be saved.
         bool debug = false;
-        std::string image_prefix{};
+        std::string debug_image_prefix{};
     };
 
     enum class Axis { H, V };
@@ -34,19 +34,26 @@ private:
     GSCamera m_rview;
     DeviceBuffer m_im0{"EstimateDepth/im0"};
     DeviceBuffer m_im1{"EstimateDepth/im1"};
-    DeviceBuffer m_pcvnet_im0{"EstimateDepth/pcvnet_im0"};
-    DeviceBuffer m_pcvnet_im1{"EstimateDepth/pcvnet_im1"};
+    DeviceBuffer m_pcvnet_im0{"EstimateDepth/pcvnet_im0"};                     // Padded/rotated
+    DeviceBuffer m_pcvnet_im1{"EstimateDepth/pcvnet_im1"};                     // Padded/rotated
+    DeviceBuffer m_pcvnet_disparity_map{"EstimateDepth/pcvnet_disparity_map"}; // Padded/rotated
     DeviceBuffer m_depth{"EstimateDepth/depth"};
 
 public:
+    bool debug;
+    std::string debug_image_prefix;
+
     explicit EstimateDepth(App& app, Options options);
     ~EstimateDepth() = default;
 
-    Image1fCHW operator()( //
-        const GSCamera& camera,
-        Axis axis,
-        float b,
-        AABB2i region = AABB2i{},
-        int num_downsample = 0);
+    /// Estimate depth by performing stereo matching on one axis (horizontal or vertical).
+    /// \return
+    ///     The depth estimate
+    Image1fCHW estimate_single_axis(const GSCamera& camera, Axis axis, float b);
+
+    /// Estimate depth by performing a horizontal and vertical stereo matching.
+    /// \return
+    ///     The depth estimate
+    Image1fCHW estimate_hv(const GSCamera& camera, float b);
 };
 } // namespace gs_train

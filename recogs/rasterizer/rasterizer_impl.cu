@@ -216,6 +216,7 @@ int CudaRasterizer::Rasterizer::forward(
 	const float tan_fovx, float tan_fovy,
 	const bool prefiltered,
 	float* out_color,
+        float* out_depth,
 	int* radii,
 	bool debug)
 {
@@ -323,6 +324,7 @@ int CudaRasterizer::Rasterizer::forward(
 		tile_grid, block,
 		imgState.ranges,
 		binningState.point_list,
+                geomState.depths,
 		width, height,
 		geomState.means2D,
 		feature_ptr,
@@ -330,7 +332,8 @@ int CudaRasterizer::Rasterizer::forward(
 		imgState.accum_alpha,
 		imgState.n_contrib,
 		background,
-		out_color), debug)
+		out_color,
+                out_depth), debug)
 
 	return num_rendered;
 }

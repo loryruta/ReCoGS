@@ -16,21 +16,23 @@ std::function<char*(size_t N)> resize_functional(DeviceBuffer& buffer)
 }
 } // namespace
 
-int GSRasterizer::forward(int W,
-                          int H,
-                          const float* background,
-                          int num_vertices,
-                          const float* means,
-                          const float* shs,
-                          const float* opacities,
-                          const float* scales,
-                          const float* rotations,
-                          const float* viewmatrix,
-                          const float* projmatrix,
-                          const float* campos,
-                          float tan_fovx,
-                          float tan_fovy,
-                          float* out_colorbuffer)
+int GSRasterizer::forward( //
+    int W,
+    int H,
+    const float* background,
+    int num_vertices,
+    const float* means,
+    const float* shs,
+    const float* opacities,
+    const float* scales,
+    const float* rotations,
+    const float* viewmatrix,
+    const float* projmatrix,
+    const float* campos,
+    float tan_fovx,
+    float tan_fovy,
+    float* out_colorbuffer,
+    float* out_depthbuffer)
 {
     int num_rendered = CudaRasterizer::Rasterizer::forward( //
         resize_functional<char>(m_geometry_buffer),
@@ -57,13 +59,17 @@ int GSRasterizer::forward(int W,
         tan_fovy,
         false, // prefiltered
         out_colorbuffer,
+        out_depthbuffer,
         nullptr, // radii
         false    // debug
     );
     return num_rendered;
 }
 
-int GSRasterizer::forward(const float* background_d, const Scene& scene, const GSCamera& camera, float* out_colorbuffer)
+int GSRasterizer::forward(const float* background_d,
+                          const Scene& scene,
+                          const GSCamera& camera,
+                          Image3fCHW& out_colorbuffer)
 {
     return forward( //
         camera.width,
@@ -80,5 +86,31 @@ int GSRasterizer::forward(const float* background_d, const Scene& scene, const G
         camera.campos_d(),
         camera.tan_fovx(),
         camera.tan_fovy(),
-        out_colorbuffer);
+        out_colorbuffer.data_d(),
+        nullptr);
+}
+
+int GSRasterizer::forward(const float* background_d,
+                          const Scene& scene,
+                          const GSCamera& camera,
+                          Image3fCHW& out_colorbuffer,
+                          Image1fCHW& out_depthbuffer)
+{
+    return forward( //
+        camera.width,
+        camera.height,
+        background_d,
+        scene.num_vertices,
+        scene.means.data_ptr<float>(),
+        scene.shs.data_ptr<float>(),
+        scene.opacities.data_ptr<float>(),
+        scene.scales.data_ptr<float>(),
+        scene.rotations.data_ptr<float>(),
+        camera.viewmatrix_d(),
+        camera.projmatrix_d(),
+        camera.campos_d(),
+        camera.tan_fovx(),
+        camera.tan_fovy(),
+        out_colorbuffer.data_d(),
+        out_depthbuffer.data_d());
 }

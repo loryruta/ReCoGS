@@ -88,4 +88,13 @@ void dispatch_single_thread(FUNCTION function)
 {
     detail::dispatch_single_thread_kernel<FUNCTION><<<1, 1>>>(function);
 }
+
+template <typename T>
+__host__ __device__ void swap(T& inout_a, T& inout_b)
+{
+    T c = inout_a;
+    inout_a = inout_b;
+    inout_b = c;
+}
+
 } // namespace gs_train

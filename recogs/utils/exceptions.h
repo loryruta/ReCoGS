@@ -22,4 +22,11 @@ class IllegalArgumentException : public CustomException
 public:
     explicit IllegalArgumentException(const char* message) : CustomException(message) {}
 };
+
+///
+class IllegalStateException : public CustomException
+{
+public:
+    explicit IllegalStateException(const char* message) : CustomException(message) {}
+};
 } // namespace gslab

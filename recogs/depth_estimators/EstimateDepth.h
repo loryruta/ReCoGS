@@ -31,13 +31,12 @@ private:
 
     std::unique_ptr<PCVNetEngine> m_pcvnet_engine;
 
-    GSCamera m_rview;
+    GSCamera m_rview; // TODO define GSCamera copy constructor!
     DeviceBuffer m_im0{"EstimateDepth/im0"};
     DeviceBuffer m_im1{"EstimateDepth/im1"};
     DeviceBuffer m_pcvnet_im0{"EstimateDepth/pcvnet_im0"};                     // Padded/rotated
     DeviceBuffer m_pcvnet_im1{"EstimateDepth/pcvnet_im1"};                     // Padded/rotated
     DeviceBuffer m_pcvnet_disparity_map{"EstimateDepth/pcvnet_disparity_map"}; // Padded/rotated
-    DeviceBuffer m_depth{"EstimateDepth/depth"};
 
 public:
     bool debug;
@@ -47,13 +46,15 @@ public:
     ~EstimateDepth() = default;
 
     /// Estimate depth by performing stereo matching on one axis (horizontal or vertical).
-    /// \return
-    ///     The depth estimate
-    Image1fCHW estimate_single_axis(const GSCamera& camera, Axis axis, float b);
+    /// \param[inout] out_depth
+    ///     The output depth-buffer. It must be pre-allocated and its resolution must match the camera's.
+    ///     Its values are "min-ed" with new estimates therefore it's uninitialized if filled with INFINITY values.
+    void estimate_single_axis(const GSCamera& camera, Axis axis, float b, Image1fCHW& inout_depth);
 
     /// Estimate depth by performing a horizontal and vertical stereo matching.
-    /// \return
-    ///     The depth estimate
-    Image1fCHW estimate_hv(const GSCamera& camera, float b);
+    /// \param[inout] inout_depth
+    ///     The output depth-buffer. It must be pre-allocated and its resolution must match the camera's.
+    ///     Its values are "min-ed" with new estimates therefore it's uninitialized if filled with INFINITY values.
+    void estimate_hv(const GSCamera& camera, float b, Image1fCHW& inout_depth);
 };
 } // namespace gs_train

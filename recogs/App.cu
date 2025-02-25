@@ -76,7 +76,11 @@ void App::start()
         if (m_screen) m_screen->update(dt);
 
         /* Render */
-        if (m_screen) m_screen->render(m_colorbuffer_chw->data_d());
+        if (m_screen) {
+            auto colorbuffer_3hw =
+                Image3fCHW::ref(m_colorbuffer_chw->width, m_colorbuffer_chw->height, m_colorbuffer_chw->data_d());
+            m_screen->render(colorbuffer_3hw);
+        }
 
         /* Transit colorbuffer from BCHW to BHWC */
         image_cast(*m_colorbuffer_chw, *m_colorbuffer_hwc);

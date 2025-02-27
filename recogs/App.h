@@ -4,6 +4,7 @@
 
 #include "GSRasterizer.h"
 #include "Scene.h"
+#include "depth_estimators/StereoDepthEstimator.h"
 #include "ui/Screen.h"
 #include "video/DrawTexture.h"
 #include "video/GLMappedResource.h"
@@ -38,6 +39,7 @@ public:
     double m_fps = 0.0;
 
     GSRasterizer m_gs_rasterizer;
+    std::unique_ptr<StereoDepthEstimator> m_stereo_depth_estimator;
 
     std::unique_ptr<Screen> m_screen;
 
@@ -52,6 +54,7 @@ public:
     [[nodiscard]] glm::ivec2 resolution() const { return m_window->framebuffer_size(); }
 
     [[nodiscard]] GSRasterizer& gs_rasterizer() { return m_gs_rasterizer; }
+    [[nodiscard]] StereoDepthEstimator& stereo_depth_estimator() { return *m_stereo_depth_estimator; }
 
     void start();
     void stop();

@@ -1,7 +1,7 @@
 
 
 add_executable(recogs_test
-        depth_estimators/test_estimate_depth.cu
+        depth_estimators/test_stereo.cu
         depth_estimators/test_pcvnet_trt.cu
 
         utils/image/test_image_copy.cu

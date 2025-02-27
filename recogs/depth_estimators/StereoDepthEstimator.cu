@@ -1,4 +1,4 @@
-#include "EstimateDepth.h"
+#include "StereoDepthEstimator.h"
 
 #include <fmt/format.h>
 
@@ -77,7 +77,7 @@ __global__ void prepare_pcvnet_output_kernel( //
 }
 } // namespace
 
-EstimateDepth::EstimateDepth(App& app, Options options)
+StereoDepthEstimator::StereoDepthEstimator(App& app, Options options)
     : m_app(app), m_options(std::move(options)), debug(options.debug), debug_image_prefix(options.debug_image_prefix)
 {
     PCVNetEngine::Options pcvnet_engine_options{};
@@ -87,7 +87,7 @@ EstimateDepth::EstimateDepth(App& app, Options options)
     m_pcvnet_engine->build_or_load();
 }
 
-void EstimateDepth::estimate_single_axis(const GSCamera& camera, Axis axis, float b, Image1fCHW& inout_depth)
+void StereoDepthEstimator::estimate_single_axis(const GSCamera& camera, Axis axis, float b, Image1fCHW& inout_depth)
 {
     dim3 num_blocks{};
     dim3 block_dim{};
@@ -102,11 +102,11 @@ void EstimateDepth::estimate_single_axis(const GSCamera& camera, Axis axis, floa
     m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), camera, im0);
 
     // Render im1
-    m_rview = camera;
-    m_rview.position += (axis == Axis::H ? camera.right() : -camera.up()) * b;
-    m_rview.update();
+    GSCamera rview = camera;
+    rview.position += (axis == Axis::H ? camera.right() : -camera.up()) * b;
+    rview.update();
     Image3fCHW im1 = Image3fCHW::ref(width, height, m_im1.data_ptr<float>());
-    m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), m_rview, im1);
+    m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), rview, im1);
     if (debug) {
         image_save_png(im0, fmt::format("estimatedepth-{}im0.png", debug_image_prefix));
         image_save_png(im1, fmt::format("estimatedepth-{}im1.png", debug_image_prefix));
@@ -160,7 +160,7 @@ void EstimateDepth::estimate_single_axis(const GSCamera& camera, Axis axis, floa
     }
 }
 
-void EstimateDepth::estimate_hv(const GSCamera& camera, float b, Image1fCHW& inout_depth)
+void StereoDepthEstimator::estimate_hv(const GSCamera& camera, float b, Image1fCHW& inout_depth)
 {
     estimate_single_axis(camera, Axis::H, b, inout_depth);
     estimate_single_axis(camera, Axis::V, b, inout_depth);

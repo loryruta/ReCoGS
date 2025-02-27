@@ -3,7 +3,7 @@
 #include "GSCamera.h"
 #include "GSCameraController.h"
 #include "Screen.h"
-#include "depth_estimators/EstimateDepth.h"
+#include "depth_estimators/StereoDepthEstimator.h"
 #include "utils/image/Image.h"
 
 namespace gs_train

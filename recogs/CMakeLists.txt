@@ -1,9 +1,9 @@
 
 set(LIB_SOURCES
-        depth_estimators/EstimateDepth.cu
-        depth_estimators/EstimateDepth.h
         depth_estimators/PCVNetEngine.cu
         depth_estimators/PCVNetEngine.h
+        depth_estimators/StereoDepthEstimator.cu
+        depth_estimators/StereoDepthEstimator.h
 
         fused_ssim/ssim.cu
         fused_ssim/ssim.h

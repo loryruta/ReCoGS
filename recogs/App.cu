@@ -35,6 +35,10 @@ App::App(const Params& params)
     m_draw_texture = std::make_unique<DrawTexture>();
 
     m_screen = std::make_unique<MainScreen>(*this);
+    {
+        StereoDepthEstimator::Options options{};
+        m_stereo_depth_estimator = std::make_unique<StereoDepthEstimator>(*this, options);
+    }
 }
 
 App::~App() {}

@@ -3,7 +3,7 @@
 #include <fmt/format.h>
 
 #include "App.h"
-#include "depth_estimators/EstimateDepth.h"
+#include "depth_estimators/StereoDepthEstimator.h"
 #include "utils/Stopwatch.h"
 #include "utils/image/image_cast.h"
 #include "utils/image/image_save.h"
@@ -36,8 +36,8 @@ TEST_CASE("EstimateDepth benchmark")
     app_params.scene_ply = train_ply;
     std::unique_ptr<App> app = std::make_unique<App>(app_params);
 
-    EstimateDepth::Options options{};
-    EstimateDepth estimate_depth(*app, options);
+    StereoDepthEstimator::Options options{};
+    StereoDepthEstimator stereo(*app, options);
 
     glm::ivec2 resolution(1080, 720);
     GSCamera camera;
@@ -45,18 +45,18 @@ TEST_CASE("EstimateDepth benchmark")
 
     const float b = 0.07f;
 
+    Image1fCHW depth = Image1fCHW::malloc(resolution.x, resolution.y);
+
     // Warm up iterations
     for (int i = 0; i < 10; ++i) {
-        estimate_depth.estimate_single_axis(camera, EstimateDepth::Axis::H, b);
+        stereo.estimate_single_axis(camera, StereoDepthEstimator::Axis::H, b, depth);
     }
 
     // Measure inference time
     for (int i = 0; i < 15; ++i) {
         Stopwatch stopwatch;
-        Image1fCHW depth = estimate_depth.estimate_single_axis(camera, EstimateDepth::Axis::H, b);
-        printf("[INFO ] Iteration %d; EstimateDepth took %s\n",
-               i,
-               stopwatch.elapsed_time_str().c_str());
+        stereo.estimate_single_axis(camera, StereoDepthEstimator::Axis::H, b, depth);
+        printf("[INFO ] Iteration %d; EstimateDepth took %s\n", i, stopwatch.elapsed_time_str().c_str());
     }
 }
 
@@ -68,8 +68,8 @@ TEST_CASE("EstimateDepth horizontal/vertical")
     app_params.scene_ply = train_ply;
     std::unique_ptr<App> app = std::make_unique<App>(app_params);
 
-    EstimateDepth estimate_depth(*app, {});
-    estimate_depth.debug = true;
+    StereoDepthEstimator stereo(*app, {});
+    stereo.debug = true;
 
     glm::ivec2 resolution(1080, 720);
     GSCamera camera;
@@ -78,10 +78,10 @@ TEST_CASE("EstimateDepth horizontal/vertical")
     const float b = 0.07f;
 
     printf("Running horizontal stereo matching (see qualitatively the results)...");
-    estimate_depth.debug_image_prefix = "h-";
-    estimate_depth.estimate_single_axis(camera, EstimateDepth::Axis::H, b);
+    stereo.debug_image_prefix = "h-";
+    stereo.estimate_single_axis(camera, StereoDepthEstimator::Axis::H, b);
 
     printf("Running vertical stereo matching (see qualitatively the results)...");
-    estimate_depth.debug_image_prefix = "v-";
-    estimate_depth.estimate_single_axis(camera, EstimateDepth::Axis::V, b);
+    stereo.debug_image_prefix = "v-";
+    stereo.estimate_single_axis(camera, StereoDepthEstimator::Axis::V, b);
 }

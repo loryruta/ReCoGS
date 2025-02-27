@@ -13,8 +13,8 @@ namespace gs_train
 // Forward decl
 class App;
 
-/// Estimate the depth of a view in a 3DGS scene using PCVNet
-class EstimateDepth
+/// Estimate the depth of a view in a GS scene using Stereo Matching.
+class StereoDepthEstimator
 {
 public:
     struct Options {
@@ -31,7 +31,6 @@ private:
 
     std::unique_ptr<PCVNetEngine> m_pcvnet_engine;
 
-    GSCamera m_rview; // TODO define GSCamera copy constructor!
     DeviceBuffer m_im0{"EstimateDepth/im0"};
     DeviceBuffer m_im1{"EstimateDepth/im1"};
     DeviceBuffer m_pcvnet_im0{"EstimateDepth/pcvnet_im0"};                     // Padded/rotated
@@ -42,16 +41,16 @@ public:
     bool debug;
     std::string debug_image_prefix;
 
-    explicit EstimateDepth(App& app, Options options);
-    ~EstimateDepth() = default;
+    explicit StereoDepthEstimator(App& app, Options options);
+    ~StereoDepthEstimator() = default;
 
-    /// Estimate depth by performing stereo matching on one axis (horizontal or vertical).
+    /// Estimate depth by performing stereo matching on the given axis (i.e. horizontal/vertical).
     /// \param[inout] out_depth
     ///     The output depth-buffer. It must be pre-allocated and its resolution must match the camera's.
     ///     Its values are "min-ed" with new estimates therefore it's uninitialized if filled with INFINITY values.
     void estimate_single_axis(const GSCamera& camera, Axis axis, float b, Image1fCHW& inout_depth);
 
-    /// Estimate depth by performing a horizontal and vertical stereo matching.
+    /// Estimate depth by performing horizontal and vertical stereo matching.
     /// \param[inout] inout_depth
     ///     The output depth-buffer. It must be pre-allocated and its resolution must match the camera's.
     ///     Its values are "min-ed" with new estimates therefore it's uninitialized if filled with INFINITY values.

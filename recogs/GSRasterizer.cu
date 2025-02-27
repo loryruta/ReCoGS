@@ -6,12 +6,16 @@ using namespace gs_train;
 
 namespace
 {
-template <typename T>
-std::function<char*(size_t N)> resize_functional(DeviceBuffer& buffer)
+std::function<char*(size_t N)>
+resize_functional(thrust::device_vector<char>& buffer, const char* name, size_t alignment)
 {
-    return [&buffer](size_t N) -> char* {
-        CHECK_STATE(buffer.resize(N * sizeof(T)));
-        return buffer.data_ptr<char>();
+    return [&buffer, name, alignment](size_t num_bytes) -> char* {
+        if (num_bytes >= buffer.size()) {
+            size_t new_size = div_ceil(num_bytes, alignment) * alignment;
+            printf("[DEBUG] [GSRasterizer] Resizing %s to %zu bytes\n", name, new_size);
+            buffer.resize(new_size);
+        }
+        return thrust::raw_pointer_cast(buffer.data());
     };
 }
 } // namespace
@@ -35,9 +39,9 @@ int GSRasterizer::forward( //
     float* out_depthbuffer)
 {
     int num_rendered = CudaRasterizer::Rasterizer::forward( //
-        resize_functional<char>(m_geometry_buffer),
-        resize_functional<char>(m_binning_buffer),
-        resize_functional<char>(m_image_buffer),
+        resize_functional(m_geometry_buffer, "geometry_buffer", 1 << 24 /* 16MB */),
+        resize_functional(m_binning_buffer, "binning_buffer", 1 << 24 /* 16MB */),
+        resize_functional(m_image_buffer, "image_buffer", 1 << 24 /* 16MB */),
         num_vertices,
         3,  // sh_degree
         16, // M

@@ -5,6 +5,8 @@
 #include "gs_loss.h"
 #include "utils/image/Image.h"
 
+#include <thrust/device_vector.h>
+
 namespace gs_train
 {
 /// An interface class to the diff_gaussian_rasterizer code.
@@ -14,9 +16,9 @@ class GSRasterizer
 {
     GSLoss m_gs_loss;
 
-    DeviceBuffer m_geometry_buffer{"GSFunc/geometry_buffer"};
-    DeviceBuffer m_binning_buffer{"GSFunc/binning_buffer"};
-    DeviceBuffer m_image_buffer{"GSFunc/image_buffer"};
+    thrust::device_vector<char> m_geometry_buffer;
+    thrust::device_vector<char> m_binning_buffer;
+    thrust::device_vector<char> m_image_buffer;
 
 public:
     explicit GSRasterizer() = default;

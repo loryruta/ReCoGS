@@ -23,6 +23,8 @@ App::App(const Params& params)
     float background[]{0.0f, 0.0f, 0.0f, 0.0f};
     m_scene_background.fit_data(background, std::size(background));
 
+    m_selection3d = std::make_unique<Selection3d>();
+
     /* Init window */
     const int k_init_window_w = 1080;
     const int k_init_window_h = 720;
@@ -102,6 +104,10 @@ void App::start()
 
         /* */
         m_window->swap_buffers();
+
+        // Execute end-of-frame jobs (e.g. screen switch)
+        for (auto& job : m_end_of_frame_jobs) job();
+        m_end_of_frame_jobs.clear();
     }
 }
 

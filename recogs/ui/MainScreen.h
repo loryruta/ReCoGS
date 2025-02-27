@@ -23,10 +23,8 @@ private:
 
     std::unique_ptr<Image1fCHW> m_depthbuffer;
 
-    std::unique_ptr<EstimateDepth> m_stereo;
-
-    int m_key_callback_id = -1;
-    int m_mouse_button_callback_id = -1;
+    int m_key_callback = -1;
+    int m_mouse_button_callback = -1;
 
     enum ViewMode {
         GSRASTERIZER_COLOR, ///< Colorbuffer output of the GS rasterizer
@@ -37,8 +35,10 @@ private:
     } m_view_mode = GSRASTERIZER_COLOR;
 
 public:
-    explicit MainScreen(App& app);
+    explicit MainScreen(App& app, std::optional<GSCamera> initial_view = {});
     ~MainScreen();
+
+    [[nodiscard]] const char* name() const override { return "MainScreen"; }
 
     void resize(int width, int height) override;
     void update(float dt) override;

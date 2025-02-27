@@ -2,8 +2,9 @@
 
 #include "App.h"
 #include "GSRasterizer.h"
-#include "utils/image/image_misc.h"
+#include "ui/SelectScreen.h"
 #include "utils/image/image_fill.h"
+#include "utils/image/image_misc.h"
 
 using namespace gs_train;
 
@@ -26,19 +27,18 @@ void init_camera_to_camera0_train_scene(GSCamera& camera, glm::ivec2 resolution)
 }
 } // namespace
 
-MainScreen::MainScreen(App& app) : m_app(app)
+MainScreen::MainScreen(App& app, std::optional<GSCamera> initial_view) : m_app(app)
 {
-    EstimateDepth::Options options;
-    m_stereo = std::make_unique<EstimateDepth>(app, options);
-
-    glm::ivec2 initial_resolution = app.resolution();
-
     /* Init camera */
-    init_camera_to_camera0_train_scene(m_camera, initial_resolution);
+    if (initial_view) {
+        m_camera = *initial_view;
+    } else {
+        init_camera_to_camera0_train_scene(m_camera, app.resolution());
+    }
 
     /* Action listener */
     Window& window = m_app.window();
-    m_key_callback_id = window.add_key_callback([&](int key, int scancode, int action, int mods) {
+    m_key_callback = window.add_key_callback([&](int key, int scancode, int action, int mods) {
         if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
             if (window.cursor_mode() == GLFW_CURSOR_DISABLED) {
                 window.set_cursor_mode(GLFW_CURSOR_NORMAL);
@@ -59,7 +59,8 @@ MainScreen::MainScreen(App& app) : m_app(app)
             // Horizontal stereo
             if (action == GLFW_PRESS) {
                 image_fill(*m_depthbuffer, Image1fCHW::Value{INFINITY});
-                m_stereo->estimate_single_axis(m_camera, EstimateDepth::Axis::H, 0.07f, *m_depthbuffer);
+                m_app.stereo_depth_estimator().estimate_single_axis(
+                    m_camera, StereoDepthEstimator::Axis::H, 0.07f, *m_depthbuffer);
                 m_view_mode = ViewMode::STEREO_H;
             } else if (action == GLFW_RELEASE) {
                 m_view_mode = ViewMode::GSRASTERIZER_COLOR;
@@ -68,7 +69,8 @@ MainScreen::MainScreen(App& app) : m_app(app)
             // Vertical stereo
             if (action == GLFW_PRESS) {
                 image_fill(*m_depthbuffer, Image1fCHW::Value{INFINITY});
-                m_stereo->estimate_single_axis(m_camera, EstimateDepth::Axis::V, 0.07f, *m_depthbuffer);
+                m_app.stereo_depth_estimator().estimate_single_axis(
+                    m_camera, StereoDepthEstimator::Axis::V, 0.07f, *m_depthbuffer);
                 m_view_mode = ViewMode::STEREO_V;
             } else if (action == GLFW_RELEASE) {
                 m_view_mode = ViewMode::GSRASTERIZER_COLOR;
@@ -77,28 +79,31 @@ MainScreen::MainScreen(App& app) : m_app(app)
             // Horizontal/vertical stereo
             if (action == GLFW_PRESS) {
                 image_fill(*m_depthbuffer, Image1fCHW::Value{INFINITY});
-                m_stereo->estimate_hv(m_camera, 0.07f, *m_depthbuffer);
+                m_app.stereo_depth_estimator().estimate_hv(m_camera, 0.07f, *m_depthbuffer);
                 m_view_mode = ViewMode::STEREO_HV;
             } else if (action == GLFW_RELEASE) {
                 m_view_mode = ViewMode::GSRASTERIZER_COLOR;
             }
         }
+
+        if (key == GLFW_KEY_H && action == GLFW_PRESS) {
+            window.set_cursor_mode(GLFW_CURSOR_NORMAL);
+            m_app.set_screen(std::make_shared<SelectScreen>(m_app, m_camera));
+        }
     });
-    m_mouse_button_callback_id = window.add_mouse_button_callback([&](int button, int action, int mods) {
+    m_mouse_button_callback = window.add_mouse_button_callback([&](int button, int action, int mods) {
         if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
             window.set_cursor_mode(GLFW_CURSOR_DISABLED);
             m_camera_controller = std::make_unique<GSCameraController>(app.window(), m_camera);
         }
     });
-
-    resize(initial_resolution.x, initial_resolution.y);
 }
 
 MainScreen::~MainScreen()
 {
     Window& window = m_app.window();
-    window.remove_key_callback(m_key_callback_id);
-    window.remove_mouse_button_callback(m_mouse_button_callback_id);
+    CHECK_STATE(window.remove_key_callback(m_key_callback));
+    CHECK_STATE(window.remove_mouse_button_callback(m_mouse_button_callback));
 }
 
 void MainScreen::resize(int width, int height)
@@ -124,7 +129,10 @@ void MainScreen::render(Image3fCHW& out_colorbuffer)
 {
     switch (m_view_mode) {
     case GSRASTERIZER_COLOR:
+        // Render the scene
         m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), m_camera, out_colorbuffer, *m_depthbuffer);
+        // Render the 3D selection
+        m_app.selection_renderer().render(m_app.selection3d(), m_camera, out_colorbuffer, *m_depthbuffer);
         break;
     case GSRASTERIZER_DEPTH:
         m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), m_camera, out_colorbuffer, *m_depthbuffer);

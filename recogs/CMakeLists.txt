@@ -18,11 +18,18 @@ set(LIB_SOURCES
         rasterizer/rasterizer_impl.cu
         rasterizer/rasterizer_impl.h
 
+        selection/Selection2d.cu
+        selection/Selection2d.h
+        selection/Selection3d.cu
+        selection/Selection3d.h
+        selection/SelectionRenderer.cu
+        selection/SelectionRenderer.h
+
         ui/MainScreen.cu
         ui/MainScreen.h
         ui/Screen.h
-#        ui/SelectionScreen.cu
-#        ui/SelectionScreen.h
+        ui/SelectScreen.cu
+        ui/SelectScreen.h
 
         utils/image/image.cu
         utils/image/Image.h
@@ -60,8 +67,6 @@ set(LIB_SOURCES
         Scene.h
         scene_io.cu
         scene_io.h
-#        Selection2d.cu
-#        Selection2d.h
 )
 
 set(VIDEO_SOURCES

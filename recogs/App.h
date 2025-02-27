@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <functional>
 
 #include "GSRasterizer.h"
 #include "Scene.h"
@@ -8,10 +9,10 @@
 #include "selection/Selection3d.h"
 #include "selection/SelectionRenderer.h"
 #include "ui/Screen.h"
+#include "utils/image/Image.h"
 #include "video/DrawTexture.h"
 #include "video/GLMappedResource.h"
 #include "video/Window.h"
-#include "utils/image/Image.h"
 
 namespace gs_train
 {
@@ -24,9 +25,11 @@ public:
         [[nodiscard]] void validate() const;
     };
 
+private:
     /* Scene */
     std::unique_ptr<Scene> m_scene;
     DeviceBuffer m_scene_background{"background"};
+    std::unique_ptr<Selection3d> m_selection3d;
 
     /* UI/Display */
     std::unique_ptr<Window> m_window;
@@ -45,17 +48,24 @@ public:
 
     std::unique_ptr<StereoDepthEstimator> m_stereo_depth_estimator;
 
-    std::unique_ptr<Screen> m_screen;
+    std::shared_ptr<Screen> m_screen; // Would be a unique_ptr if std::move_only_function
+
+    /// Tasks executed synchronously at the End Of the Frame.
+    std::vector<std::function<void()>> m_end_of_frame_jobs;
 
 public:
     explicit App(const Params& params);
     ~App();
 
-    [[nodiscard]] Scene& scene() const { return *m_scene; }
-    [[nodiscard]] const float* background_d() const { return m_scene_background.data_ptr<float>(); }
-
     [[nodiscard]] Window& window() const { return *m_window; }
     [[nodiscard]] glm::ivec2 resolution() const { return m_window->framebuffer_size(); }
+
+    [[nodiscard]] Scene& scene() const { return *m_scene; }
+    [[nodiscard]] const float* background_d() const { return m_scene_background.data_ptr<float>(); }
+    [[nodiscard]] Selection3d& selection3d() const { return *m_selection3d; };
+
+    [[nodiscard]] GSRasterizer& gs_rasterizer() { return *m_gs_rasterizer; }
+    [[nodiscard]] SelectionRenderer& selection_renderer() { return *m_selection_renderer; }
 
     [[nodiscard]] StereoDepthEstimator& stereo_depth_estimator() { return *m_stereo_depth_estimator; }
 

@@ -6,10 +6,34 @@ using namespace gs_train;
 
 GSCamera::GSCamera()
 {
-    m_viewmatrix.resize(16 * sizeof(float));
-    m_projmatrix.resize(16 * sizeof(float));
-    m_campos.resize(3 * sizeof(float));
+    m_viewmatrix.resize(16);
+    m_projmatrix.resize(16);
+    m_campos.resize(3);
 }
+
+glm::mat4 GSCamera::viewmatrix() const { return glm::inverse(inv_view()); }
+
+glm::mat3 GSCamera::K() const
+{
+    float hw = float(width) * 0.5f;
+    float hh = float(height) * 0.5f;
+    glm::mat3 K{};
+    K[0][0] = fx * hw;
+    K[1][1] = fy * hh;
+    K[2][2] = 1.0f;
+    K[2][0] = hw;
+    K[2][1] = hh;
+    return K;
+}
+
+glm::mat4 GSCamera::inv_view() const
+{
+    glm::mat4 world2cam = glm::mat3_cast(rotation);
+    world2cam[3] = glm::vec4(position, 1.0f);
+    return world2cam;
+}
+
+glm::mat3 GSCamera::inv_K() const { return glm::inverse(K()); }
 
 void GSCamera::set_resolution(int width_, int height_)
 {
@@ -44,18 +68,7 @@ void GSCamera::update()
     projmatrix[3][2] = -(zfar * znear) / (zfar - znear);
     glm::mat4 viewproj = projmatrix * viewmatrix;
 
-    m_viewmatrix.upload(glm::value_ptr(viewmatrix), 16);
-    m_projmatrix.upload(glm::value_ptr(viewproj), 16);
-    m_campos.upload(glm::value_ptr(position), 3);
-}
-
-GSCamera& GSCamera::operator=(const GSCamera& other)
-{
-    position = other.position;
-    rotation = other.rotation;
-    fx = other.fx;
-    fy = other.fy;
-    width = other.width;
-    height = other.height;
-    return *this;
+    thrust::copy(glm::value_ptr(viewmatrix), glm::value_ptr(viewmatrix) + 16, m_viewmatrix.begin());
+    thrust::copy(glm::value_ptr(viewproj), glm::value_ptr(viewproj) + 16, m_projmatrix.begin());
+    thrust::copy(glm::value_ptr(position), glm::value_ptr(position) + 3, m_campos.begin());
 }

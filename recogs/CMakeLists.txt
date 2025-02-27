@@ -38,6 +38,7 @@ set(LIB_SOURCES
         utils/DeviceBuffer.h
         utils/cuda_utils.h
         utils/misc_utils.h
+        utils/remove_statistical_outliers.h
         utils/stb_image.cpp
         utils/stb_image.h
         utils/stb_image_write.h

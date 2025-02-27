@@ -47,7 +47,7 @@ public:
     }
 
     /// Copy the image to a non-owning reference.
-    Image(const Image& other) //
+    __host__ __device__ Image(const Image& other) //
         : width(other.width), height(other.height), m_data_d(other.m_data_d), owned(false)
     {
     }
@@ -60,13 +60,16 @@ public:
     }
 
     /// On destruction, if a owning and valid reference, destroy the image.
-    ~Image()
+    __host__ __device__ ~Image()
     {
 #ifndef __CUDA_ARCH__
         if (owned && m_data_d) {
             CHECK_CUDA(cudaFree(m_data_d));
             m_data_d = nullptr;
         }
+#else
+        // An image on device must never own its data
+        assert(!owned);
 #endif
     }
 

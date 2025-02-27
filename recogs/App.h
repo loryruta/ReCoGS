@@ -5,6 +5,8 @@
 #include "GSRasterizer.h"
 #include "Scene.h"
 #include "depth_estimators/StereoDepthEstimator.h"
+#include "selection/Selection3d.h"
+#include "selection/SelectionRenderer.h"
 #include "ui/Screen.h"
 #include "video/DrawTexture.h"
 #include "video/GLMappedResource.h"
@@ -38,7 +40,9 @@ public:
     /* Stats */
     double m_fps = 0.0;
 
-    GSRasterizer m_gs_rasterizer;
+    std::unique_ptr<GSRasterizer> m_gs_rasterizer;
+    std::unique_ptr<SelectionRenderer> m_selection_renderer;
+
     std::unique_ptr<StereoDepthEstimator> m_stereo_depth_estimator;
 
     std::unique_ptr<Screen> m_screen;
@@ -53,8 +57,26 @@ public:
     [[nodiscard]] Window& window() const { return *m_window; }
     [[nodiscard]] glm::ivec2 resolution() const { return m_window->framebuffer_size(); }
 
-    [[nodiscard]] GSRasterizer& gs_rasterizer() { return m_gs_rasterizer; }
     [[nodiscard]] StereoDepthEstimator& stereo_depth_estimator() { return *m_stereo_depth_estimator; }
+
+    /// Display a new screen within the application.
+    /// This function must only be called by the application thread (i.e. main thread).
+    void set_screen(std::shared_ptr<Screen>&& new_screen)
+    {
+        // Changing the screen can't be executed immediately otherwise the calling screen will delete itself!
+        // Therefore, the switch operation is queued at the end of the frame
+        m_end_of_frame_jobs.emplace_back([this, new_screen = std::move(new_screen)]() {
+            const char* from_name = m_screen ? m_screen->name() : "null";
+            const char* to_name = new_screen ? new_screen->name() : "null";
+            printf("[INFO ] [App] Switching screen: %s -> %s\n", from_name, to_name);
+            // Delete current screen if any
+            m_screen.reset();
+            // Create and set the new screen
+            m_screen = new_screen;
+            glm::ivec2 resolution_ = resolution();
+            m_screen->resize(resolution_.x, resolution_.y);
+        });
+    }
 
     void start();
     void stop();

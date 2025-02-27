@@ -34,11 +34,15 @@ App::App(const Params& params)
 
     m_draw_texture = std::make_unique<DrawTexture>();
 
-    m_screen = std::make_unique<MainScreen>(*this);
+    m_gs_rasterizer = std::make_unique<GSRasterizer>();
+    m_selection_renderer = std::make_unique<SelectionRenderer>();
+
     {
         StereoDepthEstimator::Options options{};
         m_stereo_depth_estimator = std::make_unique<StereoDepthEstimator>(*this, options);
     }
+
+    set_screen(std::make_shared<MainScreen>(*this));
 }
 
 App::~App() {}

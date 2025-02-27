@@ -78,6 +78,7 @@ set(VIDEO_SOURCES
 add_library(recogs_lib STATIC ${LIB_SOURCES} ${VIDEO_SOURCES})
 target_include_directories(recogs_lib PUBLIC ${CMAKE_SOURCE_DIR}/recogs)
 target_link_libraries(recogs_lib PUBLIC
+        cudaKDTree
         fmt::fmt
         glfw
         glm::glm

@@ -85,7 +85,7 @@ int Window::add_key_callback(const KeyCallback& key_callback)
     return m_next_key_callback_id++;
 }
 
-void Window::remove_key_callback(int id) { m_key_callbacks.erase(id); }
+bool Window::remove_key_callback(int id) { return m_key_callbacks.erase(id); }
 
 int Window::add_mouse_button_callback(const MouseButtonCallback& mouse_button_callback)
 {
@@ -93,4 +93,4 @@ int Window::add_mouse_button_callback(const MouseButtonCallback& mouse_button_ca
     return m_next_mouse_button_callback_id++;
 }
 
-void Window::remove_mouse_button_callback(int id) { m_mouse_button_callbacks.erase(id); }
+bool Window::remove_mouse_button_callback(int id) { return m_mouse_button_callbacks.erase(id); }

@@ -48,16 +48,22 @@ public:
     void set_cursor_mode(int value) { glfwSetInputMode(m_handle, GLFW_CURSOR, value); }
 
     /// \return \c true if the key is pressed
-    [[nodiscard]] bool is_key_pressed(int key) const { return glfwGetKey(m_handle, key); }
+    [[nodiscard]] bool is_key_pressed(int key) const { return glfwGetKey(m_handle, key) == GLFW_PRESS; }
+
+    /// \return \c true if the mouse button is pressed
+    [[nodiscard]] bool is_mouse_button_pressed(int button) const
+    {
+        return glfwGetMouseButton(m_handle, button) == GLFW_PRESS;
+    }
 
     void poll_events();
     void swap_buffers();
 
     int add_key_callback(const KeyCallback& key_callback);
-    void remove_key_callback(int id);
+    bool remove_key_callback(int id);
 
     int add_mouse_button_callback(const MouseButtonCallback& mouse_button_callback);
-    void remove_mouse_button_callback(int id);
+    bool remove_mouse_button_callback(int id);
 
 private:
     static void on_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);

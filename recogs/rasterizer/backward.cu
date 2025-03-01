@@ -392,7 +392,7 @@ __global__ void preprocessCUDA(
 
 	// Compute gradient updates due to computing covariance from scale/rotation
 	if (scales)
-		computeCov3D(idx, scales[idx], scale_modifier, rotations[idx], dL_dcov3D, dL_dscale, dL_drot);
+		computeCov3D(idx, glm::exp(scales[idx]), scale_modifier, glm::normalize(rotations[idx]), dL_dcov3D, dL_dscale, dL_drot);
 }
 
 // Backward version of the rendering procedure.
@@ -551,7 +551,7 @@ renderCUDA(
 			atomicAdd(&dL_dconic2D[global_id].w, -0.5f * gdy * d.y * dL_dG);
 
 			// Update gradients w.r.t. opacity of the Gaussian
-			atomicAdd(&(dL_dopacity[global_id]), G * dL_dalpha);
+			atomicAdd(&(dL_dopacity[global_id]), G * dL_dalpha); // TODO consider sigmoid
 		}
 	}
 }
@@ -584,8 +584,7 @@ void BACKWARD::preprocess(
 	// Propagate gradients for the path of 2D conic matrix computation. 
 	// Somewhat long, thus it is its own kernel rather than being part of 
 	// "preprocess". When done, loss gradient w.r.t. 3D means has been
-	// modified and gradient w.r.t. 3D covariance matrix has been computed.	
-	computeCov2DCUDA << <(P + 255) / 256, 256 >> > (
+	// modified and gradient w.r.t. 3D covariance matrix has been computed.
 	computeCov2DCUDA <<<(P + 255) / 256, 256, 0, stream>>> (
 		P,
 		means3D,

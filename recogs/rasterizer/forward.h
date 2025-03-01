@@ -46,6 +46,7 @@ namespace FORWARD
 		const dim3 grid,
 		uint32_t* tiles_touched,
 		bool prefiltered,
+                bool debug,
                 cudaStream_t stream);
 
 	// Main rasterization method.

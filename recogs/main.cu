@@ -23,6 +23,10 @@ int main(int argc, char* argv[])
     CHECK_CUDA(cudaDriverGetVersion(&driver_version));
     printf("[INFO ] CUDA driver version: %d\n", driver_version);
 
+#ifdef CUB_DEBUG_SYNC
+    printf("[INFO ] CUB_DEBUG_SYNC enabled\n");
+#endif
+
     App::Params app_params{};
     app_params.scene_ply = std::filesystem::absolute(argv[0]);
 

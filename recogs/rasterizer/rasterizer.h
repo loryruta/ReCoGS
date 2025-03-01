@@ -26,7 +26,8 @@ namespace CudaRasterizer
 			float* means3D,
 			float* viewmatrix,
 			float* projmatrix,
-			bool* present);
+			bool* present,
+                        cudaStream_t stream);
 
 		static int forward(
 			std::function<char* (size_t)> geometryBuffer,
@@ -50,8 +51,9 @@ namespace CudaRasterizer
 			const bool prefiltered,
 			float* out_color,
                         float* out_depth,
-			int* radii = nullptr,
-			bool debug = false);
+			int* radii,
+			bool debug,
+                        cudaStream_t stream);
 
 		static void backward(
 			const int P, int D, int M, int R,
@@ -82,7 +84,8 @@ namespace CudaRasterizer
 			float* dL_dsh,
 			float* dL_dscale,
 			float* dL_drot,
-			bool debug);
+			bool debug,
+                        cudaStream_t stream);
 	};
 };
 

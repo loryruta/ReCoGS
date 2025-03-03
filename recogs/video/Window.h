@@ -18,12 +18,15 @@ class Window
 private:
     GLFWwindow* m_handle;
 
+    using ResizeCallback = std::function<void(int width, int height)>;
     using KeyCallback = std::function<void(int key, int scancode, int action, int mods)>;
     using MouseButtonCallback = std::function<void(int button, int action, int mods)>;
 
+    // Callbacks
+    std::unordered_map<int, ResizeCallback> m_resize_callbacks;
+    int m_next_resize_callback_id = 0;
     std::unordered_map<int, KeyCallback> m_key_callbacks;
     int m_next_key_callback_id = 0;
-
     std::unordered_map<int, MouseButtonCallback> m_mouse_button_callbacks;
     int m_next_mouse_button_callback_id = 0;
 
@@ -59,6 +62,9 @@ public:
     void poll_events();
     void swap_buffers();
 
+    int add_resize_callback(const ResizeCallback& callback);
+    bool remove_resize_callback(int id);
+
     int add_key_callback(const KeyCallback& key_callback);
     bool remove_key_callback(int id);
 
@@ -66,7 +72,8 @@ public:
     bool remove_mouse_button_callback(int id);
 
 private:
-    static void on_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-    static void on_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+    static void on_resize_callback(GLFWwindow* handle, int width, int height);
+    static void on_key_callback(GLFWwindow* handle, int key, int scancode, int action, int mods);
+    static void on_mouse_button_callback(GLFWwindow* handle, int button, int action, int mods);
 };
 } // namespace gs_train

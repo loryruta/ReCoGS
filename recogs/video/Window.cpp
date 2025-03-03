@@ -4,6 +4,14 @@
 
 using namespace gs_train;
 
+void Window::on_resize_callback(GLFWwindow* handle, int width, int height)
+{
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(handle));
+    for (const auto& [_, callback] : window->m_resize_callbacks) {
+        callback(width, height);
+    }
+}
+
 void Window::on_key_callback(GLFWwindow* handle, int key, int scancode, int action, int mods)
 {
     Window* window = static_cast<Window*>(glfwGetWindowUserPointer(handle));
@@ -35,6 +43,7 @@ Window::Window(int width, int height, const std::string& title, bool resizable)
 
     glfwSetWindowUserPointer(m_handle, this);
 
+    glfwSetWindowSizeCallback(m_handle, on_resize_callback);
     glfwSetKeyCallback(m_handle, on_key_callback);
     glfwSetMouseButtonCallback(m_handle, on_mouse_button_callback);
 }
@@ -78,6 +87,14 @@ void Window::set_should_close(bool flag) { glfwSetWindowShouldClose(m_handle, fl
 void Window::poll_events() { glfwPollEvents(); }
 
 void Window::swap_buffers() { glfwSwapBuffers(m_handle); }
+
+int Window::add_resize_callback(const ResizeCallback& callback)
+{
+    m_resize_callbacks.emplace(m_next_resize_callback_id, callback);
+    return m_next_resize_callback_id++;
+}
+
+bool Window::remove_resize_callback(int id) { return m_resize_callbacks.erase(id); }
 
 int Window::add_key_callback(const KeyCallback& key_callback)
 {

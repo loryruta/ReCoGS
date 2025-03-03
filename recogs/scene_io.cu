@@ -115,7 +115,13 @@ Scene gs_train::read_scene_from_ply(const std::filesystem::path& scene_ply)
     for (size_t i = 0; i < num_vertices; ++i) {
         is.read((char*) (means.data() + i * 3), 3 * sizeof(float));
         is.read((char*) (normals.data() + i * 3), 3 * sizeof(float));
-        is.read((char*) (shs.data() + i * 48), 48 * sizeof(float));
+        // is.read((char*) (shs.data() + i * 48), 48 * sizeof(float));
+        is.read((char*) (shs.data() + i * 48), 3 * sizeof(float)); // f_dc_*
+        for (int ch = 0; ch < 3; ++ch) {                           // f_rest_*
+            for (int band = 0; band < 15; ++band) {
+                is.read((char*) (shs.data() + i * 48 + 3 + band * 3 + ch), sizeof(float));
+            }
+        }
         is.read((char*) (opacities.data() + i), sizeof(float));
         is.read((char*) (scales.data() + i * 3), 3 * sizeof(float));
         is.read((char*) (rotations.data() + i * 4), 4 * sizeof(float));

@@ -1,4 +1,4 @@
-#include "adam.h"
+#include "Adam.h"
 
 #include <cassert>
 #include <cstdint>
@@ -56,8 +56,9 @@ __global__ void init_kernel( //
     size_t param_set_idx = 0;
     size_t start_param_idx = 0;
     for (; param_set_idx < num_param_sets; ++param_set_idx) {
-        if ((start_param_idx + param_sets->num_params) > i) break;
-        start_param_idx += param_sets->num_params;
+        const Adam::ParamSet& param_set = param_sets[param_set_idx];
+        if ((start_param_idx + param_set.num_params) > i) break;
+        start_param_idx += param_set.num_params;
     }
     assert(param_set_idx < num_param_sets); // Wrong algorithm otherwise
     const Adam::ParamSet& param_set = param_sets[param_set_idx];
@@ -68,42 +69,60 @@ __global__ void init_kernel( //
     out_m[i] = 0.0f;
     out_v[i] = 0.0f;
 }
+
+__global__ void zero_grad_kernel(size_t N, float** out_grads)
+{
+    uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= N) return;
+    *out_grads[i] = 0;
+}
+
 } // namespace
 
-Adam::Adam(std::span<ParamSet> param_sets, const Options& options) : m_options(options)
+Adam::Adam(std::span<ParamSet> param_sets, const Options& options, cudaStream_t stream) : m_options(options)
 {
     m_N = 0;
     for (const ParamSet& param_set : param_sets) {
         CHECK_ARG(param_set.is_valid(), "Parameter set isn't valid");
         m_N += param_set.num_params;
     }
-    CHECK_CUDA(cudaMalloc(&m_params, m_N * sizeof(float*)));
-    CHECK_CUDA(cudaMalloc(&m_grads, m_N * sizeof(float*)));
-    CHECK_CUDA(cudaMalloc(&m_lrs, m_N * sizeof(float)));
-    CHECK_CUDA(cudaMalloc(&m_m, m_N * sizeof(float)));
-    CHECK_CUDA(cudaMalloc(&m_v, m_N * sizeof(float)));
+    CHECK_CUDA(cudaMallocAsync(&m_params, m_N * sizeof(float*), stream));
+    CHECK_CUDA(cudaMallocAsync(&m_grads, m_N * sizeof(float*), stream));
+    CHECK_CUDA(cudaMallocAsync(&m_lrs, m_N * sizeof(float), stream));
+    CHECK_CUDA(cudaMallocAsync(&m_m, m_N * sizeof(float), stream));
+    CHECK_CUDA(cudaMallocAsync(&m_v, m_N * sizeof(float), stream));
 
     /* Linearize parameters sets */
-    const Adam::ParamSet* param_set_d = to_device_array(param_sets);
-    dim3 num_blocks(m_N, size_t(NUM_THREADS));
+    const Adam::ParamSet* param_set_d = to_device_array(param_sets); // TODO use stream
+    dim3 num_blocks = div_ceil<size_t>(m_N, NUM_THREADS);
     dim3 block_dim = NUM_THREADS;
-    init_kernel<<<num_blocks, block_dim>>>(m_N, param_set_d, param_sets.size(), m_params, m_grads, m_lrs, m_m, m_v);
+    init_kernel<<<num_blocks, block_dim, 0, stream>>>(
+        m_N, param_set_d, param_sets.size(), m_params, m_grads, m_lrs, m_m, m_v);
 }
 
 Adam::~Adam()
 {
+    printf("[DEBUG] [Adam] Destroying...\n");
     CHECK_CUDA(cudaFree(m_params));
     CHECK_CUDA(cudaFree(m_grads));
     CHECK_CUDA(cudaFree(m_lrs));
     CHECK_CUDA(cudaFree(m_m));
     CHECK_CUDA(cudaFree(m_v));
+    printf("[DEBUG] [Adam] Destroyed\n");
 }
 
-void Adam::step()
+void Adam::zero_grad(cudaStream_t stream)
+{
+    dim3 num_blocks = (m_N + 1023) / 1024;
+    dim3 block_dim = 1024;
+    zero_grad_kernel<<<num_blocks, block_dim, 0, stream>>>(m_N, m_grads);
+}
+
+void Adam::step(cudaStream_t stream)
 {
     dim3 num_blocks = div_ceil(m_N, size_t(NUM_THREADS));
     dim3 block_dim = NUM_THREADS;
-    step_kernel<<<num_blocks, block_dim>>>( //
+    step_kernel<<<num_blocks, block_dim, 0, stream>>>( //
         m_N,
         m_t,
         m_params,

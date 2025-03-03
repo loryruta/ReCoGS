@@ -40,9 +40,11 @@ private:
     float* m_v{}; ///< Second moment
 
 public:
-    explicit Adam(std::span<ParamSet> param_sets, const Options& options);
+    explicit Adam(std::span<ParamSet> params_sets, const Options& options, cudaStream_t stream);
     ~Adam();
 
-    void step();
+    void zero_grad(cudaStream_t stream);
+
+    void step(cudaStream_t stream);
 };
 } // namespace gs_train

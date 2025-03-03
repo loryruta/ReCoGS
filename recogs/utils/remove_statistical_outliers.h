@@ -97,7 +97,8 @@ template <int K>
 thrust::device_vector<glm::vec3> remove_statistical_outliers( //
     thrust::device_vector<glm::vec3>& points,
     float std_ratio,
-    float cutoff_radius)
+    float cutoff_radius,
+    cudaStream_t stream)
 {
     if (points.size() <= K) return points;
 
@@ -116,24 +117,25 @@ thrust::device_vector<glm::vec3> remove_statistical_outliers( //
     dim3 block_dim = 512;
 
     // Build the KDTree for KNN search
-    cukd::buildTree<glm::vec3, detail::cukd_glm_vec3_traits>(thrust::raw_pointer_cast(points.data()), (int) num_points);
+    cukd::buildTree<glm::vec3, detail::cukd_glm_vec3_traits>(
+        thrust::raw_pointer_cast(points.data()), (int) num_points, nullptr, stream);
 
     // Compute avg KNN distances per-point,
     // and the global avg KNN distance for the whole pointcloud
-    detail::compute_avg_distances_kernel<K><<<num_blocks, block_dim>>>( //
+    detail::compute_avg_distances_kernel<K><<<num_blocks, block_dim, 0, stream>>>( //
         thrust::raw_pointer_cast(points.data()),
         num_points,
         cutoff_radius,
         thrust::raw_pointer_cast(avg_distances.data()),
         thrust::raw_pointer_cast(pointcloud_mean.data()));
     // Compute variance of avg distance for the whole pointcloud
-    detail::compute_var_kernel<<<num_blocks, block_dim>>>( //
+    detail::compute_var_kernel<<<num_blocks, block_dim, 0, stream>>>( //
         num_points,
         thrust::raw_pointer_cast(avg_distances.data()),
         thrust::raw_pointer_cast(pointcloud_mean.data()),
         thrust::raw_pointer_cast(variance.data()));
     // Compute an avg distance threshold and filter points based on it
-    detail::filter_pointcloud_kernel<<<num_blocks, block_dim>>>( //
+    detail::filter_pointcloud_kernel<<<num_blocks, block_dim, 0, stream>>>( //
         thrust::raw_pointer_cast(points.data()),
         num_points,
         thrust::raw_pointer_cast(pointcloud_mean.data()),

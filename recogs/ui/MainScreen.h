@@ -33,6 +33,7 @@ private:
         STEREO_V,           ///< Vertical stereo matching
         STEREO_HV           ///< Aggregated horizontal/vertical stereo matching (typically with `min`)
     } m_view_mode = GSRASTERIZER_COLOR;
+    bool m_view_selection = false;
 
 public:
     explicit MainScreen(App& app, std::optional<GSCamera> initial_view = {});

@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <thread>
 
 #include "GSRasterizer.h"
 #include "Scene.h"
@@ -13,6 +14,7 @@
 #include "video/DrawTexture.h"
 #include "video/GLMappedResource.h"
 #include "video/Window.h"
+#include "optimizer/Optimizer.h"
 
 namespace gs_train
 {
@@ -26,8 +28,11 @@ public:
     };
 
 private:
+    std::filesystem::path m_scene_ply;
+
     /* Scene */
-    std::unique_ptr<Scene> m_scene;
+    std::unique_ptr<Scene> m_scene;          ///< The original scene
+    std::unique_ptr<Scene> m_training_scene; ///< The scene undergoing training
     DeviceBuffer m_scene_background{"background"};
     std::unique_ptr<Selection3d> m_selection3d;
 
@@ -39,6 +44,9 @@ private:
     using ColorbufferHWC = Image<4, float, ImageMemoryLayout::HWC>;
     std::unique_ptr<ColorbufferCHW> m_colorbuffer_chw;
     std::unique_ptr<ColorbufferHWC> m_colorbuffer_hwc;
+    /// The stream where all UI -related CUDA operations are done.
+    /// It must be used instead of the default stream.
+    cudaStream_t m_stream;
 
     /* Stats */
     double m_fps = 0.0;
@@ -53,14 +61,21 @@ private:
     /// Tasks executed synchronously at the End Of the Frame.
     std::vector<std::function<void()>> m_end_of_frame_jobs;
 
+    std::unique_ptr<Optimizer> m_optimizer;
+    std::unique_ptr<std::thread> m_optimizer_thread;
+
 public:
     explicit App(const Params& params);
     ~App();
 
+    [[nodiscard]] std::filesystem::path const& scene_ply() const { return m_scene_ply; }
+
     [[nodiscard]] Window& window() const { return *m_window; }
     [[nodiscard]] glm::ivec2 resolution() const { return m_window->framebuffer_size(); }
+    [[nodiscard]] cudaStream_t stream() const { return m_stream; }
 
     [[nodiscard]] Scene& scene() const { return *m_scene; }
+    [[nodiscard]] Scene& training_scene() const { return *m_training_scene; }
     [[nodiscard]] const float* background_d() const { return m_scene_background.data_ptr<float>(); }
     [[nodiscard]] Selection3d& selection3d() const { return *m_selection3d; };
 

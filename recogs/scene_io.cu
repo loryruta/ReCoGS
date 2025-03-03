@@ -128,14 +128,13 @@ Scene gs_train::read_scene_from_ply(const std::filesystem::path& scene_ply)
     }
 
     /* Upload to GPU */
-    Scene scene{};
-    scene.num_vertices = num_vertices;
-    scene.means.fit_data(means.data(), num_vertices * 3);
-    // scene.normals.fit_data(normals.data(), num_vertices * 3);
-    scene.shs.fit_data(shs.data(), num_vertices * 16 * 3);
-    scene.opacities.fit_data(opacities.data(), num_vertices);
-    scene.scales.fit_data(scales.data(), num_vertices * 3);
-    scene.rotations.fit_data(rotations.data(), num_vertices * 4);
+    Scene scene(num_vertices);
+    thrust::copy(means.begin(), means.end(), scene.means.begin());
+    // thrust::copy(normals.begin(), normals.end(), scene.normals.begin());
+    thrust::copy(shs.begin(), shs.end(), scene.shs.begin());
+    thrust::copy(opacities.begin(), opacities.end(), scene.opacities.begin());
+    thrust::copy(scales.begin(), scales.end(), scene.scales.begin());
+    thrust::copy(rotations.begin(), rotations.end(), scene.rotations.begin());
     return scene;
 }
 

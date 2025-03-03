@@ -19,20 +19,20 @@ TEST_CASE("image_copy - koala")
     using Image3HWC = Image<3, uint8_t, ImageMemoryLayout::HWC>;
 
     std::unique_ptr<Image3HWC> image;
-    image_load(in_filepath.c_str(), image);
+    image_load(in_filepath.c_str(), image, CU_STREAM_LEGACY);
     printf("Loaded image of size %dx%d\n", image->width, image->height);
 
     std::unique_ptr<Image3HWC> copied_image;
 
     // Exact copy
     copied_image = std::make_unique<Image3HWC>(Image3HWC::malloc(image->width, image->height));
-    image_copy(*image, *copied_image);
+    image_copy(*image, *copied_image, CU_STREAM_LEGACY);
     image_save_png(*copied_image, "koala_copy_exact.jpg");
 
     // Region copy
     copied_image = std::make_unique<Image3HWC>(Image3HWC::malloc(500, 500));
     image_fill(*copied_image, {255u, 0, 0});
     AABB2i face_region(glm::ivec2(223, 42), glm::ivec2(460, 216));
-    image_copy(*image, face_region, *copied_image, glm::ivec2(0) /* dst_pos */);
+    image_copy(*image, face_region, *copied_image, glm::ivec2(0) /* dst_pos */, CU_STREAM_LEGACY);
     image_save_png(*copied_image, "koala_copy_region.jpg");
 }

@@ -19,11 +19,13 @@ public:
         const Selection3d& selection3d,
         const GSCamera& camera,
         Image3fCHW& out_colorbuffer,
-        Image1fCHW& inout_depthbuffer);
+        Image1fCHW& inout_depthbuffer,
+        cudaStream_t stream);
 
     void render( //
         const Selection2d& selection2d,
         Image3fCHW& out_colorbuffer,
-        Image1fCHW& inout_depthbuffer);
+        Image1fCHW& inout_depthbuffer,
+        cudaStream_t stream);
 };
 } // namespace gs_train

@@ -31,7 +31,8 @@ template <int SRC_C,
           ImageMemoryLayout DST_LAYOUT>
 void image_cast( //
     const Image<SRC_C, SRC_T, SRC_LAYOUT>& src_image,
-    Image<DST_C, DST_T, DST_LAYOUT>& dst_image)
+    Image<DST_C, DST_T, DST_LAYOUT>& dst_image,
+    cudaStream_t stream)
 {
     CHECK_ARG(src_image.size() == dst_image.size(), "src_image must have the same dim of dst_image");
 
@@ -41,6 +42,6 @@ void image_cast( //
     dim3 block_dim{};
     block_dim.x = 32;
     block_dim.y = 32;
-    detail::image_cast_kernel<<<num_blocks, block_dim>>>(src_image, dst_image);
+    detail::image_cast_kernel<<<num_blocks, block_dim, 0, stream>>>(src_image, dst_image);
 }
 } // namespace gs_train

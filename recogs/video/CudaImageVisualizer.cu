@@ -3,23 +3,29 @@
 #include "DrawTexture.h"
 #include "GLMappedResource.h"
 #include "utils/cuda_utils.h"
+#include "utils/image/image_copy.h"
+#include "utils/image/image_fill.h"
 
 using namespace gs_train;
 
-CudaImageVisualizer::CudaImageVisualizer(std::shared_ptr<Window> window) : m_window(std::move(window)) {}
-
-CudaImageVisualizer::~CudaImageVisualizer() { stop(); }
-
-void CudaImageVisualizer::set_image(int image_w,
-                                    int image_h,
-                                    const float* image_d,
-                                    const AdaptImageFunc& adapt_image_func)
+CudaImageVisualizer::CudaImageVisualizer(std::shared_ptr<Window> window) : m_window(std::move(window))
 {
-    m_image_w = image_w;
-    m_image_h = image_h;
-    m_image_d = image_d;
-    m_adapt_image_func = adapt_image_func;
+    CHECK_CUDA(cudaStreamCreate(&m_stream));
 }
+
+CudaImageVisualizer::~CudaImageVisualizer()
+{
+    stop();
+    CHECK_CUDA(cudaStreamSynchronize(m_stream));
+    CHECK_CUDA(cudaStreamDestroy(m_stream));
+}
+
+void CudaImageVisualizer::set_image(const Image3fCHW& image)
+{
+    m_image = std::make_unique<Image3fCHW>(image.create_ref());
+}
+
+void CudaImageVisualizer::clear_image() { m_image.reset(); }
 
 void CudaImageVisualizer::start()
 {
@@ -47,27 +53,25 @@ void CudaImageVisualizer::worker()
     GLMappedResource gl_mapped_resource(fb_size.x, fb_size.y);
     DrawTexture draw_texture{};
 
-    float* vis_img_d = nullptr; // (H, W, 4)
-    if (m_adapt_image_func) {
-        CHECK_CUDA(cudaMalloc(&vis_img_d, H * W * 4 * sizeof(float)));
-    }
+    Image4fCHW colorbuffer_chw = Image4fCHW::malloc(W, H);
+    Image4fHWC colorbuffer_hwc = Image4fHWC::malloc(W, H);
 
     while (!m_window->should_close()) {
         m_window->poll_events();
 
+        // Clear the colorbuffer
+        image_fill(colorbuffer_chw, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
+        if (m_image) {
+            Image3fCHW colorbuffer_3hw = Image3fCHW::ref(W, H, colorbuffer_chw.data_d()); // Create a 3HW view on 4HW
+            image_copy(*m_image, colorbuffer_3hw, m_stream);
+        }
+        image_copy(colorbuffer_chw, colorbuffer_hwc, m_stream);
+        gl_mapped_resource.write(colorbuffer_hwc.data_d(), m_stream);
+        CHECK_CUDA(cudaStreamSynchronize(m_stream));
+
         glClearColor(0, 0, 0, 0);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        if (m_image_d) {
-            if (m_adapt_image_func) {
-                m_adapt_image_func(m_image_w, m_image_h, m_image_d, vis_img_d);
-            } else {
-                vis_img_d = const_cast<float*>(m_image_d);
-            }
-        }
-        CHECK_CUDA(cudaDeviceSynchronize()); // TODO this will block all device operations, sync on stream
-
-        gl_mapped_resource.write(vis_img_d);
         draw_texture.draw(gl_mapped_resource.texture(), 0, 0, W, H);
 
         m_window->swap_buffers();

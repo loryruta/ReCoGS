@@ -48,12 +48,12 @@ public:
     /// \param[inout] out_depth
     ///     The output depth-buffer. It must be pre-allocated and its resolution must match the camera's.
     ///     Its values are "min-ed" with new estimates therefore it's uninitialized if filled with INFINITY values.
-    void estimate_single_axis(const GSCamera& camera, Axis axis, float b, Image1fCHW& inout_depth);
+    void estimate_single_axis(const GSCamera& camera, Axis axis, float b, Image1fCHW& inout_depth, cudaStream_t stream);
 
     /// Estimate depth by performing horizontal and vertical stereo matching.
     /// \param[inout] inout_depth
     ///     The output depth-buffer. It must be pre-allocated and its resolution must match the camera's.
     ///     Its values are "min-ed" with new estimates therefore it's uninitialized if filled with INFINITY values.
-    void estimate_hv(const GSCamera& camera, float b, Image1fCHW& inout_depth);
+    void estimate_hv(const GSCamera& camera, float b, Image1fCHW& inout_depth, cudaStream_t stream);
 };
 } // namespace gs_train

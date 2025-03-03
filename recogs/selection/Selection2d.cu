@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <thrust/copy.h>
 
+#include "App.h"
 #include "Selection3d.h"
 #include "utils/DeviceBuffer.h"
 #include "utils/bresenham.h"
@@ -63,8 +64,8 @@ __global__ void fill_clear_kernel( //
 } // namespace
 
 Selection2d::Selection2d(Selection3d& selection3d, GSCamera view)
-    : m_selection3d(selection3d), m_view(std::move(view)), m_new_map(NewMap::malloc(m_view.width, m_view.height)),
-      m_ref_map(RefMap::malloc(m_view.width, m_view.height))
+    : m_app(selection3d.m_app), m_selection3d(selection3d), m_view(std::move(view)),
+      m_new_map(NewMap::malloc(m_view.width, m_view.height)), m_ref_map(RefMap::malloc(m_view.width, m_view.height))
 {
     // Init the new map
     image_fill(m_new_map, Selection2d::NewMap::Value{0});
@@ -78,7 +79,7 @@ void Selection2d::fill_line(glm::ivec2 p0, glm::ivec2 p1, int r)
 {
     dim3 num_blocks = 1;
     dim3 block_dim(16, 16);
-    fill_clear_kernel<true /* Filling */><<<num_blocks, block_dim>>>( //
+    fill_clear_kernel<true /* Filling */><<<num_blocks, block_dim, 0, m_app.stream()>>>( //
         p0,
         p1,
         r,
@@ -89,10 +90,11 @@ void Selection2d::fill_line(glm::ivec2 p0, glm::ivec2 p1, int r)
 
 void Selection2d::clear_line(glm::ivec2 p0, glm::ivec2 p1, int r, bool hard)
 {
+    cudaStream_t stream = m_app.stream();
     dim3 num_blocks = 1;
     dim3 block_dim(16, 16);
     if (hard) {
-        fill_clear_kernel<false /* Clearing */, true /* Hard */><<<num_blocks, block_dim>>>( //
+        fill_clear_kernel<false /* Clearing */, true /* Hard */><<<num_blocks, block_dim, 0, stream>>>( //
             p0,
             p1,
             r,
@@ -100,7 +102,7 @@ void Selection2d::clear_line(glm::ivec2 p0, glm::ivec2 p1, int r, bool hard)
             m_ref_map,
             thrust::raw_pointer_cast(m_clear_bitmask.data()));
     } else {
-        fill_clear_kernel<false /* Clearing */, false /* Hard */><<<num_blocks, block_dim>>>( //
+        fill_clear_kernel<false /* Clearing */, false /* Hard */><<<num_blocks, block_dim, 0, stream>>>( //
             p0,
             p1,
             r,
@@ -114,7 +116,7 @@ void Selection2d::clear_line(glm::ivec2 p0, glm::ivec2 p1, int r, bool hard)
         m_selection3d.clear(m_clear_bitmask);
         // Re-init the bitmask
         m_clear_bitmask.resize(m_selection3d.points().size());
-        thrust::fill(m_clear_bitmask.begin(), m_clear_bitmask.end(), false);
+        thrust::fill(thrust::cuda::par.on(stream), m_clear_bitmask.begin(), m_clear_bitmask.end(), false);
         // Re-project the reference map
         reproject_ref_map();
     }
@@ -122,18 +124,23 @@ void Selection2d::clear_line(glm::ivec2 p0, glm::ivec2 p1, int r, bool hard)
 
 void Selection2d::populate_selection3d(const Image1fCHW& depth)
 {
+    cudaStream_t stream = m_app.stream();
+
     thrust::device_vector<uint32_t> ss_points(m_view.width * m_view.height);
     // Flatten "new map" to a list of screen-space points
     thrust::device_vector<uint32_t> counter(1);
     uint32_t* ss_points_d = thrust::raw_pointer_cast(ss_points.data());
     uint32_t* counter_d = thrust::raw_pointer_cast(counter.data());
-    image_visit(m_new_map, [counter_d, ss_points_d] __device__(const Selection2d::NewMap& new_map, int x, int y) {
-        if (new_map.value(x, y).r > 0) {
-            uint32_t i = atomicAdd(counter_d, 1);
-            ss_points_d[i] = (x & 0xFFFF) << 16 | (y & 0xFFFF);
-        }
-        return 0; // TODO temporary
-    });
+    image_visit(
+        m_new_map,
+        [counter_d, ss_points_d] __device__(const Selection2d::NewMap& new_map, int x, int y) {
+            if (new_map.value(x, y).r > 0) {
+                uint32_t i = atomicAdd(counter_d, 1);
+                ss_points_d[i] = (x & 0xFFFF) << 16 | (y & 0xFFFF);
+            }
+            return 0; // TODO temporary
+        },
+        stream);
     ss_points.resize(to_host(counter_d));
     // TODO resampling? to avoid too dense points
     // Unproject screen-space points to world-space and add them to the 3D selection

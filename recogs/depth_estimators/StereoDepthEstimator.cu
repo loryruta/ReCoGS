@@ -49,7 +49,6 @@ __global__ void prepare_pcvnet_input_kernel( //
 __global__ void prepare_pcvnet_output_kernel( //
     Image1fCHW pcvnet_disparity_map,
     bool rotated90cw,
-    float Rx,
     float Sx,
     float b,
     Image1fCHW inout_depth)
@@ -70,7 +69,7 @@ __global__ void prepare_pcvnet_output_kernel( //
     // Reference:
     // - Personal notes
     // - https://johnwlambert.github.io/stereo/
-    float depth = (Sx * b * Rx * 0.5f) / disparity.r;
+    float depth = (Sx * b) / disparity.r;
     float old_depth = inout_depth.value(x, y).r;
     float new_depth = min(depth, old_depth); // Aggregation used for horizontal/vertical
     inout_depth.set_value(x, y, Image1fCHW::Value{new_depth});
@@ -87,7 +86,8 @@ StereoDepthEstimator::StereoDepthEstimator(App& app, Options options)
     m_pcvnet_engine->build_or_load();
 }
 
-void StereoDepthEstimator::estimate_single_axis(const GSCamera& camera, Axis axis, float b, Image1fCHW& inout_depth)
+void StereoDepthEstimator::estimate_single_axis(
+    const GSCamera& camera, Axis axis, float b, Image1fCHW& inout_depth, cudaStream_t stream)
 {
     dim3 num_blocks{};
     dim3 block_dim{};
@@ -99,14 +99,14 @@ void StereoDepthEstimator::estimate_single_axis(const GSCamera& camera, Axis axi
     m_im0.resize(width * height * 3 * sizeof(float));
     m_im1.resize(width * height * 3 * sizeof(float));
     Image3fCHW im0 = Image3fCHW::ref(width, height, m_im0.data_ptr<float>());
-    m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), camera, im0);
+    m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), camera, im0, stream);
 
     // Render im1
     GSCamera rview = camera;
     rview.position += (axis == Axis::H ? camera.right() : -camera.up()) * b;
-    rview.update();
+    rview.update(stream);
     Image3fCHW im1 = Image3fCHW::ref(width, height, m_im1.data_ptr<float>());
-    m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), rview, im1);
+    m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), rview, im1, stream);
     if (debug) {
         image_save_png(im0, fmt::format("estimatedepth-{}im0.png", debug_image_prefix));
         image_save_png(im1, fmt::format("estimatedepth-{}im1.png", debug_image_prefix));
@@ -126,7 +126,7 @@ void StereoDepthEstimator::estimate_single_axis(const GSCamera& camera, Axis axi
     num_blocks.x = padded_width >> 4;
     num_blocks.y = padded_height >> 4;
     block_dim = {16, 16};
-    prepare_pcvnet_input_kernel<<<num_blocks, block_dim>>>(im0, im1, rotate90cw, pcvnet_im0, pcvnet_im1);
+    prepare_pcvnet_input_kernel<<<num_blocks, block_dim, 0, stream>>>(im0, im1, rotate90cw, pcvnet_im0, pcvnet_im1);
     if (debug) {
         image_save_png(pcvnet_im0, fmt::format("estimatedepth-{}pcvnet-im0.png", debug_image_prefix));
         image_save_png(pcvnet_im1, fmt::format("estimatedepth-{}pcvnet-im1.png", debug_image_prefix));
@@ -137,9 +137,9 @@ void StereoDepthEstimator::estimate_single_axis(const GSCamera& camera, Axis axi
     m_pcvnet_disparity_map.resize(padded_width * padded_height * sizeof(float));
     Image1fCHW pcvnet_disparity_map =
         Image1fCHW::ref(padded_width, padded_height, m_pcvnet_disparity_map.data_ptr<float>());
-    m_pcvnet_engine->infer(pcvnet_im0, pcvnet_im1, pcvnet_disparity_map);
+    m_pcvnet_engine->infer(pcvnet_im0, pcvnet_im1, pcvnet_disparity_map, stream);
     if (debug) {
-        Image3fCHW disparity_map_rgb = image_depthbuffer_to_rgb(pcvnet_disparity_map);
+        Image3fCHW disparity_map_rgb = image_depthbuffer_to_rgb(pcvnet_disparity_map, stream);
         image_save_png(disparity_map_rgb, fmt::format("estimatedepth-{}pcvnet-disparity-map.png", debug_image_prefix));
     }
 
@@ -148,20 +148,20 @@ void StereoDepthEstimator::estimate_single_axis(const GSCamera& camera, Axis axi
     num_blocks.y = div_ceil(height, 16);
     block_dim = {16, 16};
     if (axis == Axis::H) {
-        prepare_pcvnet_output_kernel<<<num_blocks, block_dim>>>(
-            pcvnet_disparity_map, false /* rotated90cw */, (float) camera.width, camera.fx, b, inout_depth);
+        prepare_pcvnet_output_kernel<<<num_blocks, block_dim, 0, stream>>>(
+            pcvnet_disparity_map, false /* rotated90cw */, camera.fx, b, inout_depth);
     } else {
-        prepare_pcvnet_output_kernel<<<num_blocks, block_dim>>>(
-            pcvnet_disparity_map, true /* rotated90cw */, (float) camera.height, camera.fy, b, inout_depth);
+        prepare_pcvnet_output_kernel<<<num_blocks, block_dim, 0, stream>>>(
+            pcvnet_disparity_map, true /* rotated90cw */, camera.fy, b, inout_depth);
     }
     if (debug) {
-        Image3fCHW depth_rgb = image_depthbuffer_to_rgb(inout_depth);
+        Image3fCHW depth_rgb = image_depthbuffer_to_rgb(inout_depth, stream);
         image_save_png(depth_rgb, fmt::format("estimatedepth-{}depth.png", debug_image_prefix));
     }
 }
 
-void StereoDepthEstimator::estimate_hv(const GSCamera& camera, float b, Image1fCHW& inout_depth)
+void StereoDepthEstimator::estimate_hv(const GSCamera& camera, float b, Image1fCHW& inout_depth, cudaStream_t stream)
 {
-    estimate_single_axis(camera, Axis::H, b, inout_depth);
-    estimate_single_axis(camera, Axis::V, b, inout_depth);
+    estimate_single_axis(camera, Axis::H, b, inout_depth, stream);
+    estimate_single_axis(camera, Axis::V, b, inout_depth, stream);
 }

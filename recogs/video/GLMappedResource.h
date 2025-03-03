@@ -21,6 +21,6 @@ public:
     /// Write CUDA image data to the GL texture.
     /// \param image_d
     ///     Device image data with memory layout (H, W, 4).
-    void write(float* image_d);
+    void write(float* image_d, cudaStream_t stream);
 };
 } // namespace gs_train

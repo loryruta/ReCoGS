@@ -18,6 +18,6 @@ public:
     explicit GSCameraController(Window& window, GSCamera& camera);
     ~GSCameraController() = default;
 
-    void update(float dt);
+    bool update(float dt);
 };
 } // namespace gs_train

@@ -7,7 +7,7 @@ GSCameraController::GSCameraController(Window& window, GSCamera& camera)
 {
 }
 
-void GSCameraController::update(float dt)
+bool GSCameraController::update(float dt)
 {
     bool updated = false;
 
@@ -39,5 +39,5 @@ void GSCameraController::update(float dt)
     }
     m_last_cursor_pos = cur_pos;
 
-    if (updated) m_camera.update();
+    return updated;
 }

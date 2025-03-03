@@ -10,6 +10,13 @@ set(LIB_SOURCES
         fused_ssim/ssim_if.cu
         fused_ssim/ssim_if.h
 
+        optimizer/Adam.cu
+        optimizer/Adam.h
+        optimizer/GSLoss.cu
+        optimizer/GSLoss.h
+        optimizer/Optimizer.cu
+        optimizer/Optimizer.h
+
         rasterizer/backward.cu
         rasterizer/backward.h
         rasterizer/forward.cu
@@ -51,8 +58,6 @@ set(LIB_SOURCES
         utils/stb_image_write.h
         utils/Stopwatch.h
 
-        adam.cu
-        adam.h
         App.cu
         App.h
         GSCamera.cu
@@ -61,8 +66,6 @@ set(LIB_SOURCES
         GSCameraController.h
         GSRasterizer.cu
         GSRasterizer.h
-        gs_loss.cu
-        gs_loss.h
         Scene.cu
         Scene.h
         scene_io.cu
@@ -98,10 +101,3 @@ target_link_libraries(recogs_lib PUBLIC
 # main
 add_executable(recogs main.cu)
 target_link_libraries(recogs PRIVATE recogs_lib)
-
-# ----------------------------------------------------------------
-# Tests
-# ----------------------------------------------------------------
-
-add_executable(test_img_opt test/test_img_opt.cu)
-target_link_libraries(test_img_opt PRIVATE recogs_lib)

@@ -7,10 +7,10 @@ namespace gs_train
 {
 namespace detail
 {
-template <int C, typename T, ImageMemoryLayout MEMORY_LAYOUT>
-__global__ void image_copy_kernel(Image<C, T, MEMORY_LAYOUT> src_image,
+template <int C, typename T, ImageMemoryLayout SRC_MEMORY_LAYOUT, ImageMemoryLayout DST_MEMORY_LAYOUT>
+__global__ void image_copy_kernel(Image<C, T, SRC_MEMORY_LAYOUT> src_image,
                                   AABB2i src_region,
-                                  Image<C, T, MEMORY_LAYOUT> dst_image,
+                                  Image<C, T, DST_MEMORY_LAYOUT> dst_image,
                                   glm::ivec2 dst_pos)
 {
     uint32_t rx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -25,12 +25,13 @@ __global__ void image_copy_kernel(Image<C, T, MEMORY_LAYOUT> src_image,
 } // namespace detail
 
 /// Copy the \c src_region from \c src_image to \c dst_image starting from \c dst_pos (w.r.t. top-left corner).
-template <int C, typename T, ImageMemoryLayout MEMORY_LAYOUT>
+template <int C, typename T, ImageMemoryLayout SRC_MEMORY_LAYOUT, ImageMemoryLayout DST_MEMORY_LAYOUT>
 void image_copy( //
-    const Image<C, T, MEMORY_LAYOUT>& src_image,
+    const Image<C, T, SRC_MEMORY_LAYOUT>& src_image,
     const AABB2i& src_region,
-    Image<C, T, MEMORY_LAYOUT>& dst_image,
-    const glm::ivec2& dst_pos)
+    Image<C, T, DST_MEMORY_LAYOUT>& dst_image,
+    const glm::ivec2& dst_pos,
+    cudaStream_t stream)
 {
     AABB2i src_image_aabb(glm::ivec2(0), src_image.size());
     AABB2i dst_image_aabb(glm::ivec2(0), dst_image.size());
@@ -43,28 +44,30 @@ void image_copy( //
     dim3 block_dim{};
     block_dim.x = 32;
     block_dim.y = 32;
-    detail::image_copy_kernel<<<num_blocks, block_dim>>>(src_image, src_region, dst_image, dst_pos);
+    detail::image_copy_kernel<<<num_blocks, block_dim, 0, stream>>>(src_image, src_region, dst_image, dst_pos);
 }
 
 /// Copy the \c src_region from \c src_image to \c dst_image starting from the top-left corner.
-template <int C, typename T, ImageMemoryLayout MEMORY_LAYOUT>
+template <int C, typename T, ImageMemoryLayout SRC_MEMORY_LAYOUT, ImageMemoryLayout DST_MEMORY_LAYOUT>
 void image_copy( //
-    const Image<C, T, MEMORY_LAYOUT>& src_image,
+    const Image<C, T, SRC_MEMORY_LAYOUT>& src_image,
     const AABB2i& src_region,
-    Image<C, T, MEMORY_LAYOUT>& dst_image)
+    Image<C, T, DST_MEMORY_LAYOUT>& dst_image,
+    cudaStream_t stream)
 {
-    image_copy(src_image, src_region, dst_image, glm::ivec2{} /* dst_pos */);
+    image_copy(src_image, src_region, dst_image, glm::ivec2{} /* dst_pos */, stream);
 }
 
 /// Copy the entire \c src_image to \c dst_image.
-template <int C, typename T, ImageMemoryLayout MEMORY_LAYOUT>
+template <int C, typename T, ImageMemoryLayout SRC_MEMORY_LAYOUT, ImageMemoryLayout DST_MEMORY_LAYOUT>
 void image_copy( //
-    const Image<C, T, MEMORY_LAYOUT>& src_image,
-    Image<C, T, MEMORY_LAYOUT>& dst_image)
+    const Image<C, T, SRC_MEMORY_LAYOUT>& src_image,
+    Image<C, T, DST_MEMORY_LAYOUT>& dst_image,
+    cudaStream_t stream)
 {
     CHECK_ARG(src_image.size() == dst_image.size(), "src_image size must match dst_image");
     AABB2i src_region(glm::ivec2(0), src_image.size());
-    image_copy(src_image, src_region, dst_image, glm::ivec2{} /* dst_pos */);
+    image_copy(src_image, src_region, dst_image, glm::ivec2{} /* dst_pos */, stream);
 }
 
 } // namespace gs_train

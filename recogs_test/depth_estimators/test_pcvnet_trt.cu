@@ -20,8 +20,8 @@ TEST_CASE("PCVNet TensorRT")
 
     std::unique_ptr<Image3fCHW> im0;
     std::unique_ptr<Image3fCHW> im1;
-    image_load_chw<3, float>(image_pair_dir / "im0_1280.png", im0);
-    image_load_chw<3, float>(image_pair_dir / "im1_1280.png", im1);
+    image_load_chw<3, float>(image_pair_dir / "im0_1280.png", im0, CU_STREAM_LEGACY);
+    image_load_chw<3, float>(image_pair_dir / "im1_1280.png", im1, CU_STREAM_LEGACY);
     REQUIRE(im0->size() == im1->size());
 
     PCVNetEngine::Options options{};
@@ -38,7 +38,7 @@ TEST_CASE("PCVNet TensorRT")
 
     for (int i = 0; i < 15; ++i) {
         Stopwatch stopwatch;
-        engine.infer(*im0, *im1, disparity_map);
+        engine.infer(*im0, *im1, disparity_map, CU_STREAM_LEGACY);
         printf("%02d. Elapsed time: %s\n", i, stopwatch.elapsed_time_str().c_str());
     }
 }

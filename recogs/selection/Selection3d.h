@@ -11,13 +11,16 @@ namespace gs_train
 {
 class Selection3d
 {
+    friend class Selection2d;
+
 private:
+    App& m_app;
     thrust::device_vector<glm::vec3> m_points;
 
 public:
     int point_radius = 2;
 
-    explicit Selection3d() = default;
+    explicit Selection3d(App& app);
     ~Selection3d() = default;
 
     [[nodiscard]] const thrust::device_vector<glm::vec3>& points() const { return m_points; };
@@ -28,10 +31,18 @@ public:
     /// Then, append the result to the selection pointcloud.
     void append(const thrust::device_vector<uint32_t>& ss_points, const Image1fCHW& depth_map, const GSCamera& camera);
 
+    /// Project the 3D selection to screen and invoke a device callback for any projected point.
+    /// Any point outside is clipped.
+    /// The thread "global index" (i.e. `block * block_dim + thread_idx`) is the pointcloud point index.
+    template <typename CALLBACK>
+    void project(const GSCamera& camera, CALLBACK callback, cudaStream_t stream) const;
+
     /// Project the 3D selection to the provided reference map.
-    void project(const GSCamera& ss_point, Selection2d::RefMap& out_ref_map) const;
+    void project(const GSCamera& camera, Selection2d::RefMap& out_ref_map) const;
 
     /// Clear the points signaled to \c true in the provided bitmask.
     void clear(const thrust::device_vector<bool>& clear_bitmask);
 };
 } // namespace gs_train
+
+#include "Selection3d.inl"

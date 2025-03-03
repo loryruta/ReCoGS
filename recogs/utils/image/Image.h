@@ -47,7 +47,7 @@ public:
     }
 
     /// Copy the image to a non-owning reference.
-    __host__ __device__ Image(const Image& other) //
+    __host__ __device__ Image(const Image& other) // TODO delete, prefer explicitly calling create_ref()
         : width(other.width), height(other.height), m_data_d(other.m_data_d), owned(false)
     {
     }
@@ -110,6 +110,14 @@ public:
         }
     }
 
+    /// Create a non-owning reference of the image.
+    __host__ Image create_ref() const
+    {
+        Image cloned_ref(width, height, m_data_d);
+        cloned_ref.owned = false;
+        return cloned_ref;
+    }
+
     __host__ void to_host(T* out_data) const
     {
         CHECK_CUDA(cudaMemcpy(out_data, m_data_d, width * height * C * sizeof(T), cudaMemcpyDeviceToHost));
@@ -120,6 +128,8 @@ public:
         out_data.resize(width * height * C);
         to_host(out_data.data());
     }
+
+    __host__ Image& operator=(const Image&) = delete;
 
     /// Allocate a image owning new data (uninitialized).
     __host__ static Image malloc(uint32_t width, uint32_t height)
@@ -138,16 +148,12 @@ public:
     }
 };
 
-using Image4i = Image<4, int, ImageMemoryLayout::CHW>;
-using Image3i = Image<3, int, ImageMemoryLayout::CHW>;
-using Image3u = Image<3, uint32_t, ImageMemoryLayout::CHW>;
-using Image1i = Image<1, int, ImageMemoryLayout::CHW>;
-using Image1uHWC = Image<1, uint8_t, ImageMemoryLayout::HWC>;
 using Image1u = Image<1, uint8_t, ImageMemoryLayout::CHW>;
-using Image4f = Image<4, float, ImageMemoryLayout::CHW>;
 using Image1fHWC = Image<1, float, ImageMemoryLayout::HWC>;
+using Image3fHWC = Image<3, float, ImageMemoryLayout::HWC>;
+using Image4fHWC = Image<4, float, ImageMemoryLayout::HWC>;
 using Image1fCHW = Image<1, float, ImageMemoryLayout::CHW>;
 using Image3fCHW = Image<3, float, ImageMemoryLayout::CHW>;
-using Image3fHWC = Image<3, float, ImageMemoryLayout::HWC>;
+using Image4fCHW = Image<4, float, ImageMemoryLayout::CHW>;
 
 } // namespace gs_train

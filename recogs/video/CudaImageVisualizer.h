@@ -1,26 +1,21 @@
 #pragma once
 
-#include <functional>
 #include <memory>
+#include <optional>
 #include <thread>
 
 #include "Window.h"
+#include "utils/image/Image.h"
 
 namespace gs_train
 {
 class CudaImageVisualizer
 {
 private:
-    using AdaptImageFunc = std::function<void(int image_w, int image_h, const float* img_d, float* out_img_d)>;
-
     std::shared_ptr<Window> m_window;
+    cudaStream_t m_stream;
 
-    int m_image_w = -1;
-    int m_image_h = -1;
-    const float* m_image_d{};
-    /// A transform applied to the image before visualization.
-    /// Used to adapt the image provided by \c set_image to (H, W, 4) format.
-    AdaptImageFunc m_adapt_image_func{};
+    std::unique_ptr<Image3fCHW> m_image;
 
     std::unique_ptr<std::thread> m_thread;
 
@@ -30,7 +25,8 @@ public:
 
     [[nodiscard]] auto window() const { return m_window; }
 
-    void set_image(int image_w, int image_h, const float* image_d, const AdaptImageFunc& adapt_image_func = {});
+    void set_image(const Image3fCHW& image);
+    void clear_image();
 
     void start();
     void stop();

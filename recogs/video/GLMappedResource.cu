@@ -33,14 +33,15 @@ GLMappedResource::~GLMappedResource()
     glDeleteTextures(1, &m_texture);
 }
 
-void GLMappedResource::write(float* image_d)
+void GLMappedResource::write(float* image_d, cudaStream_t stream)
 {
-    CHECK_CUDA(cudaMemcpy2DToArray(m_cuda_array,
-                                   0, // wOffset
-                                   0, // hOffset
-                                   image_d,
-                                   m_W * 4 * sizeof(float), // spitch (tightly packed)
-                                   m_W * 4 * sizeof(float), // width
-                                   m_H,
-                                   cudaMemcpyDeviceToDevice));
+    CHECK_CUDA(cudaMemcpy2DToArrayAsync(m_cuda_array,
+                                        0, // wOffset
+                                        0, // hOffset
+                                        image_d,
+                                        m_W * 4 * sizeof(float), // spitch (tightly packed)
+                                        m_W * 4 * sizeof(float), // width
+                                        m_H,
+                                        cudaMemcpyDeviceToDevice,
+                                        stream));
 }

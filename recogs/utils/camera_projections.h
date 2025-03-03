@@ -18,7 +18,7 @@ __global__ void project_points_kernel( //
     if (vs_point.z < 0) return; // Behind the camera
     glm::vec3 ss_point = K * vs_point;
     ss_point /= ss_point.z;
-    callback(glm::ivec2(ss_point.x, ss_point.y), vs_point.z);
+    callback(ss_point.x, ss_point.y, vs_point.z);
 }
 
 /// \param ss_points_d list of screen-space points to unproject; encoded as 16-bit X, Y
@@ -51,14 +51,15 @@ template <typename CALLBACK>
 void project_points( //
     const thrust::device_vector<glm::vec3>& ws_points,
     const GSCamera& camera,
-    CALLBACK callback)
+    CALLBACK callback,
+    cudaStream_t stream)
 {
     if (ws_points.empty()) return;
 
     size_t num_points = ws_points.size();
     dim3 num_blocks = div_ceil<size_t>(num_points, 512);
     dim3 block_dim = 512;
-    detail::project_points_kernel<CALLBACK><<<num_blocks, block_dim>>>( //
+    detail::project_points_kernel<CALLBACK><<<num_blocks, block_dim, 0, stream>>>( //
         thrust::raw_pointer_cast(ws_points.data()),
         ws_points.size(),
         camera.viewmatrix(),
@@ -71,7 +72,8 @@ void unproject_points( //
     const thrust::device_vector<uint32_t>& ss_points,
     Image1fCHW depth_map,
     const GSCamera& camera,
-    CALLBACK callback)
+    CALLBACK callback,
+    cudaStream_t stream)
 {
     CHECK_ARG(depth_map.size() == camera.resolution());
 
@@ -80,7 +82,7 @@ void unproject_points( //
     size_t num_points = ss_points.size();
     dim3 num_blocks = div_ceil<size_t>(num_points, 512);
     dim3 block_dim = 512;
-    detail::unproject_points_kernel<CALLBACK><<<num_blocks, block_dim>>>( //
+    detail::unproject_points_kernel<CALLBACK><<<num_blocks, block_dim, 0, stream>>>( //
         thrust::raw_pointer_cast(ss_points.data()),
         ss_points.size(),
         depth_map,

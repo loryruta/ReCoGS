@@ -40,12 +40,15 @@ void image_save_png(const Image<C, float, ImageMemoryLayout::CHW>& image, const 
     // Allocate the u8 image
     ImageCuHWC image_u8 = ImageCuHWC::malloc(image.width, image.height);
     // Convert [0, 1] FP values to [0, 255] values
-    image_visit(image, [image_u8] __device__(const ImageCfCHW& image, uint32_t x, uint32_t y) mutable {
-        auto val = image.value(x, y);
-        auto val_u8 = typename ImageCuHWC::Value(glm::clamp(val * 255.99f, 0.0f, 255.0f));
-        image_u8.set_value(x, y, val_u8);
-        return 0; // TODO returning a int (that is ignored), check (image_visit_transform)!
-    });
+    image_visit(
+        image,
+        [image_u8] __device__(const ImageCfCHW& image, uint32_t x, uint32_t y) mutable {
+            auto val = image.value(x, y);
+            auto val_u8 = typename ImageCuHWC::Value(glm::clamp(val * 255.99f, 0.0f, 255.0f));
+            image_u8.set_value(x, y, val_u8);
+            return 0; // TODO returning a int (that is ignored), check (image_visit_transform)!
+        },
+        CU_STREAM_LEGACY);
     image_save_png<C>(image_u8, out_filepath);
 }
 

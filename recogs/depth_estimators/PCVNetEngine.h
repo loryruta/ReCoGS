@@ -45,7 +45,7 @@ public:
         const Image3fCHW& im0,
         const Image3fCHW& im1,
         Image1fCHW& out_disparity_map,
-        cudaStream_t stream = 0);
+        cudaStream_t stream);
 
 private:
     void build();

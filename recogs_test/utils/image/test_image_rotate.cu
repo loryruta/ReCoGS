@@ -18,7 +18,7 @@ TEST_CASE("image_rotate_90_clockwise - qualitative")
     using ImageT = Image<3, uint8_t, ImageMemoryLayout::HWC>;
 
     std::unique_ptr<ImageT> image;
-    image_load(in_filepath.c_str(), image);
+    image_load(in_filepath.c_str(), image, CU_STREAM_LEGACY);
     printf("Loaded image of size %dx%d\n", image->width, image->height);
 
     ImageT rotated_image = ImageT::malloc(image->height, image->width);

@@ -16,7 +16,7 @@ SelectScreen::SelectScreen(App& app, GSCamera view) : m_app(app), m_view(std::mo
                 // Estimate depth using stereo matching HV
                 Image1fCHW depth = Image1fCHW::malloc(resolution.x, resolution.y);
                 image_fill(depth, Image1fCHW::Value{INFINITY});
-                m_app.stereo_depth_estimator().estimate_hv(m_view, 0.07f, depth);
+                m_app.stereo_depth_estimator().estimate_hv(m_view, 0.07f, depth, m_app.stream());
                 // Populate the 3D selection with 2D selection unprojection
                 m_selection2d->populate_selection3d(depth);
             }
@@ -59,8 +59,10 @@ void SelectScreen::update(float dt)
 
 void SelectScreen::render(Image3fCHW& out_colorbuffer)
 {
+    cudaStream_t stream = m_app.stream();
     // Render the scene
-    m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), m_view, out_colorbuffer, *m_depthbuffer);
+    m_app.gs_rasterizer().forward(
+        m_app.background_d(), m_app.training_scene(), m_view, out_colorbuffer, *m_depthbuffer, stream);
     // Render the 2d selection (3d + current view stroke)
-    m_app.selection_renderer().render(*m_selection2d, out_colorbuffer, *m_depthbuffer);
+    m_app.selection_renderer().render(*m_selection2d, out_colorbuffer, *m_depthbuffer, stream);
 }

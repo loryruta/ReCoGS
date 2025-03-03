@@ -17,7 +17,7 @@ TEST_CASE("image_downsample - koala")
     using ImageT = Image<3, uint8_t, ImageMemoryLayout::HWC>;
 
     std::unique_ptr<ImageT> image;
-    image_load(in_filepath.c_str(), image);
+    image_load(in_filepath.c_str(), image, CU_STREAM_LEGACY);
     printf("Loaded image of size %dx%d\n", image->width, image->height);
 
     ImageT downsampled_image_x2 = ImageT::malloc(image->width >> 1, image->height >> 1);

@@ -5,6 +5,7 @@
 #include "scene_io.h"
 #include "ui/MainScreen.h"
 #include "utils/image/image_cast.h"
+#include "utils/image/image_fill_custom.h"
 
 using namespace gs_train;
 
@@ -18,21 +19,26 @@ App::App(const Params& params)
 {
     params.validate();
 
+    m_scene_ply = params.scene_ply;
+
     /* Load scene/background */
     m_scene = std::make_unique<Scene>(read_scene_from_ply(params.scene_ply));
     float background[]{0.0f, 0.0f, 0.0f, 0.0f};
     m_scene_background.fit_data(background, std::size(background));
 
-    m_selection3d = std::make_unique<Selection3d>();
+    m_training_scene = std::make_unique<Scene>(*m_scene); // Copy the scene into training_scene
+    m_training_scene->prepare_for_training();
+    m_selection3d = std::make_unique<Selection3d>(*this);
 
     /* Init window */
-    const int k_init_window_w = 1080;
-    const int k_init_window_h = 720;
-    m_window = std::make_unique<Window>(k_init_window_w, k_init_window_h, "RecoGS", false /* resizable */);
+    m_window = std::make_unique<Window>(1080, 720, "ReCoGS", false /* resizable */);
     m_window->make_context();
 
+    CHECK_CUDA(cudaStreamCreate(&m_stream));
+
     /* Init screenbuffers */
-    resize_screenbuffers(k_init_window_w, k_init_window_h);
+    glm::ivec2 resolution = m_window->framebuffer_size();
+    resize_screenbuffers(resolution.x, resolution.y);
 
     m_draw_texture = std::make_unique<DrawTexture>();
 
@@ -44,10 +50,23 @@ App::App(const Params& params)
         m_stereo_depth_estimator = std::make_unique<StereoDepthEstimator>(*this, options);
     }
 
+    m_window->add_resize_callback([this](int width, int height) { resize_screenbuffers(width, height); });
+
     set_screen(std::make_shared<MainScreen>(*this));
+
+    m_optimizer = std::make_unique<Optimizer>(*this);
+    m_optimizer_thread = std::make_unique<std::thread>([this]() { m_optimizer->start(); });
 }
 
-App::~App() {}
+App::~App()
+{
+    CHECK_CUDA(cudaStreamSynchronize(m_stream));
+    CHECK_CUDA(cudaStreamDestroy(m_stream));
+
+    // Stop the optimizer
+    m_optimizer->signal_stop();
+    m_optimizer_thread->join();
+}
 
 void App::start()
 {
@@ -93,16 +112,19 @@ void App::start()
         }
 
         /* Transit colorbuffer from BCHW to BHWC */
-        image_cast(*m_colorbuffer_chw, *m_colorbuffer_hwc);
+        image_cast(*m_colorbuffer_chw, *m_colorbuffer_hwc, m_stream);
 
         /* Display */
+        m_gl_mapped_resource->write(m_colorbuffer_hwc->data_d(), m_stream);
+        CHECK_CUDA(cudaStreamSynchronize(m_stream));
+
+        // Draw OpenGL mapped texture to screen
         glClearColor(0, 0, 1, 0);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        m_gl_mapped_resource->write(m_colorbuffer_hwc->data_d());
         m_draw_texture->draw(m_gl_mapped_resource->texture(), 0, 0, fb_size.x, fb_size.y);
 
-        /* */
+        // Swap buffers
         m_window->swap_buffers();
 
         // Execute end-of-frame jobs (e.g. screen switch)
@@ -115,8 +137,12 @@ void App::stop() { m_window->set_should_close(true); }
 
 void App::resize_screenbuffers(int width, int height)
 {
+    printf("[DEBUG] [App] Resizing to (%d, %d)\n", width, height);
+
     m_gl_mapped_resource = std::make_unique<GLMappedResource>(width, height);
 
     m_colorbuffer_chw = std::make_unique<ColorbufferCHW>(ColorbufferCHW::malloc(width, height));
     m_colorbuffer_hwc = std::make_unique<ColorbufferHWC>(ColorbufferHWC::malloc(width, height));
+
+    if (m_screen) m_screen->resize(width, height);
 }

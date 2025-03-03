@@ -22,7 +22,7 @@ __global__ static void image_visit_transform_kernel(IMAGE image, CALLBACK callba
 }
 
 template <int C, typename T, ImageMemoryLayout MEMORY_LAYOUT, typename CALLBACK>
-void image_visit_transform(const Image<C, T, MEMORY_LAYOUT>& image, CALLBACK callback)
+void image_visit_transform(const Image<C, T, MEMORY_LAYOUT>& image, CALLBACK callback, cudaStream_t stream)
 {
     dim3 num_blocks{};
     num_blocks.x = div_ceil(image.width, 32u);
@@ -30,19 +30,20 @@ void image_visit_transform(const Image<C, T, MEMORY_LAYOUT>& image, CALLBACK cal
     dim3 block_dim{};
     block_dim.x = 32;
     block_dim.y = 32;
-    image_visit_transform_kernel<Image<C, T, MEMORY_LAYOUT>, CALLBACK><<<num_blocks, block_dim>>>(image, callback);
+    image_visit_transform_kernel<Image<C, T, MEMORY_LAYOUT>, CALLBACK>
+        <<<num_blocks, block_dim, 0, stream>>>(image, callback);
 }
 } // namespace detail
 
 template <int C, typename T, ImageMemoryLayout MEMORY_LAYOUT, typename CALLBACK>
-void image_visit(const Image<C, T, MEMORY_LAYOUT>& image, CALLBACK callback)
+void image_visit(const Image<C, T, MEMORY_LAYOUT>& image, CALLBACK callback, cudaStream_t stream)
 {
-    detail::image_visit_transform(image, callback);
+    detail::image_visit_transform(image, callback, stream);
 }
 
 template <int C, typename T, ImageMemoryLayout MEMORY_LAYOUT, typename CALLBACK>
-void image_transform(Image<C, T, MEMORY_LAYOUT>& image, CALLBACK callback)
+void image_transform(Image<C, T, MEMORY_LAYOUT>& image, CALLBACK callback, cudaStream_t stream)
 {
-    detail::image_visit_transform(image, callback);
+    detail::image_visit_transform(image, callback, stream);
 }
 } // namespace gs_train

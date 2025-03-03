@@ -36,7 +36,8 @@ int GSRasterizer::forward( //
     float tan_fovx,
     float tan_fovy,
     float* out_colorbuffer,
-    float* out_depthbuffer)
+    float* out_depthbuffer,
+    cudaStream_t stream)
 {
     int num_rendered = CudaRasterizer::Rasterizer::forward( //
         resize_functional(m_geometry_buffer, "geometry_buffer", 1 << 24 /* 16MB */),
@@ -65,56 +66,165 @@ int GSRasterizer::forward( //
         out_colorbuffer,
         out_depthbuffer,
         nullptr, // radii
-        false    // debug
-    );
+        debug,
+        stream);
     return num_rendered;
 }
 
 int GSRasterizer::forward(const float* background_d,
                           const Scene& scene,
                           const GSCamera& camera,
-                          Image3fCHW& out_colorbuffer)
+                          Image3fCHW& out_colorbuffer,
+                          cudaStream_t stream)
 {
     return forward( //
-        camera.width,
-        camera.height,
+        (int) out_colorbuffer.width,
+        (int) out_colorbuffer.height,
         background_d,
         scene.num_vertices,
-        scene.means.data_ptr<float>(),
-        scene.shs.data_ptr<float>(),
-        scene.opacities.data_ptr<float>(),
-        scene.scales.data_ptr<float>(),
-        scene.rotations.data_ptr<float>(),
+        RCGS_TPTR(scene.means),
+        RCGS_TPTR(scene.shs),
+        RCGS_TPTR(scene.opacities),
+        RCGS_TPTR(scene.scales),
+        RCGS_TPTR(scene.rotations),
         camera.viewmatrix_d(),
         camera.projmatrix_d(),
         camera.campos_d(),
         camera.tan_fovx(),
         camera.tan_fovy(),
         out_colorbuffer.data_d(),
-        nullptr);
+        nullptr,
+        stream);
 }
 
 int GSRasterizer::forward(const float* background_d,
                           const Scene& scene,
                           const GSCamera& camera,
                           Image3fCHW& out_colorbuffer,
-                          Image1fCHW& out_depthbuffer)
+                          Image1fCHW& out_depthbuffer,
+                          cudaStream_t stream)
 {
     return forward( //
-        camera.width,
-        camera.height,
+        (int) out_colorbuffer.width,
+        (int) out_colorbuffer.height,
         background_d,
         scene.num_vertices,
-        scene.means.data_ptr<float>(),
-        scene.shs.data_ptr<float>(),
-        scene.opacities.data_ptr<float>(),
-        scene.scales.data_ptr<float>(),
-        scene.rotations.data_ptr<float>(),
+        RCGS_TPTR(scene.means),
+        RCGS_TPTR(scene.shs),
+        RCGS_TPTR(scene.opacities),
+        RCGS_TPTR(scene.scales),
+        RCGS_TPTR(scene.rotations),
         camera.viewmatrix_d(),
         camera.projmatrix_d(),
         camera.campos_d(),
         camera.tan_fovx(),
         camera.tan_fovy(),
         out_colorbuffer.data_d(),
-        out_depthbuffer.data_d());
+        out_depthbuffer.data_d(),
+        stream);
+}
+
+void GSRasterizer::backward( //
+    Scene& scene,
+    int num_rendered,
+    const float* background_d,
+    const GSCamera& camera,
+    const float* dL_dy,
+    cudaStream_t stream)
+{
+    CHECK_ARG(scene.is_prepared_for_training(), "Scene gradients not allocated. Call scene.prepare_for_training()");
+    backward( //
+        scene.num_vertices,
+        num_rendered,
+        background_d,
+        camera.width,
+        camera.height,
+        RCGS_TPTR(scene.means),
+        RCGS_TPTR(scene.shs),
+        RCGS_TPTR(scene.scales),
+        RCGS_TPTR(scene.rotations),
+        camera.viewmatrix_d(),
+        camera.projmatrix_d(),
+        camera.campos_d(),
+        camera.tan_fovx(),
+        camera.tan_fovy(),
+        dL_dy,
+        RCGS_TPTR(scene.dL_dmean2D),
+        RCGS_TPTR(scene.dL_dconic),
+        RCGS_TPTR(scene.dL_dopacity),
+        RCGS_TPTR(scene.dL_dcolor),
+        RCGS_TPTR(scene.dL_dmean3D),
+        RCGS_TPTR(scene.dL_dcov3D),
+        RCGS_TPTR(scene.dL_dsh),
+        RCGS_TPTR(scene.dL_dscale),
+        RCGS_TPTR(scene.dL_drot),
+        stream);
+}
+
+void GSRasterizer::backward( //
+    int P,
+    int R,
+    const float* background_d,
+    int W,
+    int H,
+    const float* means3D,
+    const float* shs,
+    const float* scales,
+    const float* rotations,
+    const float* viewmatrix,
+    const float* projmatrix,
+    const float* campos,
+    float tan_fovx,
+    float tan_fovy,
+    const float* dL_dpix,
+    float* dL_dmean2D,
+    float* dL_dconic,
+    float* dL_dopacity,
+    float* dL_dcolor,
+    float* dL_dmean3D,
+    float* dL_dcov3D,
+    float* dL_dsh,
+    float* dL_dscale,
+    float* dL_drot,
+    cudaStream_t stream)
+{
+    CHECK_ARG(P > 0);
+    CHECK_ARG(R > 0);
+
+    CudaRasterizer::Rasterizer::backward( //
+        P,
+        3,
+        16,
+        R,
+        background_d,
+        W,
+        H,
+        means3D,
+        shs,
+        nullptr, // colors_precomp
+        scales,
+        1.0f,
+        rotations,
+        nullptr, // cov3D_precomp
+        viewmatrix,
+        projmatrix,
+        campos,
+        tan_fovx,
+        tan_fovy,
+        nullptr, // radii
+        RCGS_TPTR(m_geometry_buffer),
+        RCGS_TPTR(m_binning_buffer),
+        RCGS_TPTR(m_image_buffer),
+        dL_dpix,
+        dL_dmean2D,
+        dL_dconic,
+        dL_dopacity,
+        dL_dcolor,
+        dL_dmean3D,
+        dL_dcov3D,
+        dL_dsh,
+        dL_dscale,
+        dL_drot,
+        debug,
+        stream);
 }

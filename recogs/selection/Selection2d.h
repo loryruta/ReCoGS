@@ -9,6 +9,7 @@
 namespace gs_train
 {
 // Forward decl
+class App;
 class Selection3d;
 
 /// A class allowing to edit the 3D selection from one view. It allows to:
@@ -21,6 +22,7 @@ public:
     using RefMap = Image<1, uint32_t, ImageMemoryLayout::CHW>;
 
 private:
+    App& m_app;
     Selection3d& m_selection3d;
     const GSCamera m_view;
     NewMap m_new_map; ///< Map used to store newly added points on the current view
@@ -46,7 +48,7 @@ public:
     /// Clear the points in a line between \c p0 and \c p1 given a radius.
     /// \param hard
     ///     If set, delete points even from the 3D selection
-    void clear_line(glm::ivec2 p0, glm::ivec2 p1, int radius, bool hard = false);
+    void clear_line(glm::ivec2 p0, glm::ivec2 p1, int radius, bool hard);
 
     /// Populate the 3D selection with new points:
     /// drain "new map" by unprojecting its points and adding them to the 3D selection.

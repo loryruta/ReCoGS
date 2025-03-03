@@ -21,12 +21,12 @@ __global__ void clamp_forward_kernel(float* x, size_t N, float m, float M, bool*
     if (i >= N) return;
     if (x[i] > M) {
         x[i] = M;
-        out_clamped[i] = true;
+        if (out_clamped) out_clamped[i] = true;
     } else if (x[i] < m) {
         x[i] = m;
-        out_clamped[i] = true;
+        if (out_clamped) out_clamped[i] = true;
     } else {
-        out_clamped[i] = false;
+        if (out_clamped) out_clamped[i] = false;
     }
 }
 
@@ -41,7 +41,7 @@ __global__ void clamp_backward_kernel(const bool* clamped, size_t N, float m, fl
 {
     uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= N) return;
-    dL_dx[i] *= clamped ? 0 : 1;
+    dL_dx[i] *= clamped[i] ? 0 : 1;
 }
 
 void clamp_backward(const bool* clamped, size_t N, float m, float M, float* dL_dx, cudaStream_t stream)
@@ -90,7 +90,7 @@ void Optimizer::start()
         params_set.params = RCGS_TPTR(training_scene.shs);
         params_set.grads = RCGS_TPTR(training_scene.dL_dsh);
         params_set.num_params = training_scene.num_vertices * 16 * 3; // A lot of parameters...
-        params_set.lr = 0.0025f;                                      // Like in the original code
+        params_set.lr = 0.00025f;                                     // Like in the original code
     }
     Adam::Options options{};
     options.eps = 1e-15f;
@@ -114,12 +114,6 @@ void Optimizer::start()
         int camera_idx = training_cameras_dist(random);
         const GSCamera& sampled_camera = m_training_cameras.at(0);
 
-        // Compute prediction
-        int num_rendered = gs_rasterizer.forward(m_app.background_d(), training_scene, sampled_camera, pred, stream);
-        // clamp_forward(pred.data_d(), pred.width * pred.height * 3, 0.0f, 1.0f, stream);
-        if (num_rendered == 0) continue;
-        clamp_forward(pred.data_d(), m_resolution.x * m_resolution.y * 3, 0, 1, RCGS_TPTR(y_clamped), stream);
-
         // Compute ground truth
         gs_rasterizer.forward(m_app.background_d(), m_app.scene(), sampled_camera, gt, depthbuffer, stream);
         m_app.selection3d().project( //
@@ -132,7 +126,13 @@ void Optimizer::start()
                 gt.set_value(x, y, color);
             },
             stream);
-        // clamp_forward(gt.data_d(), gt.width * gt.height * 3, 0.0f, 1.0f, stream);
+        clamp_forward(gt.data_d(), gt.width * gt.height * 3, 0.0f, 1.0f, nullptr, stream);
+
+        // Compute prediction
+        // NOTE: gs_rasterizer will save internal state during the forward; thus this code doesn't have to be moved!
+        int num_rendered = gs_rasterizer.forward(m_app.background_d(), training_scene, sampled_camera, pred, stream);
+        if (num_rendered == 0) continue;
+        clamp_forward(pred.data_d(), m_resolution.x * m_resolution.y * 3, 0, 1, RCGS_TPTR(y_clamped), stream);
 
         float* loss_d = loss_func.forward(1, 3, m_resolution.y, m_resolution.x, pred.data_d(), gt.data_d(), stream);
         float loss;

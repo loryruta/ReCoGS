@@ -4,6 +4,8 @@ add_executable(recogs_test
         depth_estimators/test_stereo.cu
         depth_estimators/test_pcvnet_trt.cu
 
+        optimizer/test_img_opt.cu
+
         utils/image/test_image_copy.cu
         utils/image/test_image_downsample.cu
         utils/image/test_image_flip.cu

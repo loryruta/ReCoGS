@@ -32,7 +32,8 @@ public:
         int W,
         const float* img1,
         const float* img2,
-        bool train);
+        bool train,
+        cudaStream_t stream);
 
     /// \param[in] dL_dmap Gradient of the loss w.r.t. the output of the forward (SSIM map).
     float* backward( //
@@ -44,6 +45,7 @@ public:
         int W,
         const float* img1,
         const float* img2,
-        const float* dL_dmap);
+        const float* dL_dmap,
+        cudaStream_t stream);
 };
 } // namespace gs_train

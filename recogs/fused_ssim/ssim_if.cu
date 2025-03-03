@@ -15,7 +15,8 @@ float* FusedSSIM::forward( //
     int W,
     const float* img1,
     const float* img2,
-    bool train)
+    bool train,
+    cudaStream_t stream)
 {
     m_ssim_map.resize(B * CH * H * W * sizeof(float));
     m_dm_dmu1.resize(B * CH * H * W * sizeof(float));
@@ -28,7 +29,7 @@ float* FusedSSIM::forward( //
     }
     dim3 grid((W + BX - 1) / BX, (H + BY - 1) / BY, B);
     dim3 block(BX, BY, 1);
-    fusedssimCUDA<<<grid, block>>>( //
+    fusedssimCUDA<<<grid, block, 0, stream>>>( //
         H,
         W,
         CH,
@@ -52,13 +53,14 @@ float* FusedSSIM::backward( //
     int W,
     const float* img1,
     const float* img2,
-    const float* dL_dmap)
+    const float* dL_dmap,
+    cudaStream_t stream)
 {
     m_dL_dimg1.resize(B * CH * H * W * sizeof(float));
     m_dL_dimg1.fill(0);
     dim3 grid((W + BX - 1) / BX, (H + BY - 1) / BY, B);
     dim3 block(BX, BY, 1);
-    fusedssim_backwardCUDA<<<grid, block>>>( //
+    fusedssim_backwardCUDA<<<grid, block, 0, stream>>>( //
         H,
         W,
         CH,

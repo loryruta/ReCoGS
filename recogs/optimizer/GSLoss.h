@@ -34,11 +34,18 @@ public:
     /// \param img_pred Image predicted by Gaussian Splatting of shape (B, C, H, W)
     /// \param img_gt Ground truth image of shape (B, C, H, W)
     /// \return A device pointer to the loss, a single scalar
-    float* forward(int B, int C, int H, int W, const float* img_pred, const float* img_gt);
+    float* forward(int B, int C, int H, int W, const float* img_pred, const float* img_gt, cudaStream_t stream);
 
     /// Run the backward pass for the Gaussian Splatting loss.
     /// \param[out] out_dL_dy
     ///     A device pointer to the gradient of the loss w.r.t. the predicted image
-    void backward(int B, int C, int H, int W, const float* img_pred, const float* img_gt, float* out_dL_dy);
+    void backward(int B,
+                  int C,
+                  int H,
+                  int W,
+                  const float* img_pred,
+                  const float* img_gt,
+                  float* out_dL_dy,
+                  cudaStream_t stream);
 };
 } // namespace gs_train

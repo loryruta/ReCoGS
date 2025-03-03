@@ -1,4 +1,4 @@
-#include "gs_loss.h"
+#include "GSLoss.h"
 
 #include "utils/misc_utils.h"
 
@@ -43,16 +43,26 @@ __global__ void forward_kernel_2( //
     *out_loss = (1.0f - lambda) * (*L1_avg) + lambda * (1.0f - *Ldssim_avg);
 }
 
-float* GSLoss::forward(int B, int C, int H, int W, const float* img_pred, const float* img_gt)
+float* GSLoss::forward(int B, int C, int H, int W, const float* img_pred, const float* img_gt, cudaStream_t stream)
 {
-    float* ssim_map = m_fused_ssim.forward(FUSEDSSIM_C1, FUSEDSSIM_C2, B, C, H, W, img_pred, img_gt, true /* train */);
+    float* ssim_map = m_fused_ssim.forward( //
+        FUSEDSSIM_C1,
+        FUSEDSSIM_C2,
+        B,
+        C,
+        H,
+        W,
+        img_pred,
+        img_gt,
+        true /* train */,
+        stream);
     size_t BCHW = B * C * H * W;
-    CHECK_CUDA(cudaMemset(m_L1_avg, 0, sizeof(float)));
-    CHECK_CUDA(cudaMemset(m_Ldssim_avg, 0, sizeof(float)));
+    CHECK_CUDA(cudaMemsetAsync(m_L1_avg, 0, sizeof(float), stream));
+    CHECK_CUDA(cudaMemsetAsync(m_Ldssim_avg, 0, sizeof(float), stream));
     dim3 num_blocks = div_ceil(BCHW, size_t(NUM_THREADS));
     dim3 block_dim = NUM_THREADS;
-    forward_kernel_1<<<num_blocks, block_dim>>>(BCHW, img_pred, img_gt, ssim_map, m_L1_avg, m_Ldssim_avg);
-    forward_kernel_2<<<1, 1>>>(k_lambda, m_L1_avg, m_Ldssim_avg, m_loss);
+    forward_kernel_1<<<num_blocks, block_dim, 0, stream>>>(BCHW, img_pred, img_gt, ssim_map, m_L1_avg, m_Ldssim_avg);
+    forward_kernel_2<<<1, 1, 0, stream>>>(k_lambda, m_L1_avg, m_Ldssim_avg, m_loss);
     return m_loss;
 }
 
@@ -87,16 +97,26 @@ void GSLoss::backward( //
     int W,
     const float* img_pred,
     const float* img_gt,
-    float* out_dL_dy)
+    float* out_dL_dy,
+    cudaStream_t stream)
 {
     size_t BCHW = B * C * H * W;
     m_dL_dmap.resize(BCHW * sizeof(float));
     /* Compute dLdssim/dy */
     dim3 num_blocks = div_ceil(BCHW, size_t(NUM_THREADS));
     dim3 block_dim = NUM_THREADS;
-    fill_kernel<float><<<num_blocks, block_dim>>>(BCHW, 1.0f, m_dL_dmap.data_ptr<float>());
-    float* dLdssim_dy =
-        m_fused_ssim.backward(FUSEDSSIM_C1, FUSEDSSIM_C2, B, C, H, W, img_pred, img_gt, m_dL_dmap.data_ptr<float>());
+    fill_kernel<float><<<num_blocks, block_dim, 0, stream>>>(BCHW, 1.0f, m_dL_dmap.data_ptr<float>());
+    float* dLdssim_dy = m_fused_ssim.backward( //
+        FUSEDSSIM_C1,
+        FUSEDSSIM_C2,
+        B,
+        C,
+        H,
+        W,
+        img_pred,
+        img_gt,
+        m_dL_dmap.data_ptr<float>(),
+        stream);
     /* Compute dL/dy */
-    backward_kernel<<<num_blocks, block_dim>>>(BCHW, img_pred, img_gt, k_lambda, dLdssim_dy, out_dL_dy);
+    backward_kernel<<<num_blocks, block_dim, 0, stream>>>(BCHW, img_pred, img_gt, k_lambda, dLdssim_dy, out_dL_dy);
 }

@@ -1,28 +1,30 @@
 #pragma once
 
+#include <thrust/device_vector.h>
+
 #include "fused_ssim/ssim_if.h"
+#include "utils/DeviceBuffer.h"
 
 namespace gs_train
 {
 class GSLoss
 {
 private:
-    static constexpr float k_lambda = 0.2f;
+    static constexpr float k_lambda = 0.2f; // Weight to give to D-SSIM
 
     FusedSSIM m_fused_ssim;
 
-    DeviceBuffer m_tmp_buffer{"gsloss/tmp_buffer"};
-    /* Forward */
-    float* m_L1_avg{};
-    float* m_Ldssim_avg{};
-    /// Forward output
-    float* m_loss{};
-    /* Backward */
-    DeviceBuffer m_dL_dmap{"gsloss/dL_dmap"};
-    /// Backward output: gradient of loss w.r.t. image prediction
-    DeviceBuffer m_dL_dy{"gsloss/dL_dy"};
-
 public:
+    // Forward
+    thrust::device_vector<float> L1_sum;
+    thrust::device_vector<float> Lssim_sum;
+    /// In the forward, we remember signs used for the `abs` backward.
+    thrust::device_vector<int8_t> signs;
+    thrust::device_vector<float> loss;
+
+    // Backward
+    thrust::device_vector<float> dL_dmap;
+
     explicit GSLoss();
     ~GSLoss() = default;
 
@@ -34,18 +36,21 @@ public:
     /// \param img_pred Image predicted by Gaussian Splatting of shape (B, C, H, W)
     /// \param img_gt Ground truth image of shape (B, C, H, W)
     /// \return A device pointer to the loss, a single scalar
-    float* forward(int B, int C, int H, int W, const float* img_pred, const float* img_gt, cudaStream_t stream);
+    void forward(int B,
+                 int C,
+                 int H,
+                 int W,
+                 const float* img_pred,
+                 const float* img_gt,
+                 float& out_loss,
+                 float& out_L1,
+                 float& out_Lssim,
+                 cudaStream_t stream);
 
     /// Run the backward pass for the Gaussian Splatting loss.
     /// \param[out] out_dL_dy
     ///     A device pointer to the gradient of the loss w.r.t. the predicted image
-    void backward(int B,
-                  int C,
-                  int H,
-                  int W,
-                  const float* img_pred,
-                  const float* img_gt,
-                  float* out_dL_dy,
-                  cudaStream_t stream);
+    void backward(
+        int B, int C, int H, int W, const float* img_pred, const float* img_gt, float* out_dL_dy, cudaStream_t stream);
 };
 } // namespace gs_train

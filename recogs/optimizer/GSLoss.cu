@@ -11,11 +11,9 @@ using namespace gs_train;
 
 GSLoss::GSLoss()
 {
-    m_tmp_buffer.resize(3 * sizeof(float));
-
-    m_L1_avg = m_tmp_buffer.data_ptr<float>();
-    m_Ldssim_avg = m_tmp_buffer.data_ptr<float>() + 1;
-    m_loss = m_tmp_buffer.data_ptr<float>() + 2;
+    L1_sum.resize(1);
+    Lssim_sum.resize(1);
+    loss.resize(1);
 }
 
 __global__ void forward_kernel_1( //
@@ -23,71 +21,72 @@ __global__ void forward_kernel_1( //
     const float* img_pred,
     const float* img_gt,
     const float* ssim_map,
-    float* out_L1_avg,
-    float* out_Ldssim_avg)
+    int8_t* out_sign,
+    float* out_L1_sum,
+    float* out_Lssim_sum)
 {
     uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= BCHW) return;
-
-    float abs = std::abs(img_pred[i] - img_gt[i]);
-    atomicAdd(out_L1_avg, abs / float(BCHW));
-    atomicAdd(out_Ldssim_avg, ssim_map[i] / float(BCHW));
+    float y = img_pred[i];
+    float yhat = img_gt[i];
+    float dif = y - yhat;
+    out_sign[i] = dif < 0.0f ? -1 : (dif > 0.0f ? 1 : 0); // Save the sign for the backward
+    atomicAdd(out_L1_sum, abs(dif));
+    atomicAdd(out_Lssim_sum, ssim_map[i]);
 }
 
 __global__ void forward_kernel_2( //
+    size_t BCHW,
     float lambda,
-    const float* L1_avg,
-    const float* Ldssim_avg,
+    float* L1_sum,
+    float* Lssim_sum,
     float* out_loss)
 {
-    *out_loss = (1.0f - lambda) * (*L1_avg) + lambda * (1.0f - *Ldssim_avg);
+    *L1_sum /= float(BCHW);
+    *Lssim_sum /= float(BCHW);
+    *out_loss = (1.0f - lambda) * *L1_sum + lambda * (1.0f - *Lssim_sum);
 }
 
-float* GSLoss::forward(int B, int C, int H, int W, const float* img_pred, const float* img_gt, cudaStream_t stream)
+void GSLoss::forward(int B,
+                     int C,
+                     int H,
+                     int W,
+                     const float* img_pred,
+                     const float* img_gt,
+                     float& out_loss,
+                     float& out_L1,
+                     float& out_Lssim,
+                     cudaStream_t stream)
 {
-    float* ssim_map = m_fused_ssim.forward( //
-        FUSEDSSIM_C1,
-        FUSEDSSIM_C2,
-        B,
-        C,
-        H,
-        W,
-        img_pred,
-        img_gt,
-        true /* train */,
-        stream);
+    float* ssim_map = m_fused_ssim.forward(FUSEDSSIM_C1, FUSEDSSIM_C2, B, C, H, W, img_pred, img_gt, stream);
     size_t BCHW = B * C * H * W;
-    CHECK_CUDA(cudaMemsetAsync(m_L1_avg, 0, sizeof(float), stream));
-    CHECK_CUDA(cudaMemsetAsync(m_Ldssim_avg, 0, sizeof(float), stream));
-    dim3 num_blocks = div_ceil(BCHW, size_t(NUM_THREADS));
-    dim3 block_dim = NUM_THREADS;
-    forward_kernel_1<<<num_blocks, block_dim, 0, stream>>>(BCHW, img_pred, img_gt, ssim_map, m_L1_avg, m_Ldssim_avg);
-    forward_kernel_2<<<1, 1, 0, stream>>>(k_lambda, m_L1_avg, m_Ldssim_avg, m_loss);
-    return m_loss;
-}
-
-template <typename T>
-__global__ void fill_kernel(size_t N, T value, T* out_buffer)
-{
-    uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= N) return;
-    out_buffer[i] = value;
+    signs.resize(BCHW);
+    float* L1_sum_d = RCGS_TPTR(L1_sum);
+    float* Lssim_sum_d = RCGS_TPTR(Lssim_sum);
+    float* loss_d = RCGS_TPTR(loss);
+    CHECK_CUDA(cudaMemsetAsync(L1_sum_d, 0, sizeof(float), stream));
+    CHECK_CUDA(cudaMemsetAsync(Lssim_sum_d, 0, sizeof(float), stream));
+    dim3 num_blocks = (BCHW + 1023) / 1024;
+    dim3 block_dim = 1024;
+    forward_kernel_1<<<num_blocks, block_dim, 0, stream>>>(
+        BCHW, img_pred, img_gt, ssim_map, RCGS_TPTR(signs), L1_sum_d, Lssim_sum_d);
+    forward_kernel_2<<<1, 1, 0, stream>>>(BCHW, k_lambda, L1_sum_d, Lssim_sum_d, loss_d);
+    CHECK_CUDA(cudaMemcpyAsync(&out_loss, loss_d, sizeof(float), cudaMemcpyDeviceToHost, stream));
+    CHECK_CUDA(cudaMemcpyAsync(&out_L1, L1_sum_d, sizeof(float), cudaMemcpyDeviceToHost, stream));
+    CHECK_CUDA(cudaMemcpyAsync(&out_Lssim, Lssim_sum_d, sizeof(float), cudaMemcpyDeviceToHost, stream));
 }
 
 __global__ void backward_kernel( //
     size_t BCHW,
-    const float* img_pred,
-    const float* img_gt,
+    const int8_t* sign,
     float lambda,
-    const float* dLdssim_dy,
+    const float* dLssim_dy,
     float* out_dL_dy)
 {
     uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= BCHW) return;
-    float dif = img_pred[i] - img_gt[i];
-    float sgn = dif > 1e-8f ? 1.0f : (dif < -1e-8f ? -1.0f : 0.0f);
-    float invN = 1.0f / float(BCHW);
-    out_dL_dy[i] = invN * ((1.0f - lambda) * sgn - lambda * dLdssim_dy[i]);
+    float dL1_dy = (1.0f - lambda) / float(BCHW) * float(sign[i]);
+    out_dL_dy[i] = dL1_dy + dLssim_dy[i];
 }
 
 void GSLoss::backward( //
@@ -101,22 +100,13 @@ void GSLoss::backward( //
     cudaStream_t stream)
 {
     size_t BCHW = B * C * H * W;
-    m_dL_dmap.resize(BCHW * sizeof(float));
-    /* Compute dLdssim/dy */
-    dim3 num_blocks = div_ceil(BCHW, size_t(NUM_THREADS));
-    dim3 block_dim = NUM_THREADS;
-    fill_kernel<float><<<num_blocks, block_dim, 0, stream>>>(BCHW, 1.0f, m_dL_dmap.data_ptr<float>());
-    float* dLdssim_dy = m_fused_ssim.backward( //
-        FUSEDSSIM_C1,
-        FUSEDSSIM_C2,
-        B,
-        C,
-        H,
-        W,
-        img_pred,
-        img_gt,
-        m_dL_dmap.data_ptr<float>(),
-        stream);
-    /* Compute dL/dy */
-    backward_kernel<<<num_blocks, block_dim, 0, stream>>>(BCHW, img_pred, img_gt, k_lambda, dLdssim_dy, out_dL_dy);
+    // Compute dLdssim_dy
+    dL_dmap.resize(BCHW);
+    thrust::fill(thrust::cuda::par.on(stream), dL_dmap.begin(), dL_dmap.end(), -k_lambda / float(BCHW));
+    float* dLssim_dy =
+        m_fused_ssim.backward(FUSEDSSIM_C1, FUSEDSSIM_C2, B, C, H, W, img_pred, img_gt, RCGS_TPTR(dL_dmap), stream);
+    // Compute dL_dy
+    dim3 num_blocks = (BCHW + 1023) / 1024;
+    dim3 block_dim = 1024;
+    backward_kernel<<<num_blocks, block_dim, 0, stream>>>(BCHW, RCGS_TPTR(signs), k_lambda, dLssim_dy, out_dL_dy);
 }

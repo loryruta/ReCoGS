@@ -23,6 +23,7 @@ public:
 
     ClockT::duration elapsed_time() { return ClockT::now() - m_start; }
 
+    double elapsed_seconds() { return std::chrono::duration<double>(elapsed_time()).count(); }
     uint64_t elapsed_millis() { return std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time()).count(); }
     uint64_t elapsed_nanos() { return std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed_time()).count(); }
 

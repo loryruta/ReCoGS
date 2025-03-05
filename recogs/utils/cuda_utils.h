@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdio>
+#include <filesystem>
 #include <span>
 #include <string>
 #include <vector>
@@ -9,7 +10,7 @@
 
 #define CHECK_CUDA(_error) gs_train::check_cuda_error(_error, __FILE_NAME__, __LINE__)
 
-#define RCGS_TPTR(_x) thrust::raw_pointer_cast(_x.data())
+#define RCGS_TPTR(_x) thrust::raw_pointer_cast((_x).data())
 
 namespace gs_train
 {
@@ -66,23 +67,26 @@ inline T* to_device_array(std::span<T> values)
 }
 
 template <typename T>
-void dump_device_buffer(const T* buffer, size_t num_elements, const char* out_filepath)
+inline void dump_device_buffer(const T* buffer, size_t num_elements, const std::filesystem::path& out_filepath)
 {
+    CHECK_CUDA(cudaDeviceSynchronize());
+
     std::vector<T> buffer_data = to_host_vector<T>(buffer, num_elements);
-    FILE* f = fopen(out_filepath, "wt");
+    FILE* f = fopen(out_filepath.c_str(), "wt");
     CHECK_STATE(f);
 
     char entry[256];
     for (int i = 0; i < num_elements; ++i) {
         if constexpr (std::is_same_v<T, float>) {
-            sprintf(entry, "%d: %f, ", i, buffer_data[i]);
-            fputs(entry, f);
-        } else {
-            // NOT IMPLEMENTED!
-            fputs("N", f);
+            sprintf(entry, "%.15f,\n", i, buffer_data[i]);
+        } else if constexpr (std::is_integral_v<T>) {
+            sprintf(entry, "%d,\n", i, buffer_data[i]);
         }
+        fputs(entry, f);
     }
     fclose(f);
+
+    printf("[DEBUG] [cuda_utils] Buffer written to: %s\n", out_filepath.c_str());
 }
 
 template <typename FUNCTION>

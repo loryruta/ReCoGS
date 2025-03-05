@@ -13,6 +13,7 @@
 #include "optimizer/GSLoss.h"
 #include "utils/cuda_utils.h"
 #include "utils/image/image_cast.h"
+#include "utils/image/image_copy.h"
 #include "utils/image/image_load.h"
 #include "utils/misc_utils.h"
 #include "utils/stb_image.h"
@@ -56,13 +57,7 @@ TEST_CASE("Test image optimization")
     // Init prediction (i.e. parameters)
     thrust::device_vector<float> image_pred_data(W * H * 3);
     Image3fCHW image_pred = Image3fCHW::ref(W, H, RCGS_TPTR(image_pred_data));
-    thrust::device_vector<float> image_pred_grads(W * H * 3);
-
-    // Fill the prediction with random [0, 1] numbers
-    thrust::transform(thrust::make_counting_iterator(0),
-                      thrust::make_counting_iterator(W * H * 3),
-                      image_pred_data.begin(),
-                      prg(0, 1));
+    thrust::device_vector<float> image_pred_grads(W * H * 3, 0);
 
     // Create optimizer
     std::vector<Adam::ParamSet> param_sets{};
@@ -86,16 +81,15 @@ TEST_CASE("Test image optimization")
     for (int iter = 0; iter < 10000; ++iter) {
         adam->zero_grad(stream);
 
-        float* loss_d = loss_fn.forward(1, 3, H, W, image_pred.data_d(), image_gt->data_d(), stream);
-        float loss;
-        CHECK_CUDA(cudaMemcpyAsync(&loss, loss_d, sizeof(float), cudaMemcpyDeviceToHost, stream));
+        float loss, L1, Lssim;
+        loss_fn.forward(1, 3, H, W, image_pred.data_d(), image_gt->data_d(), loss, L1, Lssim, stream);
+        CHECK_CUDA(cudaStreamSynchronize(stream));
+        printf("  Iter. %05d; Loss: %.8f, L1: %.8f, Lssim: %.8f\n", iter, loss, L1, Lssim);
+
         loss_fn.backward(1, 3, H, W, image_pred.data_d(), image_gt->data_d(), RCGS_TPTR(image_pred_grads), stream);
 
         adam->step(stream);
 
-        CHECK_CUDA(cudaStreamSynchronize(stream));
-
-        printf("  Iter. %05d -> Loss: %.8f\n", iter, loss);
         fflush(stdout);
     }
     printf("Bye bye!\n");

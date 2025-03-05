@@ -1,5 +1,7 @@
 #include "ssim_if.h"
 
+#include "utils/cuda_utils.h"
+
 // Block size
 #define BX 32
 #define BY 32
@@ -15,18 +17,18 @@ float* FusedSSIM::forward( //
     int W,
     const float* img1,
     const float* img2,
-    bool train,
     cudaStream_t stream)
 {
-    m_ssim_map.resize(B * CH * H * W * sizeof(float));
-    m_dm_dmu1.resize(B * CH * H * W * sizeof(float));
-    m_dm_dsigma1_sq.resize(B * CH * H * W * sizeof(float));
-    m_dm_dsigma12.resize(B * CH * H * W * sizeof(float));
-    if (train) {
-        m_dm_dmu1.fill(0);
-        m_dm_dsigma1_sq.fill(0);
-        m_dm_dsigma12.fill(0);
-    }
+    m_ssim_map.resize(B * CH * H * W);
+    m_dm_dmu1.resize(B * CH * H * W);
+    m_dm_dsigma1_sq.resize(B * CH * H * W);
+    m_dm_dsigma12.resize(B * CH * H * W);
+
+    thrust::fill(thrust::cuda::par.on(stream), m_ssim_map.begin(), m_ssim_map.end(), 0);
+    thrust::fill(thrust::cuda::par.on(stream), m_dm_dmu1.begin(), m_dm_dmu1.end(), 0);
+    thrust::fill(thrust::cuda::par.on(stream), m_dm_dsigma1_sq.begin(), m_dm_dsigma1_sq.end(), 0);
+    thrust::fill(thrust::cuda::par.on(stream), m_dm_dsigma12.begin(), m_dm_dsigma12.end(), 0);
+
     dim3 grid((W + BX - 1) / BX, (H + BY - 1) / BY, B);
     dim3 block(BX, BY, 1);
     fusedssimCUDA<<<grid, block, 0, stream>>>( //
@@ -37,11 +39,11 @@ float* FusedSSIM::forward( //
         C2,
         const_cast<float*>(img1),
         const_cast<float*>(img2),
-        m_ssim_map.data_ptr<float>(),
-        m_dm_dmu1.data_ptr<float>(),
-        m_dm_dsigma1_sq.data_ptr<float>(),
-        m_dm_dsigma12.data_ptr<float>());
-    return m_ssim_map.data_ptr<float>();
+        RCGS_TPTR(m_ssim_map),
+        RCGS_TPTR(m_dm_dmu1),
+        RCGS_TPTR(m_dm_dsigma1_sq),
+        RCGS_TPTR(m_dm_dsigma12));
+    return RCGS_TPTR(m_ssim_map);
 }
 
 float* FusedSSIM::backward( //
@@ -56,8 +58,9 @@ float* FusedSSIM::backward( //
     const float* dL_dmap,
     cudaStream_t stream)
 {
-    m_dL_dimg1.resize(B * CH * H * W * sizeof(float));
-    m_dL_dimg1.fill(0);
+    m_dL_dimg1.resize(B * CH * H * W);
+    thrust::fill(thrust::cuda::par.on(stream), m_dL_dimg1.begin(), m_dL_dimg1.end(), 0);
+
     dim3 grid((W + BX - 1) / BX, (H + BY - 1) / BY, B);
     dim3 block(BX, BY, 1);
     fusedssim_backwardCUDA<<<grid, block, 0, stream>>>( //
@@ -69,9 +72,9 @@ float* FusedSSIM::backward( //
         const_cast<float*>(img1),
         const_cast<float*>(img2),
         const_cast<float*>(dL_dmap),
-        m_dL_dimg1.data_ptr<float>(),
-        m_dm_dmu1.data_ptr<float>(),
-        m_dm_dsigma1_sq.data_ptr<float>(),
-        m_dm_dsigma12.data_ptr<float>());
-    return m_dL_dimg1.data_ptr<float>();
+        RCGS_TPTR(m_dL_dimg1),
+        RCGS_TPTR(m_dm_dmu1),
+        RCGS_TPTR(m_dm_dsigma1_sq),
+        RCGS_TPTR(m_dm_dsigma12));
+    return RCGS_TPTR(m_dL_dimg1);
 }

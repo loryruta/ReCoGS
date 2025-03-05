@@ -7,6 +7,7 @@
 #include "GSRasterizer.h"
 #include "Scene.h"
 #include "depth_estimators/StereoDepthEstimator.h"
+#include "optimizer/Optimizer.h"
 #include "selection/Selection3d.h"
 #include "selection/SelectionRenderer.h"
 #include "ui/Screen.h"
@@ -14,7 +15,6 @@
 #include "video/DrawTexture.h"
 #include "video/GLMappedResource.h"
 #include "video/Window.h"
-#include "optimizer/Optimizer.h"
 
 namespace gs_train
 {
@@ -31,8 +31,7 @@ private:
     std::filesystem::path m_scene_ply;
 
     /* Scene */
-    std::unique_ptr<Scene> m_scene;          ///< The original scene
-    std::unique_ptr<Scene> m_training_scene; ///< The scene undergoing training
+    std::unique_ptr<Scene> m_scene;
     DeviceBuffer m_scene_background{"background"};
     std::unique_ptr<Selection3d> m_selection3d;
 
@@ -75,7 +74,6 @@ public:
     [[nodiscard]] cudaStream_t stream() const { return m_stream; }
 
     [[nodiscard]] Scene& scene() const { return *m_scene; }
-    [[nodiscard]] Scene& training_scene() const { return *m_training_scene; }
     [[nodiscard]] const float* background_d() const { return m_scene_background.data_ptr<float>(); }
     [[nodiscard]] Selection3d& selection3d() const { return *m_selection3d; };
 

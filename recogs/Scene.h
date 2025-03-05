@@ -17,6 +17,9 @@ struct Scene {
     thrust::device_vector<float> scales;
     thrust::device_vector<float> rotations;
 
+    // Optimized SHs
+    thrust::device_vector<float> shs_2;
+
     // Gradients
     thrust::device_vector<float> dL_dmean2D;
     thrust::device_vector<float> dL_dconic;
@@ -34,5 +37,8 @@ struct Scene {
     [[nodiscard]] bool is_prepared_for_training() const { return !dL_dmean2D.empty(); }
     void prepare_for_training();
     void zero_grad(cudaStream_t stream);
+
+    /// Number of bytes occupied in memory by the scene
+    [[nodiscard]] size_t num_bytes() const;
 };
 } // namespace gs_train

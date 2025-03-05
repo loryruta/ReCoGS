@@ -132,13 +132,14 @@ void MainScreen::update(float dt)
 
 void MainScreen::render(Image3fCHW& out_colorbuffer)
 {
-    Scene& training_scene = m_app.training_scene();
+    Scene& scene = m_app.scene();
     switch (m_view_mode) {
     case GSRASTERIZER_COLOR:
         // Render the scene
         m_app.gs_rasterizer().forward( //
             m_app.background_d(),
-            training_scene,
+            scene,
+            true /* scene_2 */,
             m_camera,
             out_colorbuffer,
             *m_depthbuffer,
@@ -151,7 +152,7 @@ void MainScreen::render(Image3fCHW& out_colorbuffer)
         break;
     case GSRASTERIZER_DEPTH:
         m_app.gs_rasterizer().forward(
-            m_app.background_d(), training_scene, m_camera, out_colorbuffer, *m_depthbuffer, m_app.stream());
+            m_app.background_d(), scene, true /* scene_2 */, m_camera, out_colorbuffer, *m_depthbuffer, m_app.stream());
         image_depthbuffer_to_rgb(*m_depthbuffer, out_colorbuffer, m_app.stream());
         break;
     case STEREO_H:

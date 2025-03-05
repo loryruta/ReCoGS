@@ -5,7 +5,7 @@
 #include "scene_io.h"
 #include "ui/MainScreen.h"
 #include "utils/image/image_cast.h"
-#include "utils/image/image_fill_custom.h"
+#include "utils/str_utils.h"
 
 using namespace gs_train;
 
@@ -23,11 +23,13 @@ App::App(const Params& params)
 
     /* Load scene/background */
     m_scene = std::make_unique<Scene>(read_scene_from_ply(params.scene_ply));
+    m_scene->prepare_for_training();
+    std::string bytes_str = num_bytes_to_string(m_scene->num_bytes());
+    printf("[INFO ] [App] Scene \"%s\" ready; Size: %s\n", m_scene_ply.filename().c_str(), bytes_str.c_str());
+
     float background[]{0.0f, 0.0f, 0.0f, 0.0f};
     m_scene_background.fit_data(background, std::size(background));
 
-    m_training_scene = std::make_unique<Scene>(*m_scene); // Copy the scene into training_scene
-    m_training_scene->prepare_for_training();
     m_selection3d = std::make_unique<Selection3d>(*this);
 
     /* Init window */

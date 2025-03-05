@@ -7,7 +7,7 @@ using namespace gs_train;
 namespace
 {
 std::function<char*(size_t N)>
-resize_functional(thrust::device_vector<char>& buffer, const char* name, size_t alignment)
+resize_functional(thrust::device_vector<uint8_t>& buffer, const char* name, size_t alignment)
 {
     return [&buffer, name, alignment](size_t num_bytes) -> char* {
         if (num_bytes >= buffer.size()) {
@@ -15,7 +15,7 @@ resize_functional(thrust::device_vector<char>& buffer, const char* name, size_t 
             printf("[DEBUG] [GSRasterizer] Resizing %s to %zu bytes\n", name, new_size);
             buffer.resize(new_size);
         }
-        return thrust::raw_pointer_cast(buffer.data());
+        return reinterpret_cast<char*>(RCGS_TPTR(buffer));
     };
 }
 } // namespace
@@ -73,6 +73,7 @@ int GSRasterizer::forward( //
 
 int GSRasterizer::forward(const float* background_d,
                           const Scene& scene,
+                          bool scene_2,
                           const GSCamera& camera,
                           Image3fCHW& out_colorbuffer,
                           cudaStream_t stream)
@@ -83,7 +84,7 @@ int GSRasterizer::forward(const float* background_d,
         background_d,
         scene.num_vertices,
         RCGS_TPTR(scene.means),
-        RCGS_TPTR(scene.shs),
+        RCGS_TPTR(scene_2 ? scene.shs_2 : scene.shs),
         RCGS_TPTR(scene.opacities),
         RCGS_TPTR(scene.scales),
         RCGS_TPTR(scene.rotations),
@@ -99,6 +100,7 @@ int GSRasterizer::forward(const float* background_d,
 
 int GSRasterizer::forward(const float* background_d,
                           const Scene& scene,
+                          bool scene_2,
                           const GSCamera& camera,
                           Image3fCHW& out_colorbuffer,
                           Image1fCHW& out_depthbuffer,
@@ -110,7 +112,7 @@ int GSRasterizer::forward(const float* background_d,
         background_d,
         scene.num_vertices,
         RCGS_TPTR(scene.means),
-        RCGS_TPTR(scene.shs),
+        RCGS_TPTR(scene_2 ? scene.shs_2 : scene.shs),
         RCGS_TPTR(scene.opacities),
         RCGS_TPTR(scene.scales),
         RCGS_TPTR(scene.rotations),
@@ -126,6 +128,7 @@ int GSRasterizer::forward(const float* background_d,
 
 void GSRasterizer::backward( //
     Scene& scene,
+    bool scene_2,
     int num_rendered,
     const float* background_d,
     const GSCamera& camera,
@@ -140,7 +143,7 @@ void GSRasterizer::backward( //
         camera.width,
         camera.height,
         RCGS_TPTR(scene.means),
-        RCGS_TPTR(scene.shs),
+        RCGS_TPTR(scene_2 ? scene.shs_2 : scene.shs),
         RCGS_TPTR(scene.scales),
         RCGS_TPTR(scene.rotations),
         camera.viewmatrix_d(),
@@ -191,6 +194,16 @@ void GSRasterizer::backward( //
     CHECK_ARG(P > 0);
     CHECK_ARG(R > 0);
 
+    CHECK_CUDA(cudaMemsetAsync(dL_dmean2D, 0, P * 3 * sizeof(float), stream));
+    CHECK_CUDA(cudaMemsetAsync(dL_dconic, 0, P * 4 * sizeof(float), stream));
+    CHECK_CUDA(cudaMemsetAsync(dL_dopacity, 0, P * sizeof(float), stream));
+    CHECK_CUDA(cudaMemsetAsync(dL_dcolor, 0, P * 3 * sizeof(float), stream));
+    CHECK_CUDA(cudaMemsetAsync(dL_dmean3D, 0, P * 3 * sizeof(float), stream));
+    CHECK_CUDA(cudaMemsetAsync(dL_dcov3D, 0, P * 6 * sizeof(float), stream));
+    CHECK_CUDA(cudaMemsetAsync(dL_dsh, 0, P * 16 * 3 * sizeof(float), stream));
+    CHECK_CUDA(cudaMemsetAsync(dL_dscale, 0, P * 3 * sizeof(float), stream));
+    CHECK_CUDA(cudaMemsetAsync(dL_drot, 0, P * 4 * sizeof(float), stream));
+
     CudaRasterizer::Rasterizer::backward( //
         P,
         3,
@@ -212,9 +225,9 @@ void GSRasterizer::backward( //
         tan_fovx,
         tan_fovy,
         nullptr, // radii
-        RCGS_TPTR(m_geometry_buffer),
-        RCGS_TPTR(m_binning_buffer),
-        RCGS_TPTR(m_image_buffer),
+        reinterpret_cast<char*>(RCGS_TPTR(m_geometry_buffer)),
+        reinterpret_cast<char*>(RCGS_TPTR(m_binning_buffer)),
+        reinterpret_cast<char*>(RCGS_TPTR(m_image_buffer)),
         dL_dpix,
         dL_dmean2D,
         dL_dconic,

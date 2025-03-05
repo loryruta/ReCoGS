@@ -62,7 +62,7 @@ void SelectScreen::render(Image3fCHW& out_colorbuffer)
     cudaStream_t stream = m_app.stream();
     // Render the scene
     m_app.gs_rasterizer().forward(
-        m_app.background_d(), m_app.training_scene(), m_view, out_colorbuffer, *m_depthbuffer, stream);
+        m_app.background_d(), m_app.scene(), true /* scene_2 */, m_view, out_colorbuffer, *m_depthbuffer, stream);
     // Render the 2d selection (3d + current view stroke)
     m_app.selection_renderer().render(*m_selection2d, out_colorbuffer, *m_depthbuffer, stream);
 }

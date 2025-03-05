@@ -99,14 +99,14 @@ void StereoDepthEstimator::estimate_single_axis(
     m_im0.resize(width * height * 3 * sizeof(float));
     m_im1.resize(width * height * 3 * sizeof(float));
     Image3fCHW im0 = Image3fCHW::ref(width, height, m_im0.data_ptr<float>());
-    m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), camera, im0, stream);
+    m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), false /* scene_2 */, camera, im0, stream);
 
     // Render im1
     GSCamera rview = camera;
     rview.position += (axis == Axis::H ? camera.right() : -camera.up()) * b;
     rview.update(stream);
     Image3fCHW im1 = Image3fCHW::ref(width, height, m_im1.data_ptr<float>());
-    m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), rview, im1, stream);
+    m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), false /* scene_2 */, rview, im1, stream);
     if (debug) {
         image_save_png(im0, fmt::format("estimatedepth-{}im0.png", debug_image_prefix));
         image_save_png(im1, fmt::format("estimatedepth-{}im1.png", debug_image_prefix));

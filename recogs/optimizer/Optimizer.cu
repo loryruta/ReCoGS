@@ -9,6 +9,7 @@
 #include "Adam.h"
 #include "App.h"
 #include "GSLoss.h"
+#include "utils/Stopwatch.h"
 #include "utils/image/image_save.h"
 
 using namespace gs_train;
@@ -77,7 +78,7 @@ void Optimizer::start()
     Image3fCHW pred = Image3fCHW::malloc(m_resolution.x, m_resolution.y);
     Image1fCHW depthbuffer = Image1fCHW::malloc(m_resolution.x, m_resolution.y);
 
-    Scene& training_scene = m_app.training_scene();
+    Scene& scene = m_app.scene();
 
     thrust::device_vector<float> dL_dy(m_resolution.x * m_resolution.y * 3);
     // A boolean vector remembering which values of the prediction (y) has been clamped to [0, 1]
@@ -87,10 +88,10 @@ void Optimizer::start()
     std::vector<Adam::ParamSet> params_sets{};
     {
         Adam::ParamSet& params_set = params_sets.emplace_back();
-        params_set.params = RCGS_TPTR(training_scene.shs);
-        params_set.grads = RCGS_TPTR(training_scene.dL_dsh);
-        params_set.num_params = training_scene.num_vertices * 16 * 3; // A lot of parameters...
-        params_set.lr = 0.00025f;                                     // Like in the original code
+        params_set.params = RCGS_TPTR(scene.shs_2);
+        params_set.grads = RCGS_TPTR(scene.dL_dsh);
+        params_set.num_params = scene.num_vertices * 16 * 3; // A lot of parameters...
+        params_set.lr = 0.00025f;                            // Like in the original code
     }
     Adam::Options options{};
     options.eps = 1e-15f;
@@ -109,13 +110,18 @@ void Optimizer::start()
     // Optimization loop
     printf("[INFO ] [Optimizer] Starting the optimization loop...\n");
     m_running = true;
-    int iter = 0;
+    int iter = 1;
+
+    const int k_num_profile_iter = 10;
+    Stopwatch profile_opt;
+
     while (m_running) {
         int camera_idx = training_cameras_dist(random);
-        const GSCamera& sampled_camera = m_training_cameras.at(0);
+        const GSCamera& sampled_camera = m_training_cameras.at(camera_idx);
 
         // Compute ground truth
-        gs_rasterizer.forward(m_app.background_d(), m_app.scene(), sampled_camera, gt, depthbuffer, stream);
+        gs_rasterizer.forward(
+            m_app.background_d(), scene, false /* scene_2 */, sampled_camera, gt, depthbuffer, stream);
         m_app.selection3d().project( //
             sampled_camera,
             [gt, depthbuffer] __device__(uint32_t x, uint32_t y, float view_z) mutable {
@@ -130,25 +136,27 @@ void Optimizer::start()
 
         // Compute prediction
         // NOTE: gs_rasterizer will save internal state during the forward; thus this code doesn't have to be moved!
-        int num_rendered = gs_rasterizer.forward(m_app.background_d(), training_scene, sampled_camera, pred, stream);
+        int num_rendered =
+            gs_rasterizer.forward(m_app.background_d(), scene, true /* scene_2 */, sampled_camera, pred, stream);
         if (num_rendered == 0) continue;
         clamp_forward(pred.data_d(), m_resolution.x * m_resolution.y * 3, 0, 1, RCGS_TPTR(y_clamped), stream);
 
-        float* loss_d = loss_func.forward(1, 3, m_resolution.y, m_resolution.x, pred.data_d(), gt.data_d(), stream);
-        float loss;
-        CHECK_CUDA(cudaMemcpyAsync(&loss, loss_d, sizeof(float), cudaMemcpyDeviceToHost, stream));
+        // Compute loss
+        float loss, L1, Lssim;
+        loss_func.forward(1, 3, m_resolution.y, m_resolution.x, pred.data_d(), gt.data_d(), loss, L1, Lssim, stream);
         CHECK_CUDA(cudaStreamSynchronize(stream));
-        printf("[DEBUG] [Optimizer] Iter. %05d; Loss: %.8f\n", iter, loss);
-
-        if (iter % 50 == 0) {
-            printf("[DEBUG] [Optimizer] Saving gt/pred...\n");
-            CHECK_CUDA(cudaStreamSynchronize(stream));
-            image_save_png(gt, fmt::format("gt-{}.png", iter));
-            image_save_png(pred, fmt::format("pred-{}.png", iter));
+        if (iter % k_num_profile_iter == 0) {
+            float iter_secs = float(k_num_profile_iter) / float(profile_opt.elapsed_seconds());
+            printf("[DEBUG] [Optimizer] Iter. %05d (%2.1f iter/s); Loss: %.8f; L1: %.8f, SSIM: %.8f\n",
+                   iter,
+                   iter_secs,
+                   loss,
+                   L1,
+                   Lssim);
+            profile_opt.reset();
         }
 
         // Backward
-        adam.zero_grad(stream);
         loss_func.backward( //
             1,
             3,
@@ -156,21 +164,20 @@ void Optimizer::start()
             m_resolution.x,
             pred.data_d(),
             gt.data_d(),
-            RCGS_TPTR(dL_dy), // Output
+            RCGS_TPTR(dL_dy), // Output; Re-initialized every time
             stream);
-        clamp_backward(RCGS_TPTR(y_clamped), m_resolution.x * m_resolution.y * 3, 0, 1, RCGS_TPTR(dL_dy), stream);
+        clamp_backward(RCGS_TPTR(y_clamped), m_resolution.x * m_resolution.y * 3, 0.0f, 1.0f, RCGS_TPTR(dL_dy), stream);
         gs_rasterizer.backward( //
-            training_scene,
+            scene,
+            true /* scene_2 */,
             num_rendered,
             m_app.background_d(),
             sampled_camera,
             RCGS_TPTR(dL_dy), // Input
             stream);
 
-        // Step the optimizer
         adam.step(stream);
-
-        CHECK_CUDA(cudaStreamSynchronize(stream));
+        adam.zero_grad(stream);
 
         ++iter;
     }

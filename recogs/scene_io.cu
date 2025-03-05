@@ -105,7 +105,7 @@ Scene gs_train::read_scene_from_ply(const std::filesystem::path& scene_ply)
     std::getline(is, line); require_line(line, "end_header");
     // clang-format on
 
-    /* Read scene data */
+    // Read the scene data
     std::vector<float> means(num_vertices * 3);
     std::vector<float> normals(num_vertices * 3);
     std::vector<float> shs(num_vertices * 16 * 3);
@@ -132,6 +132,7 @@ Scene gs_train::read_scene_from_ply(const std::filesystem::path& scene_ply)
     thrust::copy(means.begin(), means.end(), scene.means.begin());
     // thrust::copy(normals.begin(), normals.end(), scene.normals.begin());
     thrust::copy(shs.begin(), shs.end(), scene.shs.begin());
+    thrust::copy(shs.begin(), shs.end(), scene.shs_2.begin());
     thrust::copy(opacities.begin(), opacities.end(), scene.opacities.begin());
     thrust::copy(scales.begin(), scales.end(), scene.scales.begin());
     thrust::copy(rotations.begin(), rotations.end(), scene.rotations.begin());

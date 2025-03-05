@@ -14,9 +14,9 @@ namespace gs_train
 /// https://github.com/graphdeco-inria/diff-gaussian-rasterization
 class GSRasterizer
 {
-    thrust::device_vector<char> m_geometry_buffer;
-    thrust::device_vector<char> m_binning_buffer;
-    thrust::device_vector<char> m_image_buffer;
+    thrust::device_vector<uint8_t> m_geometry_buffer;
+    thrust::device_vector<uint8_t> m_binning_buffer;
+    thrust::device_vector<uint8_t> m_image_buffer;
 
 public:
     bool debug = false;
@@ -26,6 +26,7 @@ public:
 
     int forward(const float* background_d,
                 const Scene& scene,
+                bool scene_2,
                 const GSCamera& camera,
                 Image3fCHW& out_colorbuffer,
                 cudaStream_t stream);
@@ -35,6 +36,7 @@ public:
     /// \param[out] out_depthbuffer Output depthbuffer
     int forward(const float* background_d,
                 const Scene& scene,
+                bool scene_2,
                 const GSCamera& camera,
                 Image3fCHW& out_colorbuffer,
                 Image1fCHW& out_depthbuffer,
@@ -43,6 +45,8 @@ public:
     /// Frontend function for performing the GS backward.
     /// \note Output gradients are stored within the scene.
     /// \param scene
+    /// \param scene_2
+    ///     Whether to enable the second set of parameters within the scene.
     /// \param num_rendered
     ///     Number of gaussians rendered during forward (i.e. forward return value), internally called "R".
     /// \param background_d
@@ -51,6 +55,7 @@ public:
     ///     Gradient of loss w.r.t. the rendered image.
     void backward( //
         Scene& scene,
+        bool scene_2,
         int num_rendered,
         const float* background_d,
         const GSCamera& camera,

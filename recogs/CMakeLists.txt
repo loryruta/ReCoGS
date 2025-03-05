@@ -97,6 +97,8 @@ target_link_libraries(recogs_lib PUBLIC
         trt::nvinfer
         trt::nvonnxparser)
 
+target_compile_options(recogs_lib PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>)
+
 # main
 add_executable(recogs main.cu)
 target_link_libraries(recogs PRIVATE recogs_lib)

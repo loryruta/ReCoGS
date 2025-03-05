@@ -38,13 +38,14 @@ private:
     int m_t = 1;
     float* m_m{}; ///< First moment
     float* m_v{}; ///< Second moment
+    float m_beta1_decayed{};
+    float m_beta2_decayed{};
 
 public:
     explicit Adam(std::span<ParamSet> params_sets, const Options& options, cudaStream_t stream);
     ~Adam();
 
     void zero_grad(cudaStream_t stream);
-
     void step(cudaStream_t stream);
 };
 } // namespace gs_train

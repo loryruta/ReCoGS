@@ -16,14 +16,15 @@ namespace
 {
 __global__ void step_kernel( //
     size_t N,
-    int t,
-    float** inout_params,
-    const float** grads,
-    const float* lrs,
-    float* m,
-    float* v,
+    float** __restrict__ inout_params,
+    const float** __restrict__ grads,
+    const float* __restrict__ lrs,
+    float* __restrict__ m,
+    float* __restrict__ v,
     float beta1,
     float beta2,
+    float beta1_decayed,
+    float beta2_decayed,
     float eps,
     float weight_decay,
     bool amsgrad,
@@ -31,14 +32,21 @@ __global__ void step_kernel( //
 {
     uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= N) return;
+    // Read from global memory
     float param = *inout_params[i];
     float gt = *grads[i];
-    m[i] = beta1 * m[i] + (1.0f - beta1) * gt;
-    v[i] = beta2 * v[i] + (1.0f - beta2) * gt * gt;
-    float mhat = m[i] / (1.0f - glm::pow(beta1, t));
-    float vhat = v[i] / (1.0f - glm::pow(beta2, t));
-    param = param - lrs[i] * (mhat / (glm::sqrt(vhat) + eps));
+    float mi = m[i];
+    float vi = v[i];
+    // Compute
+    mi = beta1 * mi + (1.0f - beta1) * gt;
+    vi = beta2 * vi + (1.0f - beta2) * gt * gt;
+    float mhat = mi / (1.0f - beta1_decayed);
+    float vhat = vi / (1.0f - beta2_decayed);
+    param = param - lrs[i] * mhat / (__fsqrt_rn(vhat) + eps);
+    // Write to global memory
     *inout_params[i] = param;
+    m[i] = mi;
+    v[i] = vi;
 }
 
 __global__ void init_kernel( //
@@ -98,6 +106,10 @@ Adam::Adam(std::span<ParamSet> param_sets, const Options& options, cudaStream_t 
     dim3 block_dim = NUM_THREADS;
     init_kernel<<<num_blocks, block_dim, 0, stream>>>(
         m_N, param_set_d, param_sets.size(), m_params, m_grads, m_lrs, m_m, m_v);
+    CHECK_CUDA(cudaDeviceSynchronize()); // TODO resolve with TODO above
+
+    m_beta1_decayed = options.beta1;
+    m_beta2_decayed = options.beta2;
 }
 
 Adam::~Adam()
@@ -124,7 +136,6 @@ void Adam::step(cudaStream_t stream)
     dim3 block_dim = NUM_THREADS;
     step_kernel<<<num_blocks, block_dim, 0, stream>>>( //
         m_N,
-        m_t,
         m_params,
         (const float**) m_grads,
         m_lrs,
@@ -132,9 +143,13 @@ void Adam::step(cudaStream_t stream)
         m_v,
         m_options.beta1,
         m_options.beta2,
+        m_beta1_decayed,
+        m_beta2_decayed,
         m_options.eps,
         m_options.weight_decay,
         m_options.amsgrad,
         m_options.maximize);
     ++m_t;
+    m_beta1_decayed *= m_options.beta1;
+    m_beta2_decayed *= m_options.beta2;
 }

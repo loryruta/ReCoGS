@@ -2,9 +2,12 @@
 
 #include <optional>
 
+#include <fmt/format.h>
+
 #include "scene_io.h"
 #include "ui/MainScreen.h"
 #include "utils/image/image_cast.h"
+#include "utils/image/image_save.h"
 #include "utils/str_utils.h"
 
 using namespace gs_train;
@@ -52,6 +55,11 @@ App::App(const Params& params)
         m_stereo_depth_estimator = std::make_unique<StereoDepthEstimator>(*this, options);
     }
 
+    m_window->add_key_callback([this](int key, int scancode, int action, int mods) {
+        if (key == GLFW_KEY_F2 && action == GLFW_PRESS) {
+            m_take_screenshot = true;
+        }
+    });
     m_window->add_resize_callback([this](int width, int height) { resize_screenbuffers(width, height); });
 
     set_screen(std::make_shared<MainScreen>(*this));
@@ -103,14 +111,19 @@ void App::start()
         }
         last_t = t;
 
-        /* Update */
+        // Update
         if (m_screen) m_screen->update(dt);
 
-        /* Render */
+        // Render
         if (m_screen) {
             auto colorbuffer_3hw =
                 Image3fCHW::ref(m_colorbuffer_chw->width, m_colorbuffer_chw->height, m_colorbuffer_chw->data_d());
             m_screen->render(colorbuffer_3hw);
+            // Take screenshot
+            if (m_take_screenshot) {
+                save_screenshot(colorbuffer_3hw);
+                m_take_screenshot = false;
+            }
         }
 
         /* Transit colorbuffer from BCHW to BHWC */
@@ -136,6 +149,16 @@ void App::start()
 }
 
 void App::stop() { m_window->set_should_close(true); }
+
+void App::save_screenshot(const Image3fCHW& colorbuffer)
+{
+    std::time_t time = std::time(nullptr);
+    std::tm local_time = *std::localtime(&time);
+    std::ostringstream oss;
+    oss << std::put_time(&local_time, "%Y-%m-%d-%H-%M-%S");
+    std::filesystem::path screenshot_filepath = fmt::format("screenshot-{}.png", oss.str());
+    image_save_png(colorbuffer, screenshot_filepath);
+}
 
 void App::resize_screenbuffers(int width, int height)
 {

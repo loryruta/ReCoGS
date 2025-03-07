@@ -46,6 +46,7 @@ private:
     /// The stream where all UI -related CUDA operations are done.
     /// It must be used instead of the default stream.
     cudaStream_t m_stream;
+    bool m_take_screenshot = false;
 
     /* Stats */
     double m_fps = 0.0;
@@ -105,6 +106,7 @@ public:
     void stop();
 
 private:
+    void save_screenshot(const Image3fCHW& colorbuffer);
     void resize_screenbuffers(int width, int height);
 };
 } // namespace gs_train

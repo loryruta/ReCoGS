@@ -6,6 +6,7 @@
 #include <thread>
 #include <vector>
 
+#include <fmt/format.h>
 #include <thrust/device_vector.h>
 #include <thrust/random.h>
 
@@ -15,6 +16,7 @@
 #include "utils/image/image_cast.h"
 #include "utils/image/image_copy.h"
 #include "utils/image/image_load.h"
+#include "utils/image/image_save.h"
 #include "utils/misc_utils.h"
 #include "utils/stb_image.h"
 #include "video/CudaImageVisualizer.h"
@@ -58,6 +60,11 @@ TEST_CASE("Test image optimization")
     thrust::device_vector<float> image_pred_data(W * H * 3);
     Image3fCHW image_pred = Image3fCHW::ref(W, H, RCGS_TPTR(image_pred_data));
     thrust::device_vector<float> image_pred_grads(W * H * 3, 0);
+    // Fill the prediction with random [0, 1] numbers
+    thrust::transform(thrust::make_counting_iterator(0),
+                      thrust::make_counting_iterator(W * H * 3),
+                      image_pred_data.begin(),
+                      prg(0, 1));
 
     // Create optimizer
     std::vector<Adam::ParamSet> param_sets{};

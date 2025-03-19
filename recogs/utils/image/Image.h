@@ -37,8 +37,8 @@ private:
     T* m_data_d = nullptr;
 
 public:
-    uint32_t const width;
-    uint32_t const height;
+    uint32_t width;
+    uint32_t height;
     bool owned = true;
 
     explicit Image(uint32_t width, uint32_t height, T* data_d = nullptr)
@@ -129,13 +129,24 @@ public:
         to_host(out_data.data());
     }
 
-    __host__ Image& operator=(const Image&) = delete;
+    __host__ Image& operator=(Image&& other) noexcept
+    {
+        CHECK_STATE(!owned, "Moving is only valid towards non-owning references");
+        width = other.width;
+        height = other.height;
+        m_data_d = other.m_data_d;
+        owned = other.owned;
+    }
 
     /// Allocate a image owning new data (uninitialized).
-    __host__ static Image malloc(uint32_t width, uint32_t height)
+    __host__ static Image malloc(uint32_t width, uint32_t height, cudaStream_t stream = CU_STREAM_LEGACY)
     {
         Image image(width, height, nullptr);
-        CHECK_CUDA(cudaMalloc(&image.m_data_d, width * height * C * sizeof(T)));
+        CHECK_CUDA(cudaMallocAsync(&image.m_data_d, width * height * C * sizeof(T), stream));
+        if (stream == CU_STREAM_LEGACY) {
+            // TODO not sure if needed; if we allocate asynchronously we should also deallocate asynchronously!
+            CHECK_CUDA(cudaStreamSynchronize(stream));
+        }
         return image;
     }
 

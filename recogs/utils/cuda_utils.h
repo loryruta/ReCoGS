@@ -103,4 +103,19 @@ __host__ __device__ void swap(T& inout_a, T& inout_b)
     inout_b = c;
 }
 
+__forceinline__ __device__ uint32_t get_lane_id()
+{
+    unsigned ret;
+    asm volatile("mov.u32 %0, %laneid;" : "=r"(ret));
+    return ret;
+}
+
+__forceinline__ __device__ uint32_t get_warp_id()
+{
+    // This is not equal to threadIdx.x / 32
+    unsigned ret;
+    asm volatile("mov.u32 %0, %warpid;" : "=r"(ret));
+    return ret;
+}
+
 } // namespace gs_train

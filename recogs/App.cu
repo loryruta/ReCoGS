@@ -23,6 +23,7 @@ App::App(const Params& params)
     params.validate();
 
     m_scene_ply = params.scene_ply;
+    m_scene_folder = m_scene_ply.parent_path().parent_path().parent_path();
 
     /* Load scene/background */
     m_scene = std::make_unique<Scene>(read_scene_from_ply(params.scene_ply));
@@ -40,6 +41,9 @@ App::App(const Params& params)
     m_window->make_context();
 
     CHECK_CUDA(cudaStreamCreate(&m_stream));
+
+    // Load cameras
+    m_training_cameras = read_cameras_from_json(m_scene_folder, m_stream);
 
     /* Init screenbuffers */
     glm::ivec2 resolution = m_window->framebuffer_size();

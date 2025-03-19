@@ -8,30 +8,15 @@
 
 using namespace gs_train;
 
-namespace
-{
-/// Initialize the given camera to the first camera pose of the "train" scene from T&T
-void init_camera_to_camera0_train_scene(GSCamera& camera, glm::ivec2 resolution)
-{
-    camera.position = {-3.0090f, -0.1109f, -3.7528f};
-    camera.rotation =
-        glm::quat_cast(glm::transpose(glm::mat3{{0.8761342012188561f, 0.06925962026449778f, 0.47706599800804744f},
-                                                {-0.047474218398951024f, 0.9972110940209488f, -0.05758673934988211f},
-                                                {-0.4797239414934442f, 0.02780537650095985f, 0.8769787916452907f}}));
-    camera.fx = 1159.588073303806f;
-    camera.fy = 1164.6601287484507f;
-    camera.width = 1959;
-    camera.height = 1090;
-}
-} // namespace
-
 MainScreen::MainScreen(App& app, std::optional<GSCamera> initial_view) : m_app(app)
 {
     /* Init camera */
     if (initial_view) {
         m_camera = *initial_view;
+    } else if (!app.cameras().empty()) {
+        m_camera = app.cameras().at(18);
     } else {
-        init_camera_to_camera0_train_scene(m_camera, app.resolution());
+        m_camera = GSCamera{};
     }
 
     /* Action listener */

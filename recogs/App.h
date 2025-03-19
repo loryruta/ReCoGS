@@ -29,11 +29,13 @@ public:
 
 private:
     std::filesystem::path m_scene_ply;
+    std::filesystem::path m_scene_folder;
 
     /* Scene */
     std::unique_ptr<Scene> m_scene;
     DeviceBuffer m_scene_background{"background"};
     std::unique_ptr<Selection3d> m_selection3d;
+    std::vector<GSCamera> m_training_cameras;
 
     /* UI/Display */
     std::unique_ptr<Window> m_window;
@@ -69,6 +71,7 @@ public:
     ~App();
 
     [[nodiscard]] std::filesystem::path const& scene_ply() const { return m_scene_ply; }
+    [[nodiscard]] std::filesystem::path const& scene_folder() const { return m_scene_folder; }
 
     [[nodiscard]] Window& window() const { return *m_window; }
     [[nodiscard]] glm::ivec2 resolution() const { return m_window->framebuffer_size(); }
@@ -77,6 +80,7 @@ public:
     [[nodiscard]] Scene& scene() const { return *m_scene; }
     [[nodiscard]] const float* background_d() const { return m_scene_background.data_ptr<float>(); }
     [[nodiscard]] Selection3d& selection3d() const { return *m_selection3d; };
+    [[nodiscard]] std::vector<GSCamera> const& cameras() const { return m_training_cameras; }
 
     [[nodiscard]] GSRasterizer& gs_rasterizer() { return *m_gs_rasterizer; }
     [[nodiscard]] SelectionRenderer& selection_renderer() { return *m_selection_renderer; }

@@ -194,3 +194,26 @@ void gs_train::write_scene_to_ply(const Scene& scene, const std::filesystem::pat
     //        of.write((const char*) &scene.rotations[i * 4], 4 * sizeof(float));
     //    }
 }
+
+std::vector<GSCamera> gs_train::read_cameras_from_json(const std::filesystem::path& scene_folder, cudaStream_t stream)
+{
+    std::filesystem::path cameras_json = scene_folder / "cameras.json";
+    if (!std::filesystem::exists(cameras_json)) {
+        printf("[WARN ] [scene_io] cameras.json not found\n");
+        return {};
+    }
+
+    printf("[INFO ] [scene_io] Loading cameras at: %s\n", cameras_json.c_str());
+    std::ifstream file(cameras_json);
+    nlohmann::json json = nlohmann::json::parse(file);
+    std::vector<GSCamera> cameras;
+    cameras.reserve(json.size());
+    for (const nlohmann::json& camera_json : json) {
+        GSCamera& camera = cameras.emplace_back();
+        camera.deserialize(camera_json);
+        camera.update(stream);
+    }
+    CHECK_CUDA(cudaStreamSynchronize(stream));
+    printf("[INFO ] [scene_io] %zu cameras loaded\n", cameras.size());
+    return cameras;
+}

@@ -92,6 +92,7 @@ target_link_libraries(recogs_lib PUBLIC
         glfw
         glm::glm
         imgui::imgui
+        miniply
         nlohmann_json::nlohmann_json
         glad
         trt::nvinfer

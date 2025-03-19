@@ -23,6 +23,10 @@ add_subdirectory(${THIRD_PARTY_DIR}/cudaKDTree)
 add_library(glad OBJECT ${THIRD_PARTY_DIR}/glad/src/glad.c)
 target_include_directories(glad PUBLIC ${THIRD_PARTY_DIR}/glad/include/)
 
+# miniply
+add_library(miniply OBJECT ${THIRD_PARTY_DIR}/miniply/miniply.cpp)
+target_include_directories(miniply PUBLIC ${THIRD_PARTY_DIR}/miniply/)
+
 find_package(fmt CONFIG REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)

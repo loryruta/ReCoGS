@@ -4,6 +4,8 @@
 #include <fstream>
 #include <vector>
 
+#include <miniply.h>
+
 #include "utils/misc_utils.h"
 
 using namespace gs_train;
@@ -20,115 +22,88 @@ void require_line(const std::string& actual, const std::string& expected)
 }
 } // namespace
 
+std::vector<uint32_t> miniply_find_properties_indices(const miniply::PLYElement& element,
+                                                      const std::vector<std::string>& property_names)
+{
+    std::vector<uint32_t> indices;
+    indices.reserve(property_names.size());
+    for (const std::string& property_name : property_names) {
+        uint32_t i = element.find_property(property_name.c_str());
+        CHECK_ARG(i != miniply::kInvalidIndex, "Cannot find property: %s", property_name.c_str());
+        indices.emplace_back(i);
+    }
+    return indices;
+}
+
 Scene gs_train::read_scene_from_ply(const std::filesystem::path& scene_ply)
 {
-    std::ifstream is(scene_ply, std::ios::binary);
+    miniply::PLYReader reader(scene_ply.c_str());
+    CHECK_STATE(reader.valid(), "Can't parse .ply file: %s", scene_ply.c_str());
+    CHECK_STATE(reader.has_element() && reader.element_is(miniply::kPLYVertexElement) && reader.load_element());
+    const miniply::PLYElement& element = *reader.element();
+    int N = (int) element.count;
+    printf("[DEBUG] [scene_io] Total count of vertices: %d\n", N);
 
-    std::string line;
-    std::string str;
+    std::vector<float> means(N * 3);
+    std::vector<float> shs(N * 16 * 3);
+    std::vector<float> opacities(N);
+    std::vector<float> scales(N * 3);
+    std::vector<float> rotations(N * 4);
 
-    int num_vertices = 0;
+    auto xyz_indices = miniply_find_properties_indices(element, {"x", "y", "z"});
+    auto opacity_indices = miniply_find_properties_indices(element, {"opacity"});
+    auto scale_indices = miniply_find_properties_indices(element, {"scale_0", "scale_1", "scale_2"});
+    auto rot_indices = miniply_find_properties_indices(element, {"rot_0", "rot_1", "rot_2", "rot_3"});
 
     // clang-format off
-    std::getline(is, line); require_line(line, "ply");
-    std::getline(is, line); require_line(line, "format binary_little_endian 1.0");
-    std::getline(is, line);
-    {
-        // Line: element vertex 1026508
-        std::stringstream ss(line);
-        ss >> str; CHECK_STATE(str == "element");
-        ss >> str; CHECK_STATE(str == "vertex");
-        ss >> num_vertices;
-    }
-    std::getline(is, line); require_line(line, "property float x");
-    std::getline(is, line); require_line(line, "property float y");
-    std::getline(is, line); require_line(line, "property float z");
-    std::getline(is, line); require_line(line, "property float nx");
-    std::getline(is, line); require_line(line, "property float ny");
-    std::getline(is, line); require_line(line, "property float nz");
-    std::getline(is, line); require_line(line, "property float f_dc_0");
-    std::getline(is, line); require_line(line, "property float f_dc_1");
-    std::getline(is, line); require_line(line, "property float f_dc_2");
-    std::getline(is, line); require_line(line, "property float f_rest_0");
-    std::getline(is, line); require_line(line, "property float f_rest_1");
-    std::getline(is, line); require_line(line, "property float f_rest_2");
-    std::getline(is, line); require_line(line, "property float f_rest_3");
-    std::getline(is, line); require_line(line, "property float f_rest_4");
-    std::getline(is, line); require_line(line, "property float f_rest_5");
-    std::getline(is, line); require_line(line, "property float f_rest_6");
-    std::getline(is, line); require_line(line, "property float f_rest_7");
-    std::getline(is, line); require_line(line, "property float f_rest_8");
-    std::getline(is, line); require_line(line, "property float f_rest_9");
-    std::getline(is, line); require_line(line, "property float f_rest_10");
-    std::getline(is, line); require_line(line, "property float f_rest_11");
-    std::getline(is, line); require_line(line, "property float f_rest_12");
-    std::getline(is, line); require_line(line, "property float f_rest_13");
-    std::getline(is, line); require_line(line, "property float f_rest_14");
-    std::getline(is, line); require_line(line, "property float f_rest_15");
-    std::getline(is, line); require_line(line, "property float f_rest_16");
-    std::getline(is, line); require_line(line, "property float f_rest_17");
-    std::getline(is, line); require_line(line, "property float f_rest_18");
-    std::getline(is, line); require_line(line, "property float f_rest_19");
-    std::getline(is, line); require_line(line, "property float f_rest_20");
-    std::getline(is, line); require_line(line, "property float f_rest_21");
-    std::getline(is, line); require_line(line, "property float f_rest_22");
-    std::getline(is, line); require_line(line, "property float f_rest_23");
-    std::getline(is, line); require_line(line, "property float f_rest_24");
-    std::getline(is, line); require_line(line, "property float f_rest_25");
-    std::getline(is, line); require_line(line, "property float f_rest_26");
-    std::getline(is, line); require_line(line, "property float f_rest_27");
-    std::getline(is, line); require_line(line, "property float f_rest_28");
-    std::getline(is, line); require_line(line, "property float f_rest_29");
-    std::getline(is, line); require_line(line, "property float f_rest_30");
-    std::getline(is, line); require_line(line, "property float f_rest_31");
-    std::getline(is, line); require_line(line, "property float f_rest_32");
-    std::getline(is, line); require_line(line, "property float f_rest_33");
-    std::getline(is, line); require_line(line, "property float f_rest_34");
-    std::getline(is, line); require_line(line, "property float f_rest_35");
-    std::getline(is, line); require_line(line, "property float f_rest_36");
-    std::getline(is, line); require_line(line, "property float f_rest_37");
-    std::getline(is, line); require_line(line, "property float f_rest_38");
-    std::getline(is, line); require_line(line, "property float f_rest_39");
-    std::getline(is, line); require_line(line, "property float f_rest_40");
-    std::getline(is, line); require_line(line, "property float f_rest_41");
-    std::getline(is, line); require_line(line, "property float f_rest_42");
-    std::getline(is, line); require_line(line, "property float f_rest_43");
-    std::getline(is, line); require_line(line, "property float f_rest_44");
-    std::getline(is, line); require_line(line, "property float opacity");
-    std::getline(is, line); require_line(line, "property float scale_0");
-    std::getline(is, line); require_line(line, "property float scale_1");
-    std::getline(is, line); require_line(line, "property float scale_2");
-    std::getline(is, line); require_line(line, "property float rot_0");
-    std::getline(is, line); require_line(line, "property float rot_1");
-    std::getline(is, line); require_line(line, "property float rot_2");
-    std::getline(is, line); require_line(line, "property float rot_3");
-    std::getline(is, line); require_line(line, "end_header");
+    reader.extract_properties(xyz_indices.data(), xyz_indices.size(), miniply::PLYPropertyType::Float, means.data());
+    reader.extract_properties(opacity_indices.data(), opacity_indices.size(), miniply::PLYPropertyType::Float, opacities.data());
+    reader.extract_properties(scale_indices.data(), scale_indices.size(), miniply::PLYPropertyType::Float, scales.data());
+    reader.extract_properties(rot_indices.data(), rot_indices.size(), miniply::PLYPropertyType::Float, rotations.data());
     // clang-format on
 
-    // Read the scene data
-    std::vector<float> means(num_vertices * 3);
-    std::vector<float> normals(num_vertices * 3);
-    std::vector<float> shs(num_vertices * 16 * 3);
-    std::vector<float> opacities(num_vertices);
-    std::vector<float> scales(num_vertices * 3);
-    std::vector<float> rotations(num_vertices * 4);
-    for (size_t i = 0; i < num_vertices; ++i) {
-        is.read((char*) (means.data() + i * 3), 3 * sizeof(float));
-        is.read((char*) (normals.data() + i * 3), 3 * sizeof(float));
-        // is.read((char*) (shs.data() + i * 48), 48 * sizeof(float));
-        is.read((char*) (shs.data() + i * 48), 3 * sizeof(float)); // f_dc_*
-        for (int ch = 0; ch < 3; ++ch) {                           // f_rest_*
-            for (int band = 0; band < 15; ++band) {
-                is.read((char*) (shs.data() + i * 48 + 3 + band * 3 + ch), sizeof(float));
-            }
+    // R channel: f_dc_0, f_rest_0,  ... f_rest_14 (r_indices)
+    // G channel: f_dc_1, f_rest_15, ... f_rest_29 (g_indices)
+    // B channel: f_dc_2, f_rest_30, ... f_rest_44 (b_indices)
+    std::vector<uint32_t> shcoeff_r_indices;
+
+    size_t num_sh_coeff_components = 3;
+    for (const miniply::PLYProperty& property : element.properties) {
+        if (property.name.starts_with("f_rest_")) {
+            ++num_sh_coeff_components;
         }
-        is.read((char*) (opacities.data() + i), sizeof(float));
-        is.read((char*) (scales.data() + i * 3), 3 * sizeof(float));
-        is.read((char*) (rotations.data() + i * 4), 4 * sizeof(float));
+    }
+    assert(num_sh_coeff_components % 3 == 0);
+    size_t num_sh_coeffs = num_sh_coeff_components / 3;
+    printf("[DEBUG] [scene_io] Found %zu SH coefficients (%zu total components)\n",
+           num_sh_coeffs,
+           num_sh_coeff_components);
+
+    for (int sh_coeff = 0; sh_coeff < num_sh_coeffs; ++sh_coeff) {
+        if (sh_coeff == 0) {
+            // f_dc_
+            auto f_dc_indices = miniply_find_properties_indices(element, {"f_dc_0", "f_dc_1", "f_dc_2"});
+            printf("[DEBUG] [scene_io] Extracting: f_dc_0, f_dc_1, f_dc_2\n");
+            size_t offset = 0;
+            size_t stride = num_sh_coeffs * 3 * sizeof(float);
+            reader.extract_properties_with_stride(
+                f_dc_indices.data(), f_dc_indices.size(), miniply::PLYPropertyType::Float, shs.data() + offset, stride);
+        } else {
+            // f_rest_
+            std::string f_rest_r = "f_rest_" + std::to_string(sh_coeff - 1);
+            std::string f_rest_g = "f_rest_" + std::to_string(sh_coeff - 1 + (num_sh_coeffs - 1));
+            std::string f_rest_b = "f_rest_" + std::to_string(sh_coeff - 1 + (num_sh_coeffs - 1) * 2);
+            printf("[DEBUG] [scene_io] Extracting: %s, %s, %s\n", f_rest_r.c_str(), f_rest_g.c_str(), f_rest_b.c_str());
+            auto f_rest_ = miniply_find_properties_indices(element, {f_rest_r, f_rest_g, f_rest_b});
+            size_t offset = 3;
+            size_t stride = num_sh_coeffs * 3 * sizeof(float);
+            reader.extract_properties_with_stride(
+                f_rest_.data(), f_rest_.size(), miniply::PLYPropertyType::Float, shs.data() + offset, stride);
+        }
     }
 
-    /* Upload to GPU */
-    Scene scene(num_vertices);
+    // Upload to GPU
+    Scene scene(N);
     thrust::copy(means.begin(), means.end(), scene.means.begin());
     // thrust::copy(normals.begin(), normals.end(), scene.normals.begin());
     thrust::copy(shs.begin(), shs.end(), scene.shs.begin());

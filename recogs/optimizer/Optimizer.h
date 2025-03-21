@@ -14,8 +14,7 @@ class Optimizer
 {
 private:
     App& m_app;
-    glm::ivec2 m_resolution{500, 500};        /// Resolution used for training (lower -> more performance)
-    std::vector<GSCamera> m_training_cameras; /// Training cameras (cameras.json in scene's folder)
+    glm::ivec2 m_resolution{500, 500}; /// Resolution used for training (lower -> more performance)
 
     std::atomic<bool> m_running = false;
 
@@ -25,8 +24,5 @@ public:
 
     void start();
     void signal_stop();
-
-private:
-    void load_training_cameras();
 };
 } // namespace gs_train

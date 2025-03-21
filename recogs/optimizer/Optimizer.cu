@@ -62,7 +62,7 @@ void print_minmax(const char* name, const thrust::device_vector<float>& vec, cud
 }
 } // namespace
 
-Optimizer::Optimizer(App& app) : m_app(app) { load_training_cameras(); }
+Optimizer::Optimizer(App& app) : m_app(app) {}
 
 Optimizer::~Optimizer() {}
 
@@ -73,6 +73,14 @@ void Optimizer::start()
     // CUDA stream used for training
     cudaStream_t stream;
     CHECK_CUDA(cudaStreamCreate(&stream));
+
+    // Load training cameras, make sure they live on GPU
+    std::vector<GSCamera> training_cameras = m_app.cameras();
+    for (GSCamera& camera : training_cameras) {
+        camera.set_resolution(m_resolution.x, m_resolution.y);
+        camera.update(stream);
+    }
+    CHECK_CUDA(cudaStreamSynchronize(stream));
 
     Image3fCHW gt = Image3fCHW::malloc(m_resolution.x, m_resolution.y);
     Image3fCHW pred = Image3fCHW::malloc(m_resolution.x, m_resolution.y);
@@ -105,7 +113,7 @@ void Optimizer::start()
     // Random
     static std::random_device random_dev;
     static std::mt19937 random(random_dev());
-    std::uniform_int_distribution<> training_cameras_dist(0, int(m_training_cameras.size() - 1));
+    std::uniform_int_distribution<> training_cameras_dist(0, int(training_cameras.size() - 1));
 
     // Optimization loop
     printf("[INFO ] [Optimizer] Starting the optimization loop...\n");
@@ -117,7 +125,7 @@ void Optimizer::start()
 
     while (m_running) {
         int camera_idx = training_cameras_dist(random);
-        const GSCamera& sampled_camera = m_training_cameras.at(camera_idx);
+        const GSCamera& sampled_camera = training_cameras.at(camera_idx);
 
         // Compute ground truth
         gs_rasterizer.forward(
@@ -128,7 +136,7 @@ void Optimizer::start()
                 float z = depthbuffer.value(x, y).r;
                 if (view_z > z) return; // Depth testing
                 glm::vec3 color = gt.value(x, y);
-                color *= glm::vec3(1, 0, 1); // TODO apply any edit
+                color = glm::vec3(0); // TODO apply any edit
                 gt.set_value(x, y, color);
             },
             stream);
@@ -191,26 +199,4 @@ void Optimizer::signal_stop()
 {
     m_running = false;
     printf("[DEBUG] [Optimizer] Stop signaled\n");
-}
-
-void Optimizer::load_training_cameras()
-{
-    std::filesystem::path scene_ply = m_app.scene_ply();
-    std::filesystem::path scene_folder = //
-        m_app.scene_ply()
-            .parent_path()  // iteration_*
-            .parent_path()  // point_cloud
-            .parent_path(); // <scene>
-    std::filesystem::path cameras_json = scene_folder / "cameras.json";
-    CHECK_ARG(std::filesystem::exists(cameras_json), "cameras.json file not found at: %s", cameras_json);
-    std::ifstream file(cameras_json);
-    nlohmann::json json = nlohmann::json::parse(file);
-    m_training_cameras.reserve(json.size());
-    for (const nlohmann::json& camera_json : json) {
-        GSCamera& camera = m_training_cameras.emplace_back();
-        camera.deserialize(camera_json);
-        camera.set_resolution(m_resolution.x, m_resolution.y);
-        camera.update(m_app.stream());
-    }
-    CHECK_CUDA(cudaStreamSynchronize(m_app.stream()));
 }

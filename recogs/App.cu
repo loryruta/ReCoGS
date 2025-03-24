@@ -3,10 +3,14 @@
 #include <optional>
 
 #include <fmt/format.h>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 
 #include "scene_io.h"
 #include "ui/MainScreen.h"
-#include "utils/image/image_cast.h"
+#include "utils/image/image_fill.h"
+#include "utils/image/image_misc.h"
 #include "utils/image/image_save.h"
 #include "utils/str_utils.h"
 
@@ -25,7 +29,7 @@ App::App(const Params& params)
     m_scene_ply = params.scene_ply;
     m_scene_folder = m_scene_ply.parent_path().parent_path().parent_path();
 
-    /* Load scene/background */
+    // Load scene/background
     m_scene = std::make_unique<Scene>(read_scene_from_ply(params.scene_ply));
     m_scene->prepare_for_training();
     std::string bytes_str = num_bytes_to_string(m_scene->num_bytes());
@@ -36,16 +40,24 @@ App::App(const Params& params)
 
     m_selection3d = std::make_unique<Selection3d>(*this);
 
-    /* Init window */
-    m_window = std::make_unique<Window>(1080, 720, "ReCoGS", false /* resizable */);
+    // Init window
+    m_window = std::make_unique<Window>(Window::create(1080, 720, "ReCoGS", false));
     m_window->make_context();
 
+    // Init ImGui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    ImGui_ImplGlfw_InitForOpenGL(m_window->handle(), true);
+    ImGui_ImplOpenGL3_Init();
+
+    // Init CUDA stream
     CHECK_CUDA(cudaStreamCreate(&m_stream));
 
     // Load cameras
     m_training_cameras = read_cameras_from_json(m_scene_folder, m_stream);
 
-    /* Init screenbuffers */
+    // Init screenbuffers
     glm::ivec2 resolution = m_window->framebuffer_size();
     resize_screenbuffers(resolution.x, resolution.y);
 
@@ -60,8 +72,17 @@ App::App(const Params& params)
     }
 
     m_window->add_key_callback([this](int key, int scancode, int action, int mods) {
-        if (key == GLFW_KEY_F2 && action == GLFW_PRESS) {
-            m_take_screenshot = true;
+        if (action == GLFW_PRESS) {
+            if (key == GLFW_KEY_F1) {
+                printf("[DEBUG] [App] UI enabled: %d\n", ui_enabled);
+                ui_enabled = !ui_enabled;
+            } else if (key == GLFW_KEY_F2) {
+                printf("[DEBUG] [App] Screenshot triggered\n");
+                m_take_screenshot = true;
+            } else if (key == GLFW_KEY_F5) {
+                printf("[DEBUG] [App] Show depth: %d\n", show_depth);
+                show_depth = !show_depth;
+            }
         }
     });
     m_window->add_resize_callback([this](int width, int height) { resize_screenbuffers(width, height); });
@@ -74,12 +95,17 @@ App::App(const Params& params)
 
 App::~App()
 {
-    CHECK_CUDA(cudaStreamSynchronize(m_stream));
-    CHECK_CUDA(cudaStreamDestroy(m_stream));
-
     // Stop the optimizer
     m_optimizer->signal_stop();
     m_optimizer_thread->join();
+
+    CHECK_CUDA(cudaStreamSynchronize(m_stream));
+    CHECK_CUDA(cudaStreamDestroy(m_stream));
+
+    // Shutdown ImGui
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 }
 
 void App::start()
@@ -89,13 +115,13 @@ void App::start()
     double last_fps_t = 0.0;
 
     while (!m_window->should_close()) {
-        m_window->poll_events();
+        Window::poll_events();
 
         ++frame_counter;
 
         glm::ivec2 fb_size = m_window->framebuffer_size();
 
-        /* FPS */
+        // FPS
         double fps_t = glfwGetTime();
         double fps_dt = fps_t - last_fps_t;
         if (fps_dt > 1.0) {
@@ -107,7 +133,7 @@ void App::start()
             last_fps_t = fps_t;
         }
 
-        /* Inter-frame time */
+        // Inter-frame time
         float dt = 0.f;
         double t = glfwGetTime();
         if (last_t.has_value()) {
@@ -119,29 +145,40 @@ void App::start()
         if (m_screen) m_screen->update(dt);
 
         // Render
-        if (m_screen) {
-            auto colorbuffer_3hw =
-                Image3fCHW::ref(m_colorbuffer_chw->width, m_colorbuffer_chw->height, m_colorbuffer_chw->data_d());
-            m_screen->render(colorbuffer_3hw);
-            // Take screenshot
-            if (m_take_screenshot) {
-                save_screenshot(colorbuffer_3hw);
-                m_take_screenshot = false;
-            }
+        if (m_screen) m_screen->render(*m_color_depth);
+
+        // Show depth
+        if (show_depth) {
+            // TODO depth scale factor in app args
+            image_depth_to_rgb_inplace(*m_color_depth, m_stream, 0.14285f);
         }
 
-        /* Transit colorbuffer from BCHW to BHWC */
-        image_cast(*m_colorbuffer_chw, *m_colorbuffer_hwc, m_stream);
-
-        /* Display */
-        m_gl_mapped_resource->write(m_colorbuffer_hwc->data_d(), m_stream);
+        // CUDA colorbuffer -> OpenGL texture
+        m_gl_mapped_resource->write(*m_color_depth, m_stream);
         CHECK_CUDA(cudaStreamSynchronize(m_stream));
 
-        // Draw OpenGL mapped texture to screen
+        // Display OpenGL texture
         glClearColor(0, 0, 1, 0);
         glClear(GL_COLOR_BUFFER_BIT);
-
         m_draw_texture->draw(m_gl_mapped_resource->texture(), 0, 0, fb_size.x, fb_size.y);
+
+        // ImGui!
+        if (ui_enabled) {
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
+
+            if (m_screen) m_screen->ui();
+
+            ImGui::Render();
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        }
+
+        // Optionally screenshot framebuffer
+        if (m_take_screenshot) {
+            save_screenshot();
+            m_take_screenshot = false;
+        }
 
         // Swap buffers
         m_window->swap_buffers();
@@ -154,14 +191,28 @@ void App::start()
 
 void App::stop() { m_window->set_should_close(true); }
 
-void App::save_screenshot(const Image3fCHW& colorbuffer)
+void App::save_screenshot()
 {
+    glm::ivec2 fb_size = m_window->framebuffer_size();
+    int w = fb_size.x;
+    int h = fb_size.y;
+    // Read framebuffer
+    std::vector<uint8_t> pixels(w * h * 3);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);
+    glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+    // Flip Y axis
+    for (int line = 0; line != h / 2; ++line) {
+        std::swap_ranges(pixels.begin() + 3 * w * line,
+                         pixels.begin() + 3 * w * (line + 1),
+                         pixels.begin() + 3 * w * (h - line - 1));
+    }
+    // Save screenshot
     std::time_t time = std::time(nullptr);
     std::tm local_time = *std::localtime(&time);
     std::ostringstream oss;
     oss << std::put_time(&local_time, "%Y-%m-%d-%H-%M-%S");
     std::filesystem::path screenshot_filepath = fmt::format("screenshot-{}.png", oss.str());
-    image_save_png(colorbuffer, screenshot_filepath);
+    stbi_write_png(screenshot_filepath.c_str(), w, h, 3, pixels.data(), w * 3);
 }
 
 void App::resize_screenbuffers(int width, int height)
@@ -169,9 +220,6 @@ void App::resize_screenbuffers(int width, int height)
     printf("[DEBUG] [App] Resizing to (%d, %d)\n", width, height);
 
     m_gl_mapped_resource = std::make_unique<GLMappedResource>(width, height);
-
-    m_colorbuffer_chw = std::make_unique<ColorbufferCHW>(ColorbufferCHW::malloc(width, height));
-    m_colorbuffer_hwc = std::make_unique<ColorbufferHWC>(ColorbufferHWC::malloc(width, height));
-
+    m_color_depth = std::make_unique<Image4fHWC>(Image4fHWC::malloc(width, height));
     if (m_screen) m_screen->resize(width, height);
 }

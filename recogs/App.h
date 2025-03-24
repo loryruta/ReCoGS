@@ -41,16 +41,13 @@ private:
     std::unique_ptr<Window> m_window;
     std::unique_ptr<GLMappedResource> m_gl_mapped_resource{};
     std::unique_ptr<DrawTexture> m_draw_texture{}; // Lazily initialized because needs OpenGL
-    using ColorbufferCHW = Image<4, float, ImageMemoryLayout::CHW>;
-    using ColorbufferHWC = Image<4, float, ImageMemoryLayout::HWC>;
-    std::unique_ptr<ColorbufferCHW> m_colorbuffer_chw;
-    std::unique_ptr<ColorbufferHWC> m_colorbuffer_hwc;
+    std::unique_ptr<Image4fHWC> m_color_depth;
     /// The stream where all UI -related CUDA operations are done.
     /// It must be used instead of the default stream.
     cudaStream_t m_stream;
     bool m_take_screenshot = false;
 
-    /* Stats */
+    // Stats
     double m_fps = 0.0;
 
     std::unique_ptr<GSRasterizer> m_gs_rasterizer;
@@ -67,6 +64,9 @@ private:
     std::unique_ptr<std::thread> m_optimizer_thread;
 
 public:
+    bool ui_enabled = true;
+    bool show_depth = false;
+
     explicit App(const Params& params);
     ~App();
 
@@ -110,7 +110,7 @@ public:
     void stop();
 
 private:
-    void save_screenshot(const Image3fCHW& colorbuffer);
+    void save_screenshot();
     void resize_screenbuffers(int width, int height);
 };
 } // namespace gs_train

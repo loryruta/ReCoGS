@@ -57,16 +57,16 @@ void CudaImageVisualizer::worker()
     Image4fHWC colorbuffer_hwc = Image4fHWC::malloc(W, H);
 
     while (!m_window->should_close()) {
-        m_window->poll_events();
+        Window::poll_events();
 
         // Clear the colorbuffer
-        image_fill(colorbuffer_chw, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
+        image_fill(colorbuffer_chw, glm::vec4(0.0f, 0.0f, 1.0f, 1.0f), m_stream);
         if (m_image) {
             Image3fCHW colorbuffer_3hw = Image3fCHW::ref(W, H, colorbuffer_chw.data_d()); // Create a 3HW view on 4HW
             image_copy(*m_image, colorbuffer_3hw, m_stream);
         }
         image_copy(colorbuffer_chw, colorbuffer_hwc, m_stream);
-        gl_mapped_resource.write(colorbuffer_hwc.data_d(), m_stream);
+        gl_mapped_resource.write(colorbuffer_hwc, m_stream);
         CHECK_CUDA(cudaStreamSynchronize(m_stream));
 
         glClearColor(0, 0, 0, 0);
@@ -80,6 +80,7 @@ void CudaImageVisualizer::worker()
 
 std::unique_ptr<CudaImageVisualizer> CudaImageVisualizer::create(int width, int height, const char* title)
 {
-    std::shared_ptr<Window> window = std::make_shared<Window>(width, height, title, false /* resizable */);
+    std::shared_ptr<Window> window =
+        std::make_shared<Window>(Window::create(width, height, title, false /* resizable */));
     return std::make_unique<CudaImageVisualizer>(window);
 }

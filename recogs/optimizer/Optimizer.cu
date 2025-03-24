@@ -1,15 +1,14 @@
 #include "Optimizer.h"
 
-#include <fstream>
 #include <random>
 
-#include <fmt/format.h>
 #include <thrust/extrema.h>
 
 #include "Adam.h"
 #include "App.h"
 #include "GSLoss.h"
 #include "utils/Stopwatch.h"
+#include "utils/image/image_copy.h"
 #include "utils/image/image_save.h"
 
 using namespace gs_train;
@@ -82,12 +81,16 @@ void Optimizer::start()
     }
     CHECK_CUDA(cudaStreamSynchronize(stream));
 
-    Image3fCHW gt = Image3fCHW::malloc(m_resolution.x, m_resolution.y);
-    Image3fCHW pred = Image3fCHW::malloc(m_resolution.x, m_resolution.y);
-    Image1fCHW depthbuffer = Image1fCHW::malloc(m_resolution.x, m_resolution.y);
+    Image4fHWC gt = Image4fHWC::malloc(m_resolution.x, m_resolution.y);
+    Image4fHWC pred = Image4fHWC::malloc(m_resolution.x, m_resolution.y);
+    Image4fCHW gt_chw = Image4fCHW::malloc(m_resolution.x, m_resolution.y);
+    Image4fCHW pred_chw = Image4fCHW::malloc(m_resolution.x, m_resolution.y);
+    Image3fCHW gt_3hw = Image3fCHW::ref(m_resolution.x, m_resolution.y, gt_chw.data_d());
+    Image3fCHW pred_3hw = Image3fCHW::ref(m_resolution.x, m_resolution.y, pred_chw.data_d());
 
     Scene& scene = m_app.scene();
 
+    // The dL/dy loss values in CHW memory format
     thrust::device_vector<float> dL_dy(m_resolution.x * m_resolution.y * 3);
     // A boolean vector remembering which values of the prediction (y) has been clamped to [0, 1]
     thrust::device_vector<bool> y_clamped(m_resolution.x * m_resolution.y * 3);
@@ -128,30 +131,31 @@ void Optimizer::start()
         const GSCamera& sampled_camera = training_cameras.at(camera_idx);
 
         // Compute ground truth
-        gs_rasterizer.forward(
-            m_app.background_d(), scene, false /* scene_2 */, sampled_camera, gt, depthbuffer, stream);
+        gs_rasterizer.forward(m_app.background_d(), scene, false /* scene_2 */, sampled_camera, gt, stream);
         m_app.selection3d().project( //
             sampled_camera,
-            [gt, depthbuffer] __device__(uint32_t x, uint32_t y, float view_z) mutable {
-                float z = depthbuffer.value(x, y).r;
+            [gt] __device__(uint32_t x, uint32_t y, float view_z) mutable {
+                float z = gt.value(x, y).w;
                 if (view_z > z) return; // Depth testing
                 glm::vec3 color = gt.value(x, y);
-                color = glm::vec3(0); // TODO apply any edit
-                gt.set_value(x, y, color);
+                color *= glm::vec3(1, 0.25f, 0.5f); // TODO apply any edit
+                gt.set_value(x, y, glm::vec4(color, z));
             },
             stream);
-        clamp_forward(gt.data_d(), gt.width * gt.height * 3, 0.0f, 1.0f, nullptr, stream);
 
         // Compute prediction
         // NOTE: gs_rasterizer will save internal state during the forward; thus this code doesn't have to be moved!
         int num_rendered =
             gs_rasterizer.forward(m_app.background_d(), scene, true /* scene_2 */, sampled_camera, pred, stream);
         if (num_rendered == 0) continue;
-        clamp_forward(pred.data_d(), m_resolution.x * m_resolution.y * 3, 0, 1, RCGS_TPTR(y_clamped), stream);
+
+        // Transit from HWC to CHW to compute the loss (convolution)
+        image_copy(gt, gt_chw, stream);
+        image_copy(pred, pred_chw, stream);
 
         // Compute loss
         float loss, L1, Lssim;
-        loss_func.forward(1, 3, m_resolution.y, m_resolution.x, pred.data_d(), gt.data_d(), loss, L1, Lssim, stream);
+        loss_func.forward(pred_3hw, gt_3hw, loss, L1, Lssim, stream);
         CHECK_CUDA(cudaStreamSynchronize(stream));
         if (iter % k_num_profile_iter == 0) {
             float iter_secs = float(k_num_profile_iter) / float(profile_opt.elapsed_seconds());
@@ -165,16 +169,7 @@ void Optimizer::start()
         }
 
         // Backward
-        loss_func.backward( //
-            1,
-            3,
-            m_resolution.y,
-            m_resolution.x,
-            pred.data_d(),
-            gt.data_d(),
-            RCGS_TPTR(dL_dy), // Output; Re-initialized every time
-            stream);
-        clamp_backward(RCGS_TPTR(y_clamped), m_resolution.x * m_resolution.y * 3, 0.0f, 1.0f, RCGS_TPTR(dL_dy), stream);
+        loss_func.backward(pred_3hw, gt_3hw, RCGS_TPTR(dL_dy), stream);
         gs_rasterizer.backward( //
             scene,
             true /* scene_2 */,

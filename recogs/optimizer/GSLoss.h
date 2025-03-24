@@ -4,6 +4,7 @@
 
 #include "fused_ssim/ssim_if.h"
 #include "utils/DeviceBuffer.h"
+#include "utils/image/Image.h"
 
 namespace gs_train
 {
@@ -36,12 +37,8 @@ public:
     /// \param img_pred Image predicted by Gaussian Splatting of shape (B, C, H, W)
     /// \param img_gt Ground truth image of shape (B, C, H, W)
     /// \return A device pointer to the loss, a single scalar
-    void forward(int B,
-                 int C,
-                 int H,
-                 int W,
-                 const float* img_pred,
-                 const float* img_gt,
+    void forward(const Image3fCHW& img_pred,
+                 const Image3fCHW& img_gt,
                  float& out_loss,
                  float& out_L1,
                  float& out_Lssim,
@@ -50,7 +47,6 @@ public:
     /// Run the backward pass for the Gaussian Splatting loss.
     /// \param[out] out_dL_dy
     ///     A device pointer to the gradient of the loss w.r.t. the predicted image
-    void backward(
-        int B, int C, int H, int W, const float* img_pred, const float* img_gt, float* out_dL_dy, cudaStream_t stream);
+    void backward(const Image3fCHW& img_pred, const Image3fCHW& img_gt, float* out_dL_dy, cudaStream_t stream);
 };
 } // namespace gs_train

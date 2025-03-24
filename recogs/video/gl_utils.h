@@ -1,12 +1,14 @@
 #pragma once
 
 #include <cstdlib>
+#include <filesystem>
 #include <string>
 #include <vector>
 
 #include <glad/glad.h>
 
 #include "utils/misc_utils.h"
+#include "utils/stb_image.h"
 
 namespace gs_train
 {
@@ -106,4 +108,27 @@ struct Program {
         return loc;
     }
 };
-} // namespace gslab
+
+inline GLuint load_texture(const std::filesystem::path& filepath, int channels, GLint minmag_filter = GL_LINEAR)
+{
+    // Load texture from file (using stbi)
+    int width, height;
+    int channels_in_file;
+    uint8_t* texture_data = stbi_load(filepath.c_str(), &width, &height, &channels_in_file, channels);
+    CHECK_ARG(texture_data, "Invalid texture file: %s", filepath);
+    // Create texture
+    GLuint texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    GLint internalformat = channels == 3 ? GL_RGB8 : GL_RGBA8;
+    GLint format = channels == 3 ? GL_RGB : GL_RGBA;
+    glTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, format, GL_UNSIGNED_BYTE, texture_data);
+    stbi_image_free(texture_data);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, minmag_filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, minmag_filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    return texture;
+}
+} // namespace gs_train

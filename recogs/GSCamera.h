@@ -25,11 +25,12 @@ private:
     thrust::device_vector<float> m_campos;
 
 public:
+    // Computed
     float m_tan_fovx;
     float m_tan_fovy;
 
-    glm::vec3 position{};
-    glm::quat rotation{};
+    glm::vec3 position{0, 0, 0};
+    glm::quat rotation{0, 0, 0, 1};
     float fx = 1159.588073303806f;
     float fy = 1164.6601287484507f;
     int width = 1959;

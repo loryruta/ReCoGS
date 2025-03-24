@@ -4,7 +4,10 @@
 #include "GSCameraController.h"
 #include "Screen.h"
 #include "depth_estimators/StereoDepthEstimator.h"
+#include "gui/stereo_test.h"
 #include "utils/image/Image.h"
+#include "video/GLMappedResource.h"
+#include "video/ImageSlider.h"
 
 namespace gs_train
 {
@@ -16,33 +19,39 @@ class App;
 class MainScreen : public Screen
 {
 private:
+    static constexpr int k_training_cameras_ui_image_resolution = 256;
+
     App& m_app;
 
     GSCamera m_camera{};
     std::unique_ptr<GSCameraController> m_camera_controller;
 
-    std::unique_ptr<Image1fCHW> m_depthbuffer;
-
     int m_key_callback = -1;
-    int m_mouse_button_callback = -1;
 
-    enum ViewMode {
-        GSRASTERIZER_COLOR, ///< Colorbuffer output of the GS rasterizer
-        GSRASTERIZER_DEPTH, ///< Depthbuffer output of the GS rasterizer (depth estimated from gaussians)
-        STEREO_H,           ///< Horizontal stereo matching
-        STEREO_V,           ///< Vertical stereo matching
-        STEREO_HV           ///< Aggregated horizontal/vertical stereo matching (typically with `min`)
-    } m_view_mode = GSRASTERIZER_COLOR;
     bool m_view_selection = false;
+
+    ui::StereoTest m_ui_stereo_test;
+
+    struct {
+        std::unique_ptr<ImageSlider> image_slider;
+        std::vector<GLMappedResource> gl_mapped_resources;
+        std::vector<Image4fHWC> color_depth;
+        int start_index = -1, end_index = -1; //
+        cudaStream_t stream;
+    } m_training_cameras_ui;
 
 public:
     explicit MainScreen(App& app, std::optional<GSCamera> initial_view = {});
-    ~MainScreen();
+    ~MainScreen() override;
 
     [[nodiscard]] const char* name() const override { return "MainScreen"; }
 
     void resize(int width, int height) override;
     void update(float dt) override;
-    void render(Image3fCHW& out_colorbuffer) override;
+    void render(Image4fHWC& out_color_depth) override;
+    void ui() override;
+
+private:
+    void render_training_cameras();
 };
 } // namespace gs_train

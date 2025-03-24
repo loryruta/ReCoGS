@@ -14,8 +14,7 @@ public:
 
     virtual void resize(int width, int height) = 0;
     virtual void update(float dt) = 0;
-    /// \param[out] out_colorbuffer
-    ///     The output colorbuffer to write on. Shape must be (3, H, W)
-    virtual void render(Image3fCHW& out_colorbuffer) = 0;
+    virtual void render(Image4fHWC& out_color_depth) = 0;
+    virtual void ui() = 0;
 };
 } // namespace gs_train

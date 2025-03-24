@@ -2,6 +2,8 @@
 
 #include <glad/glad.h>
 
+#include "utils/image/Image.h"
+
 namespace gs_train
 {
 struct GLMappedResource {
@@ -14,6 +16,8 @@ private:
 
 public:
     explicit GLMappedResource(int W, int H);
+    GLMappedResource(const GLMappedResource&) = delete;
+    GLMappedResource(GLMappedResource&& other) noexcept;
     ~GLMappedResource();
 
     [[nodiscard]] GLuint texture() const { return m_texture; }
@@ -21,6 +25,6 @@ public:
     /// Write CUDA image data to the GL texture.
     /// \param image_d
     ///     Device image data with memory layout (H, W, 4).
-    void write(float* image_d, cudaStream_t stream);
+    void write(const Image4fHWC& image, cudaStream_t stream);
 };
 } // namespace gs_train

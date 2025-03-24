@@ -31,18 +31,16 @@ public:
 private:
     const Options m_options;
 
+    std::vector<ParamSet> m_params_sets;
     size_t m_N{};
-    float** m_params{};
-    float** m_grads{};
-    float* m_lrs{};
-    int m_t = 1;
     float* m_m{}; ///< First moment
     float* m_v{}; ///< Second moment
+    int m_t = 1;
     float m_beta1_decayed{};
     float m_beta2_decayed{};
 
 public:
-    explicit Adam(std::span<ParamSet> params_sets, const Options& options, cudaStream_t stream);
+    explicit Adam(const std::vector<ParamSet>& params_sets, const Options& options, cudaStream_t stream);
     ~Adam();
 
     void zero_grad(cudaStream_t stream);

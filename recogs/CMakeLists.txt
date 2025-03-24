@@ -75,6 +75,8 @@ set(LIB_SOURCES
 set(VIDEO_SOURCES
         video/CudaImageVisualizer.cu
         video/CudaImageVisualizer.h
+        video/CudaTexture.cu
+        video/CudaTexture.h
         video/DrawTexture.cpp
         video/DrawTexture.h
         video/gl_utils.h

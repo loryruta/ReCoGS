@@ -28,33 +28,43 @@ void Window::on_mouse_button_callback(GLFWwindow* handle, int button, int action
     }
 }
 
+void Window::on_scroll_callback(GLFWwindow* handle, double xoffset, double yoffset)
+{
+    Window* window = static_cast<Window*>(glfwGetWindowUserPointer(handle));
+    for (const auto& [_, callback] : window->m_scroll_callbacks) {
+        callback(xoffset, yoffset);
+    }
+}
+
 size_t g_alive_window_count = 0;
 
-Window::Window(int width, int height, const std::string& title, bool resizable)
+Window::Window(GLFWwindow* handle) : m_handle(handle)
 {
-    if (g_alive_window_count == 0) {
-        CHECK_STATE(glfwInit(), "Can't initialize GLFW");
-    }
-    ++g_alive_window_count;
+    // Register callbacks
+    glfwSetWindowUserPointer(handle, this);
 
-    glfwWindowHint(GLFW_RESIZABLE, resizable);
-    m_handle = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
-    CHECK_STATE(m_handle, "Can't create GLFW window");
+    glfwSetWindowSizeCallback(handle, on_resize_callback);
+    glfwSetKeyCallback(handle, on_key_callback);
+    glfwSetMouseButtonCallback(handle, on_mouse_button_callback);
+    glfwSetScrollCallback(handle, on_scroll_callback);
+}
 
+Window::Window(Window&& other) noexcept : m_handle(other.m_handle)
+{
     glfwSetWindowUserPointer(m_handle, this);
 
-    glfwSetWindowSizeCallback(m_handle, on_resize_callback);
-    glfwSetKeyCallback(m_handle, on_key_callback);
-    glfwSetMouseButtonCallback(m_handle, on_mouse_button_callback);
+    other.m_handle = nullptr;
 }
 
 Window::~Window()
 {
-    glfwDestroyWindow(m_handle);
-    --g_alive_window_count;
-    if (g_alive_window_count == 0) {
-        glfwTerminate();
-        printf("GLFW terminated\n");
+    if (m_handle) {
+        glfwDestroyWindow(m_handle);
+        --g_alive_window_count;
+        if (g_alive_window_count == 0) {
+            glfwTerminate();
+            printf("GLFW terminated\n");
+        }
     }
 }
 
@@ -111,3 +121,43 @@ int Window::add_mouse_button_callback(const MouseButtonCallback& mouse_button_ca
 }
 
 bool Window::remove_mouse_button_callback(int id) { return m_mouse_button_callbacks.erase(id); }
+
+int Window::add_scroll_callback(const ScrollCallback& scroll_callback)
+{
+    m_scroll_callbacks.emplace(m_next_scroll_callback_id, scroll_callback);
+    return m_next_scroll_callback_id++;
+}
+
+bool Window::remove_scroll_callback(int id) { return m_scroll_callbacks.erase(id); }
+
+void Window::init_glfw_if_not_init()
+{
+    if (g_alive_window_count == 0) {
+        CHECK_STATE(glfwInit(), "Can't initialize GLFW");
+    }
+    ++g_alive_window_count;
+}
+
+Window Window::create(int width, int height, const std::string& title, bool resizable)
+{
+    init_glfw_if_not_init();
+
+    glfwWindowHint(GLFW_RESIZABLE, resizable);
+    printf("[INFO ] [Window] Creating a window of size (%d, %d)\n", width, height);
+    GLFWwindow* handle = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+    CHECK_STATE(handle, "Can't create GLFW window");
+    return Window(handle);
+}
+
+Window Window::create_bordered_fullscreen(const std::string& title)
+{
+    init_glfw_if_not_init();
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode* vidmode = glfwGetVideoMode(monitor);
+    printf(
+        "[INFO ] [Window] Creating a bordered fullscreen window of size (%d, %d)\n", vidmode->width, vidmode->height);
+    GLFWwindow* handle = glfwCreateWindow(vidmode->width, vidmode->height, title.c_str(), nullptr, nullptr);
+    glfwSetWindowPos(handle, 0, 0);
+    CHECK_STATE(handle, "Can't create GLFW window");
+    return Window(handle);
+}

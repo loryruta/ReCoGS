@@ -21,6 +21,7 @@ private:
     using ResizeCallback = std::function<void(int width, int height)>;
     using KeyCallback = std::function<void(int key, int scancode, int action, int mods)>;
     using MouseButtonCallback = std::function<void(int button, int action, int mods)>;
+    using ScrollCallback = std::function<void(double xoffset, double yoffset)>;
 
     // Callbacks
     std::unordered_map<int, ResizeCallback> m_resize_callbacks;
@@ -29,9 +30,12 @@ private:
     int m_next_key_callback_id = 0;
     std::unordered_map<int, MouseButtonCallback> m_mouse_button_callbacks;
     int m_next_mouse_button_callback_id = 0;
+    std::unordered_map<int, ScrollCallback> m_scroll_callbacks;
+    int m_next_scroll_callback_id = 0;
 
 public:
-    explicit Window(int width, int height, const std::string& title, bool resizable = false);
+    Window(const Window&) = delete;
+    Window(Window&& other) noexcept;
     ~Window();
 
     [[nodiscard]] GLFWwindow* handle() const { return m_handle; };
@@ -39,6 +43,8 @@ public:
     void set_title(const std::string& title) const { glfwSetWindowTitle(m_handle, title.c_str()); }
 
     [[nodiscard]] glm::ivec2 framebuffer_size() const;
+    /// Alias to framebuffer_size()
+    [[nodiscard]] glm::ivec2 resolution() const { return framebuffer_size(); }
 
     void make_context(); // TODO dependent on OpenGL code
 
@@ -59,7 +65,7 @@ public:
         return glfwGetMouseButton(m_handle, button) == GLFW_PRESS;
     }
 
-    void poll_events();
+    static void poll_events();
     void swap_buffers();
 
     int add_resize_callback(const ResizeCallback& callback);
@@ -67,13 +73,22 @@ public:
 
     int add_key_callback(const KeyCallback& key_callback);
     bool remove_key_callback(int id);
-
     int add_mouse_button_callback(const MouseButtonCallback& mouse_button_callback);
     bool remove_mouse_button_callback(int id);
+    int add_scroll_callback(const ScrollCallback& scroll_callback);
+    bool remove_scroll_callback(int id);
+
+    static Window create(int width, int height, const std::string& title, bool resizable);
+    static Window create_bordered_fullscreen(const std::string& title);
 
 private:
+    explicit Window(GLFWwindow* handle);
+
+    static void init_glfw_if_not_init();
+
     static void on_resize_callback(GLFWwindow* handle, int width, int height);
     static void on_key_callback(GLFWwindow* handle, int key, int scancode, int action, int mods);
     static void on_mouse_button_callback(GLFWwindow* handle, int button, int action, int mods);
+    static void on_scroll_callback(GLFWwindow* handle, double xoffset, double yoffset);
 };
 } // namespace gs_train

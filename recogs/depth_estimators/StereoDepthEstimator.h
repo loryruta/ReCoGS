@@ -31,11 +31,11 @@ private:
 
     std::unique_ptr<PCVNetEngine> m_pcvnet_engine;
 
-    DeviceBuffer m_im0{"EstimateDepth/im0"};
-    DeviceBuffer m_im1{"EstimateDepth/im1"};
-    DeviceBuffer m_pcvnet_im0{"EstimateDepth/pcvnet_im0"};                     // Padded/rotated
-    DeviceBuffer m_pcvnet_im1{"EstimateDepth/pcvnet_im1"};                     // Padded/rotated
-    DeviceBuffer m_pcvnet_disparity_map{"EstimateDepth/pcvnet_disparity_map"}; // Padded/rotated
+    thrust::device_vector<float> m_im0;
+    thrust::device_vector<float> m_im1;
+    thrust::device_vector<float> m_pcvnet_im0;           // Padded/rotated
+    thrust::device_vector<float> m_pcvnet_im1;           // Padded/rotated
+    thrust::device_vector<float> m_pcvnet_disparity_map; // Padded/rotated
 
 public:
     bool debug;
@@ -44,16 +44,15 @@ public:
     explicit StereoDepthEstimator(App& app, Options options);
     ~StereoDepthEstimator() = default;
 
-    /// Estimate depth by performing stereo matching on the given axis (i.e. horizontal/vertical).
-    /// \param[inout] out_depth
-    ///     The output depth-buffer. It must be pre-allocated and its resolution must match the camera's.
-    ///     Its values are "min-ed" with new estimates therefore it's uninitialized if filled with INFINITY values.
-    void estimate_single_axis(const GSCamera& camera, Axis axis, float b, Image1fCHW& inout_depth, cudaStream_t stream);
+    /// Estimate depth by performing stereo matching on the given axis (horizontal or vertical).
+    /// \param[inout] inout_color_depth
+    ///     The output color/depth (only depth is written).
+    void estimate_single_axis(
+        const GSCamera& camera, Axis axis, float b, Image4fHWC& inout_color_depth, cudaStream_t stream);
 
     /// Estimate depth by performing horizontal and vertical stereo matching.
-    /// \param[inout] inout_depth
-    ///     The output depth-buffer. It must be pre-allocated and its resolution must match the camera's.
-    ///     Its values are "min-ed" with new estimates therefore it's uninitialized if filled with INFINITY values.
-    void estimate_hv(const GSCamera& camera, float b, Image1fCHW& inout_depth, cudaStream_t stream);
+    /// \param[inout] inout_color_depth
+    ///     The output color/depth (only depth is written).
+    void estimate_hv(const GSCamera& camera, float b, Image4fHWC& inout_color_depth, cudaStream_t stream);
 };
 } // namespace gs_train

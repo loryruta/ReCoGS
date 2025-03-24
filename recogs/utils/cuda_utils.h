@@ -25,7 +25,7 @@ __global__ void dispatch_single_thread_kernel(FUNCTION function)
 
 inline void check_cuda_error(cudaError_t error, char const* file, int line)
 {
-    if (error != cudaSuccess) {
+    if (RCGS_UNLIKELY(error != cudaSuccess)) {
         fprintf(stderr, "[ERROR] CUDA error: %s (%s:%d)\n", cudaGetErrorString(error), file, line);
         exit(1);
     }

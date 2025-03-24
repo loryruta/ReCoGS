@@ -35,8 +35,7 @@ int GSRasterizer::forward( //
     const float* campos,
     float tan_fovx,
     float tan_fovy,
-    float* out_colorbuffer,
-    float* out_depthbuffer,
+    float* out_color_depth,
     cudaStream_t stream)
 {
     int num_rendered = CudaRasterizer::Rasterizer::forward( //
@@ -63,8 +62,7 @@ int GSRasterizer::forward( //
         tan_fovx,
         tan_fovy,
         false, // prefiltered
-        out_colorbuffer,
-        out_depthbuffer,
+        out_color_depth,
         nullptr, // radii
         debug,
         stream);
@@ -75,12 +73,12 @@ int GSRasterizer::forward(const float* background_d,
                           const Scene& scene,
                           bool scene_2,
                           const GSCamera& camera,
-                          Image3fCHW& out_colorbuffer,
+                          Image4fHWC& out_color_depth,
                           cudaStream_t stream)
 {
     return forward( //
-        (int) out_colorbuffer.width,
-        (int) out_colorbuffer.height,
+        (int) out_color_depth.width,
+        (int) out_color_depth.height,
         background_d,
         scene.num_vertices,
         RCGS_TPTR(scene.means),
@@ -93,36 +91,7 @@ int GSRasterizer::forward(const float* background_d,
         camera.campos_d(),
         camera.tan_fovx(),
         camera.tan_fovy(),
-        out_colorbuffer.data_d(),
-        nullptr,
-        stream);
-}
-
-int GSRasterizer::forward(const float* background_d,
-                          const Scene& scene,
-                          bool scene_2,
-                          const GSCamera& camera,
-                          Image3fCHW& out_colorbuffer,
-                          Image1fCHW& out_depthbuffer,
-                          cudaStream_t stream)
-{
-    return forward( //
-        (int) out_colorbuffer.width,
-        (int) out_colorbuffer.height,
-        background_d,
-        scene.num_vertices,
-        RCGS_TPTR(scene.means),
-        RCGS_TPTR(scene_2 ? scene.shs_2 : scene.shs),
-        RCGS_TPTR(scene.opacities),
-        RCGS_TPTR(scene.scales),
-        RCGS_TPTR(scene.rotations),
-        camera.viewmatrix_d(),
-        camera.projmatrix_d(),
-        camera.campos_d(),
-        camera.tan_fovx(),
-        camera.tan_fovy(),
-        out_colorbuffer.data_d(),
-        out_depthbuffer.data_d(),
+        out_color_depth.data_d(),
         stream);
 }
 

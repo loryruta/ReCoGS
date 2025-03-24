@@ -24,13 +24,6 @@ public:
     explicit GSRasterizer() = default;
     ~GSRasterizer() = default;
 
-    int forward(const float* background_d,
-                const Scene& scene,
-                bool scene_2,
-                const GSCamera& camera,
-                Image3fCHW& out_colorbuffer,
-                cudaStream_t stream);
-
     /// Frontend function for performing the GS forward.
     /// \param[out] out_colorbuffer Output colorbuffer
     /// \param[out] out_depthbuffer Output depthbuffer
@@ -38,8 +31,7 @@ public:
                 const Scene& scene,
                 bool scene_2,
                 const GSCamera& camera,
-                Image3fCHW& out_colorbuffer,
-                Image1fCHW& out_depthbuffer,
+                Image4fHWC& out_color_depth,
                 cudaStream_t stream);
 
     /// Frontend function for performing the GS backward.
@@ -63,8 +55,7 @@ public:
         cudaStream_t stream);
 
 private:
-    /// \param[out] out_colorbuffer Output colorbuffer of shape (3, H, W)
-    /// \param[out] out_depthbuffer Output depthbuffer of shape (1, H, W)
+    /// \param[out] out_colorbuffer Output colorbuffer of shape (H, W, 4)
     /// \return Number of gaussians rendered
     int forward(int W,
                 int H,
@@ -80,8 +71,7 @@ private:
                 const float* campos,
                 float tan_fovx,
                 float tan_fovy,
-                float* out_colorbuffer,
-                float* out_depthbuffer,
+                float* out_color_depth,
                 cudaStream_t stream);
 
     void backward( //

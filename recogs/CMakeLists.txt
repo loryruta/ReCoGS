@@ -82,6 +82,8 @@ set(VIDEO_SOURCES
         video/gl_utils.h
         video/GLMappedResource.cu
         video/GLMappedResource.h
+        video/ImageSlider.cpp
+        video/ImageSlider.h
         video/Window.cpp
         video/Window.h
 )

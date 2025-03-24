@@ -34,9 +34,5 @@ find_package(imgui CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(TensorRT MODULE REQUIRED)
 
-# onnxruntime
-set(onnxruntime_DIR "${THIRD_PARTY_DIR}/onnxruntime/lib64/cmake/onnxruntime")
-find_package(onnxruntime REQUIRED CONFIG)
-
 add_subdirectory(recogs)
 add_subdirectory(recogs_test)

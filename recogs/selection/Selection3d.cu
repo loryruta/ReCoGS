@@ -7,12 +7,11 @@ using namespace gs_train;
 
 Selection3d::Selection3d(App& app) : m_app(app) {}
 
-void Selection3d::append( //
-    const thrust::device_vector<uint32_t>& ss_points,
-    const Image1fCHW& depth_map,
-    const GSCamera& camera)
+void Selection3d::append(const thrust::device_vector<uint32_t>& ss_points,
+                         const Image4fHWC& color_depth,
+                         const GSCamera& camera)
 {
-    CHECK_ARG(depth_map.size() == camera.resolution(), "depth and view must have the same resolution");
+    CHECK_ARG(color_depth.size() == camera.resolution(), "depth and view must have the same resolution");
 
     thrust::device_vector<glm::vec3> new_points(ss_points.size());
 
@@ -22,7 +21,7 @@ void Selection3d::append( //
     uint32_t* counter_d = thrust::raw_pointer_cast(counter.data());
     unproject_points(
         ss_points,
-        depth_map,
+        color_depth,
         camera,
         [new_points_d, counter_d] __device__(const glm::vec3& ws_point) {
             uint32_t i = atomicAdd(counter_d, 1);
@@ -54,12 +53,12 @@ void Selection3d::project(const GSCamera& camera, Selection2d::RefMap& out_ref_m
         m_app.stream());
 }
 
-void Selection3d::clear(const thrust::device_vector<bool>& clear_bitmask)
+void Selection3d::clear(const thrust::device_vector<bool>& clear_bitmask, cudaStream_t stream)
 {
     CHECK_ARG(m_points.size() == clear_bitmask.size());
-    thrust::device_vector<glm::vec3> new_points;
-    thrust::copy_if( //
-        thrust::cuda::par.on(m_app.stream()),
+    thrust::device_vector<glm::vec3> new_points(m_points.size());
+    auto result_end = thrust::copy_if( //
+        thrust::cuda::par.on(stream),
         m_points.begin(),
         m_points.end(),
         clear_bitmask.begin(),

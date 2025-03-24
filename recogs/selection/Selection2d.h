@@ -43,19 +43,17 @@ public:
     [[nodiscard]] const RefMap& ref_map() const { return m_ref_map; }
 
     /// Set the pixels in a line between \c p0 and \c p1, given a radius.
-    void fill_line(glm::ivec2 p0, glm::ivec2 p1, int radius);
+    void fill_line(glm::ivec2 p0, glm::ivec2 p1, int radius, glm::vec2 offset, float scale, cudaStream_t stream);
 
     /// Clear the points in a line between \c p0 and \c p1 given a radius.
-    /// \param hard
-    ///     If set, delete points even from the 3D selection
-    void clear_line(glm::ivec2 p0, glm::ivec2 p1, int radius, bool hard);
+    void clear_line(glm::ivec2 p0, glm::ivec2 p1, int radius, glm::vec2 offset, float scale, cudaStream_t stream);
 
     /// Populate the 3D selection with new points:
     /// drain "new map" by unprojecting its points and adding them to the 3D selection.
     /// After this call this Selection2d object becomes invalid.
-    void populate_selection3d(const Image1fCHW& depth);
+    void populate_selection3d(const Image4fHWC& color_depth);
 
 private:
-    void reproject_ref_map();
+    void reproject_ref_map(cudaStream_t stream);
 };
 } // namespace gs_train

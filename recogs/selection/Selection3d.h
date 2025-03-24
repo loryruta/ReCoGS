@@ -29,7 +29,7 @@ public:
 
     /// Unproject the ref. screen-space points to world-space using the depth map and camera parameters.
     /// Then, append the result to the selection pointcloud.
-    void append(const thrust::device_vector<uint32_t>& ss_points, const Image1fCHW& depth_map, const GSCamera& camera);
+    void append(const thrust::device_vector<uint32_t>& ss_points, const Image4fHWC& color_depth, const GSCamera& camera);
 
     /// Project the 3D selection to screen and invoke a device callback for any projected point.
     /// Any point outside is clipped.
@@ -41,7 +41,7 @@ public:
     void project(const GSCamera& camera, Selection2d::RefMap& out_ref_map) const;
 
     /// Clear the points signaled to \c true in the provided bitmask.
-    void clear(const thrust::device_vector<bool>& clear_bitmask);
+    void clear(const thrust::device_vector<bool>& clear_bitmask, cudaStream_t stream);
 };
 } // namespace gs_train
 

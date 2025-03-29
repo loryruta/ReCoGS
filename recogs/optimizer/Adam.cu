@@ -5,14 +5,14 @@
 #include "utils/cuda_utils.h"
 #include "utils/misc_utils.h"
 
-#define NUM_THREADS 1024
+#define NUM_THREADS 512
 
 using namespace gs_train;
 
 namespace
 {
 __global__ void step_kernel( //
-    size_t N,
+    uint32_t N,
     float* __restrict__ inout_params,
     const float* __restrict__ grads,
     float lr,
@@ -87,7 +87,7 @@ void Adam::zero_grad(cudaStream_t stream)
 
 void Adam::step(cudaStream_t stream)
 {
-    dim3 num_blocks = div_ceil(m_N, size_t(NUM_THREADS));
+    dim3 num_blocks = div_ceil<uint32_t>(m_N, NUM_THREADS);
     dim3 block_dim = NUM_THREADS;
     step_kernel<<<num_blocks, block_dim, 0, stream>>>( //
         m_N,

@@ -6,6 +6,8 @@ set(LIB_SOURCES
         depth_estimators/StereoDepthEstimator.h
 
         gui/recogs_style.h
+        gui/stereo_test.h
+
         fused_ssim/ssim.cu
         fused_ssim/ssim.h
         fused_ssim/ssim_if.cu

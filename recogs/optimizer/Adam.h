@@ -1,6 +1,7 @@
 #pragma once
 
-#include <span>
+#include <cstdint>
+#include <vector>
 
 // Reference:
 // https://pytorch.org/docs/stable/generated/torch.optim.Adam.html
@@ -32,7 +33,7 @@ private:
     const Options m_options;
 
     std::vector<ParamSet> m_params_sets;
-    size_t m_N{};
+    uint32_t m_N{};
     float* m_m{}; ///< First moment
     float* m_v{}; ///< Second moment
     int m_t = 1;

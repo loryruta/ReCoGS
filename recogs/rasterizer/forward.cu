@@ -262,7 +262,7 @@ __global__ void preprocessCUDA(int P, int D, int M,
 template <uint32_t CHANNELS>
 __global__ void __launch_bounds__(BLOCK_X * BLOCK_Y)
 renderCUDA(
-	const uint2* __restrict__ ranges,           // W/16 * H/16
+	const uint2* __restrict__ ranges,           // Input W/16 * H/16
 	const uint32_t* __restrict__ point_list,    // Input N
         const float* __restrict__ depths,           // Input N; View-space Z
 	int W,

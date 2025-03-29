@@ -110,10 +110,10 @@ void StereoDepthEstimator::estimate_single_axis(
     rview.position += (axis == Axis::H ? camera.right() : -camera.up()) * b;
     rview.update(stream);
     m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), false /* scene_2 */, rview, im1, stream);
-    //    if (debug) { TODO
-    //        image_save_png(im0, fmt::format("estimatedepth-{}im0.png", debug_image_prefix));
-    //        image_save_png(im1, fmt::format("estimatedepth-{}im1.png", debug_image_prefix));
-    //    }
+    if (debug) {
+        image_save(im0, fmt::format("estimatedepth-{}im0.png", debug_image_prefix), stream);
+        image_save(im1, fmt::format("estimatedepth-{}im1.png", debug_image_prefix), stream);
+    }
 
     // Pad im0, im1
     int padded_width = PCVNetEngine::k_io_width;
@@ -131,8 +131,8 @@ void StereoDepthEstimator::estimate_single_axis(
     block_dim = {16, 16};
     prepare_pcvnet_input_kernel<<<num_blocks, block_dim, 0, stream>>>(im0, im1, rotate90cw, pcvnet_im0, pcvnet_im1);
     if (debug) {
-        image_save_png(pcvnet_im0, fmt::format("estimatedepth-{}pcvnet-im0.png", debug_image_prefix));
-        image_save_png(pcvnet_im1, fmt::format("estimatedepth-{}pcvnet-im1.png", debug_image_prefix));
+        image_save(pcvnet_im0, fmt::format("estimatedepth-{}pcvnet-im0.png", debug_image_prefix), stream);
+        image_save(pcvnet_im1, fmt::format("estimatedepth-{}pcvnet-im1.png", debug_image_prefix), stream);
     }
 
     // Run PCVNet inference
@@ -141,8 +141,8 @@ void StereoDepthEstimator::estimate_single_axis(
     Image1fCHW pcvnet_disparity_map = Image1fCHW::ref(padded_width, padded_height, RCGS_TPTR(m_pcvnet_disparity_map));
     m_pcvnet_engine->infer(pcvnet_im0, pcvnet_im1, pcvnet_disparity_map, stream);
     if (debug) {
-        Image3fCHW disparity_map_rgb = image_scalar_to_rgb(pcvnet_disparity_map, stream);
-        image_save_png(disparity_map_rgb, fmt::format("estimatedepth-{}pcvnet-disparity-map.png", debug_image_prefix));
+        Image3fCHW dispmap_rgb = image_scalar_to_rgb(pcvnet_disparity_map, stream);
+        image_save(dispmap_rgb, fmt::format("estimatedepth-{}pcvnet-disparity-map.png", debug_image_prefix), stream);
     }
 
     // Undo rotation and padding of disparity map and compute depth map in a single kernel call
@@ -156,10 +156,10 @@ void StereoDepthEstimator::estimate_single_axis(
         prepare_pcvnet_output_kernel<<<num_blocks, block_dim, 0, stream>>>(
             pcvnet_disparity_map, true /* rotated90cw */, camera.fy, b, inout_color_depth);
     }
-    if (debug) {
-        // Image3fCHW depth_rgb = image_depthbuffer_to_rgb(inout_depth, stream);
-        // image_save_png(depth_rgb, fmt::format("estimatedepth-{}depth.png", debug_image_prefix));
-    }
+//    if (debug) {
+//         Image3fCHW depth_rgb = image_depthbuffer_to_rgb(inout_color_depth, stream);
+//         image_save(depth_rgb, fmt::format("estimatedepth-{}depth.png", debug_image_prefix));
+//    }
 }
 
 void StereoDepthEstimator::estimate_hv(const GSCamera& camera,

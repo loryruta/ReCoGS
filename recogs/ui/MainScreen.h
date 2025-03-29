@@ -19,7 +19,7 @@ class App;
 class MainScreen : public Screen
 {
 private:
-    static constexpr int k_training_cameras_ui_image_resolution = 256;
+    static constexpr int k_training_cameras_ui_image_resolution = 64;
 
     App& m_app;
 

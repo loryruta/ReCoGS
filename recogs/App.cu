@@ -7,6 +7,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include "gui/recogs_style.h"
 #include "scene_io.h"
 #include "ui/MainScreen.h"
 #include "utils/image/image_fill.h"
@@ -50,6 +51,8 @@ App::App(const Params& params)
     ImGuiIO& io = ImGui::GetIO();
     ImGui_ImplGlfw_InitForOpenGL(m_window->handle(), true);
     ImGui_ImplOpenGL3_Init();
+
+    ui::apply_style(ImGui::GetStyle());
 
     // Init CUDA stream
     CHECK_CUDA(cudaStreamCreate(&m_stream));

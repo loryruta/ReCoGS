@@ -4,9 +4,10 @@
 
 #define RCGS_IMGUI_DISABLE_BUTTON(disabled_, code_)                                                                    \
     do {                                                                                                               \
-        if (!!(disabled_)) ImGui::BeginDisabled();                                                                     \
+        bool condition_ = !!(disabled_);                                                                               \
+        if (condition_) ImGui::BeginDisabled();                                                                        \
         code_;                                                                                                         \
-        if (!!(disabled_)) ImGui::EndDisabled();                                                                       \
+        if (condition_) ImGui::EndDisabled();                                                                          \
     } while (false)
 
 namespace gs_train

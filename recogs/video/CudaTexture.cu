@@ -22,7 +22,7 @@ CudaTexture::CudaTexture(int width, int height) : m_width(width), m_height(heigh
     texture_desc.borderColor[1] = 0;
     texture_desc.borderColor[2] = 0;
     texture_desc.borderColor[3] = 0;
-    texture_desc.filterMode = cudaFilterModePoint;
+    texture_desc.filterMode = cudaFilterModeLinear;
     texture_desc.readMode = cudaReadModeElementType;
     texture_desc.normalizedCoords = true;
     // Create texture object

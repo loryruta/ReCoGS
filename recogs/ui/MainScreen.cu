@@ -132,6 +132,8 @@ void MainScreen::render(Image4fHWC& out_color_depth)
 
 void MainScreen::ui()
 {
+    constexpr static int k_image_slider_height = 100;
+
     m_camera_controller->ui();
 
     glm::vec2 resolution = m_app.window().framebuffer_size();
@@ -141,9 +143,8 @@ void MainScreen::ui()
     if (ImGui::Begin("Training cameras",
                      nullptr,
                      ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
-        ImVec2 window_size = ImGui::GetWindowSize();
-        ImGui::SetWindowPos(ImVec2(0, resolution.y - window_size.y));
-        ImGui::SetWindowSize(ImVec2(resolution.x, resolution.y * 0.22f));
+        ImGui::SetWindowSize(ImVec2(resolution.x, k_image_slider_height));
+        ImGui::SetWindowPos(ImVec2(0, resolution.y - k_image_slider_height));
 
         m_training_cameras_ui.image_slider->ui();
     }

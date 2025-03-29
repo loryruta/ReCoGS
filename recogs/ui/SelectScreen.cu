@@ -31,38 +31,42 @@ void SelectScreen_Toolbar::ui()
     ImVec2 window_size = ImGui::GetContentRegionAvail();
 
     ImGuiStyle& style = ImGui::GetStyle();
-    ImVec2 button_size = ImVec2(window_size.x - style.FramePadding.x, window_size.x - style.FramePadding.y);
+    float button_w = window_size.x - style.FramePadding.x * 2;
+    ImVec2 button_size = ImVec2(button_w, button_w);
 
     // Brush
-    ImGui::BeginDisabled(m_parent.m_mode == SelectScreen::Mode::BRUSH);
-    if (ImGui::ImageButton("Brush", (ImTextureID) (intptr_t) m_paintbrush_texture, button_size)) {
-        m_parent.m_mode = SelectScreen::Mode::BRUSH;
-    }
-    ImGui::EndDisabled();
+    RCGS_IMGUI_DISABLE_BUTTON(m_parent.m_mode == SelectScreen::Mode::BRUSH, {
+        if (ImGui::ImageButton("Brush", (ImTextureID) (intptr_t) m_paintbrush_texture, button_size)) {
+            m_parent.m_mode = SelectScreen::Mode::BRUSH;
+        }
+    });
     // Eraser
-    ImGui::BeginDisabled(m_parent.m_mode == SelectScreen::Mode::ERASE);
-    if (ImGui::ImageButton("Eraser", (ImTextureID) (intptr_t) m_eraser_texture, button_size)) {
-        m_parent.m_mode = SelectScreen::Mode::ERASE;
-    }
-    ImGui::EndDisabled();
+    RCGS_IMGUI_DISABLE_BUTTON(m_parent.m_mode == SelectScreen::Mode::ERASE, {
+        if (ImGui::ImageButton("Eraser", (ImTextureID) (intptr_t) m_eraser_texture, button_size)) {
+            m_parent.m_mode = SelectScreen::Mode::ERASE;
+        }
+    });
 }
 
 SelectScreen::SelectScreen(App& app, GSCamera camera) : m_app(app), m_camera(std::move(camera))
 {
     Window& window = app.window();
     m_key_callback = window.add_key_callback([this](int key, int scancode, int action, int mods) {
-        if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
-            {
-                glm::ivec2 resolution = m_app.resolution();
-                // Estimate depth using stereo matching HV
-                Image4fHWC depth = Image4fHWC::malloc(resolution.x, resolution.y);
-                image_fill(depth, Image4fHWC::Value{INFINITY}, m_app.stream());
-                m_app.stereo_depth_estimator().estimate_hv(m_camera, 0.07f, depth, m_app.stream());
-                // Populate the 3D selection with 2D selection unprojection
-                m_selection2d->populate_selection3d(depth);
+        if (action == GLFW_PRESS) {
+            if (key == GLFW_KEY_ENTER) {
+                {
+                    glm::ivec2 resolution = m_app.resolution();
+                    // Estimate depth using stereo matching HV
+                    Image4fHWC depth = Image4fHWC::malloc(resolution.x, resolution.y);
+                    image_fill(depth, Image4fHWC::Value{INFINITY}, m_app.stream());
+                    m_app.stereo_depth_estimator().estimate_hv(m_camera, 0.07f, depth, m_app.stream());
+                    // Populate the 3D selection with 2D selection unprojection
+                    m_selection2d->populate_selection3d(depth);
+                }
+                m_app.set_screen(std::make_shared<MainScreen>(m_app, m_camera));
+            } else if (key == GLFW_KEY_ESCAPE) {
+                m_app.set_screen(std::make_shared<MainScreen>(m_app, m_camera));
             }
-
-            m_app.set_screen(std::make_shared<MainScreen>(m_app, m_camera));
         }
     });
     printf("[DEBUG] [SelectScreen] Screen created\n");
@@ -95,7 +99,7 @@ CudaTexture& SelectScreen::render_camera_texture()
     // Render GS scene
     m_app.gs_rasterizer().forward(
         m_app.background_d(), m_app.scene(), true /* scene_2 */, m_camera, *m_color_depth, stream);
-    // Render 2D and 3D selection
+    // Render 2D and 3D selection (already projected to 2D)
     m_app.selection_renderer().render(*m_selection2d, *m_color_depth, stream);
     // Blit colorbuffer onto texture
     m_camera_texture->write(*m_color_depth, stream);
@@ -188,12 +192,14 @@ void SelectScreen::render(Image4fHWC& out_color_depth)
 
 void SelectScreen::ui()
 {
+    constexpr int k_selection_toolbar_width = 60;
+
     glm::vec2 resolution = m_app.window().framebuffer_size();
 
     if (ImGui::Begin(
             "Toolbar", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
         ImGui::SetWindowPos({0, 0});
-        ImGui::SetWindowSize({75, resolution.y / 2});
+        ImGui::SetWindowSize({k_selection_toolbar_width, resolution.y});
 
         m_toolbar->ui();
     }

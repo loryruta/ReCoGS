@@ -65,6 +65,8 @@ int GSRasterizer::forward( //
         out_color_depth,
         nullptr, // radii
         debug,
+        show_borders,
+        border_size,
         stream);
     return num_rendered;
 }

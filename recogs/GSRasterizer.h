@@ -20,6 +20,8 @@ class GSRasterizer
 
 public:
     bool debug = false;
+    bool show_borders = false;
+    float border_size = 0.01f;
 
     explicit GSRasterizer() = default;
     ~GSRasterizer() = default;

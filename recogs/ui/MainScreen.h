@@ -4,7 +4,8 @@
 #include "GSCameraController.h"
 #include "Screen.h"
 #include "depth_estimators/StereoDepthEstimator.h"
-#include "gui/stereo_test.h"
+#include "gui/StereoTest.h"
+#include "gui/TrainingCamerasSlider.h"
 #include "utils/image/Image.h"
 #include "video/GLMappedResource.h"
 #include "video/ImageSlider.h"
@@ -19,7 +20,7 @@ class App;
 class MainScreen : public Screen
 {
 private:
-    static constexpr int k_training_cameras_ui_image_resolution = 64;
+    static constexpr int k_training_cameras_preview_resolution = 64;
 
     App& m_app;
 
@@ -31,14 +32,7 @@ private:
     bool m_view_selection = false;
 
     ui::StereoTest m_ui_stereo_test;
-
-    struct {
-        std::unique_ptr<ImageSlider> image_slider;
-        std::vector<GLMappedResource> gl_mapped_resources;
-        std::vector<Image4fHWC> color_depth;
-        int start_index = -1, end_index = -1; //
-        cudaStream_t stream;
-    } m_training_cameras_ui;
+    std::unique_ptr<ui::TrainingCamerasSlider> m_training_cameras_ui;
 
 public:
     explicit MainScreen(App& app, std::optional<GSCamera> initial_view = {});

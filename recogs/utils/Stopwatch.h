@@ -16,7 +16,7 @@ private:
     ClockT::time_point m_start;
 
 public:
-    Stopwatch() { reset(); };
+    explicit Stopwatch() { reset(); };
     ~Stopwatch() = default;
 
     void reset() { m_start = ClockT::now(); }

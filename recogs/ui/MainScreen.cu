@@ -4,6 +4,7 @@
 
 #include "App.h"
 #include "GSRasterizer.h"
+#include "gui/Header.h"
 #include "ui/SelectScreen.h"
 #include "utils/image/image_cast.h"
 #include "utils/image/image_fill.h"
@@ -39,24 +40,19 @@ MainScreen::MainScreen(App& app, std::optional<GSCamera> initial_view) : m_app(a
         }
     });
 
-    // Init training cameras image slider
-    size_t num_images = m_app.cameras().size();
-    m_training_cameras_ui.image_slider =
-        std::make_unique<ImageSlider>(num_images, k_training_cameras_ui_image_resolution);
-    m_training_cameras_ui.image_slider->on_image_click = [&](int index) {
-        printf("[DEBUG] [MainScreen] Setting view to training camera %d\n", index);
-        m_camera = m_app.cameras().at(index);
+    // Init training cameras UI
+    m_training_cameras_ui = std::make_unique<ui::TrainingCamerasSlider>(m_app, k_training_cameras_preview_resolution);
+    m_training_cameras_ui->on_select = [this](int i) {
+        printf("[DEBUG] [MainScreen] Setting view to training camera: %d\n", i);
         glm::ivec2 resolution = m_app.window().framebuffer_size();
+        m_camera = m_app.cameras().at(i);
         m_camera.set_resolution(resolution.x, resolution.y);
         m_camera.update(m_app.stream());
     };
-    CHECK_CUDA(cudaStreamCreate(&m_training_cameras_ui.stream)); // Maybe a custom stream is not needed...
 }
 
 MainScreen::~MainScreen()
 {
-    CHECK_CUDA(cudaStreamDestroy(m_training_cameras_ui.stream));
-
     Window& window = m_app.window();
     CHECK_STATE(window.remove_key_callback(m_key_callback));
 }
@@ -118,83 +114,36 @@ void MainScreen::render(Image4fHWC& out_color_depth)
         m_ui_stereo_test.capture = ui::StereoTest::Capture_NONE;
         m_app.show_depth = true;
     }
-
-    // Update visible training cameras
-    if (m_app.ui_enabled) {
-        bool update = false;
-        update |= m_training_cameras_ui.image_slider->start_texture_index() != m_training_cameras_ui.start_index;
-        update |= m_training_cameras_ui.image_slider->end_texture_index() != m_training_cameras_ui.end_index;
-        if (update) {
-            render_training_cameras();
-        }
-    }
 }
 
 void MainScreen::ui()
 {
-    constexpr static int k_image_slider_height = 100;
+    constexpr static int k_footer_height = 70;
 
     m_camera_controller->ui();
 
     glm::vec2 resolution = m_app.window().framebuffer_size();
 
-    m_ui_stereo_test.ui();
+    // Header
+    ui::Header header;
+    header.height = 70;
+    header.section("Depth Test", [this]() { m_ui_stereo_test.ui(); });
+    header.section("View Settings", [this]() {
+        GSRasterizer& rasterizer = m_app.gs_rasterizer();
+        ImGui::Checkbox("Show borders", &rasterizer.show_borders);
+        ImGui::SliderFloat("Border size", &rasterizer.border_size, 0.001f, 0.5f, "%.3f", ImGuiSliderFlags_Logarithmic);
+    });
+    header.ui();
 
-    if (ImGui::Begin("Training cameras",
-                     nullptr,
-                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
-        ImGui::SetWindowSize(ImVec2(resolution.x, k_image_slider_height));
-        ImGui::SetWindowPos(ImVec2(0, resolution.y - k_image_slider_height));
+    // Footer
+    if (ImGui::Begin(
+            "##footer", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
+        ImGui::SetWindowSize(ImVec2(resolution.x, k_footer_height));
+        ImGui::SetWindowPos(ImVec2(0, resolution.y - k_footer_height));
 
-        m_training_cameras_ui.image_slider->ui();
+        m_training_cameras_ui->ui();
     }
     ImGui::End();
 }
 
-void MainScreen::render_training_cameras()
-{
-    cudaStream_t stream = m_training_cameras_ui.stream;
-
-    ImageSlider& image_slider = *m_training_cameras_ui.image_slider;
-    const int si = image_slider.start_texture_index();
-    const int ei = image_slider.end_texture_index();
-
-    // printf("[DEBUG] [MainScreen] Re-rendering training cameras from %d to %d...\n", si, ei);
-
-    const int resolution = k_training_cameras_ui_image_resolution;
-
-    Image4fCHW image = Image4fCHW::malloc(resolution, resolution, stream);
-    image_fill(image, glm::vec4(1), stream);
-
-    int j = 0;
-    for (int i = si; i < ei; ++i) {
-        // Alloc GL-mapped texture if needed
-        if (j >= m_training_cameras_ui.gl_mapped_resources.size()) {
-            m_training_cameras_ui.gl_mapped_resources.emplace_back(resolution, resolution);
-            printf("[DEBUG] [MainScreen] Allocating GL-mapped resource for %d-th camera (%d)\n", j, i);
-        }
-        GLMappedResource& gl_mapped_texture = m_training_cameras_ui.gl_mapped_resources.at(j);
-        // Alloc colorbuffer if needed
-        if (j >= m_training_cameras_ui.color_depth.size()) {
-            m_training_cameras_ui.color_depth.emplace_back(Image4fHWC::malloc(resolution, resolution, stream));
-            printf("[DEBUG] [MainScreen] Allocating colorbuffer for %d-th camera (%d)\n", j, i);
-        }
-        Image4fHWC& color_depth = m_training_cameras_ui.color_depth.at(j);
-        // Set the correct texture at the image slider slot
-        m_training_cameras_ui.image_slider->texture(i) = gl_mapped_texture.texture();
-        // Get training camera
-        GSCamera training_camera = m_app.cameras().at(i);
-        training_camera.set_resolution(resolution, resolution);
-        training_camera.update(stream);
-        // Render GS scene
-        m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), false, training_camera, color_depth, stream);
-        // Write to GL-mapped texture
-        gl_mapped_texture.write(color_depth, stream);
-        ++j;
-    }
-
-    CHECK_CUDA(cudaStreamSynchronize(stream));
-
-    m_training_cameras_ui.start_index = si;
-    m_training_cameras_ui.end_index = ei;
-}
+void MainScreen::render_training_cameras() {}

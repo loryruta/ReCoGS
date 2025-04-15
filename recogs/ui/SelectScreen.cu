@@ -97,6 +97,7 @@ CudaTexture& SelectScreen::render_camera_texture()
 {
     cudaStream_t stream = m_app.stream();
     // Render GS scene
+    m_app.gs_rasterizer().show_borders = false;
     m_app.gs_rasterizer().forward(
         m_app.background_d(), m_app.scene(), true /* scene_2 */, m_camera, *m_color_depth, stream);
     // Render 2D and 3D selection (already projected to 2D)

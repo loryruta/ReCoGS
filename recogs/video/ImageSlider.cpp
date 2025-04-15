@@ -7,7 +7,7 @@
 
 using namespace gs_train;
 
-ImageSlider::ImageSlider(int N, int resolution_xy) : m_N(N), image_resolution_xy(resolution_xy)
+ImageSlider::ImageSlider(int N) : m_N(N)
 {
     m_textures.resize(N, 0); // Initialize all textures to invalid handles
 }
@@ -19,9 +19,20 @@ void ImageSlider::ui()
     ImVec2 size = ImGui::GetContentRegionAvail();
 
     // Left button
-    if (ImGui::Button("<", ImVec2(button_width, size.y))) {
-        m_start_texture_idx = std::max(m_start_texture_idx - 1, 0);
+    int left_step = 0;
+    ImGui::Button("<", ImVec2(button_width, size.y));
+    if (ImGui::IsItemActivated()) { // First click
+        left_step = 1;
+        m_slid_left_at.emplace();
+    } else if (ImGui::IsItemActive() && m_slid_left_at) { // Button kept pressed
+        if (m_slid_left_at->elapsed_seconds() > k_slide_accel_elapsed_time) {
+            left_step = 2;
+        }
+    } else if (m_slid_left_at) {
+        m_slid_left_at.reset();
     }
+    m_start_texture_idx = std::max(m_start_texture_idx - left_step, 0);
+
     ImGui::SameLine();
 
     // Images
@@ -30,6 +41,8 @@ void ImageSlider::ui()
     for (i = m_start_texture_idx;; ++i) {
         // Textures are finished!
         if (i >= m_N) break;
+
+        init_texture_if_uninit(i);
 
         sprintf(caption, "%d", i);
         ImVec2 caption_size = ImGui::CalcTextSize(caption);
@@ -61,7 +74,24 @@ void ImageSlider::ui()
     // Right button
     float right_button_width = button_width;
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - right_button_width);
-    if (ImGui::Button(">", ImVec2(button_width, size.y))) {
-        m_start_texture_idx = std::min(m_start_texture_idx + 1, m_N - 1);
+    int step_right = 0;
+    ImGui::Button(">", ImVec2(button_width, size.y));
+    if (ImGui::IsItemActivated()) { // First click
+        step_right = 1;
+        m_slid_right_at.emplace();
+    } else if (ImGui::IsItemActive() && m_slid_right_at) { // Button kept pressed
+        if (m_slid_right_at->elapsed_seconds() > k_slide_accel_elapsed_time) {
+            step_right = 2;
+        }
+    } else if (m_slid_right_at) {
+        m_slid_right_at.reset();
+    }
+    m_start_texture_idx = std::min(m_start_texture_idx + step_right, m_N - 1);
+}
+
+void ImageSlider::init_texture_if_uninit(int i)
+{
+    if (provide_texture && !m_textures[i]) {
+        m_textures[i] = provide_texture(i);
     }
 }

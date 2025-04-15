@@ -90,6 +90,9 @@ StereoDepthEstimator::StereoDepthEstimator(App& app, Options options)
 void StereoDepthEstimator::estimate_single_axis(
     const GSCamera& camera, Axis axis, float b, Image4fHWC& inout_color_depth, cudaStream_t stream)
 {
+    // Configure App's GSRasterizer
+    m_app.gs_rasterizer().show_borders = false;
+
     dim3 num_blocks{};
     dim3 block_dim{};
 

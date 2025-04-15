@@ -153,7 +153,7 @@ void App::start()
         // Show depth
         if (show_depth) {
             // TODO depth scale factor in app args
-            image_depth_to_rgb_inplace(*m_color_depth, m_stream, 0.14285f);
+            image_depth_to_rgb_inplace(*m_color_depth, m_stream, 0.5);
         }
 
         // CUDA colorbuffer -> OpenGL texture

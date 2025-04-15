@@ -1,26 +1,35 @@
 #pragma once
 
 #include <functional>
+#include <optional>
 #include <vector>
 
 #include <glad/glad.h>
+
+#include "utils/Stopwatch.h"
 
 namespace gs_train
 {
 class ImageSlider
 {
 private:
+    constexpr static double k_slide_accel_elapsed_time = 0.2;
+
     const int m_N;
     std::vector<GLuint> m_textures;
     int m_start_texture_idx = 0;
     int m_end_texture_idx = -1; // Exclusive; Dynamically updated
+    std::optional<Stopwatch> m_slid_left_at;
+    std::optional<Stopwatch> m_slid_right_at;
 
 public:
+    /// The width of the arrow buttons to scroll the previews.
     float button_width = 50.0f;
-    int image_resolution_xy = 100; /// Slider images are always squares
-    std::function<void(int)> on_image_click;
+    std::function<void(int)> on_image_click;    /// Function called when the user clicks an image of the slider
+    std::function<GLuint(int)> provide_texture; /// Function called to generate the texture
 
-    explicit ImageSlider(int N, int resolution_xy);
+    /// \param N the total number of images
+    explicit ImageSlider(int N);
     ~ImageSlider() = default;
 
     /// Retrieve a constant reference of the i-th texture.
@@ -34,5 +43,8 @@ public:
     [[nodiscard]] int end_texture_index() const { return m_end_texture_idx; };
 
     void ui();
+
+private:
+    void init_texture_if_uninit(int i);
 };
 } // namespace gs_train

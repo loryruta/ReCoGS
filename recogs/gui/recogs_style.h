@@ -32,9 +32,9 @@ void apply_style(ImGuiStyle& style) {
     colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
     colors[ImGuiCol_ScrollbarGrabHovered]   = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
     colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
-    colors[ImGuiCol_CheckMark]              = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
-    colors[ImGuiCol_SliderGrab]             = ImVec4(0.24f, 0.52f, 0.88f, 1.00f);
-    colors[ImGuiCol_SliderGrabActive]       = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+    colors[ImGuiCol_CheckMark]              = my_awesome_blue;
+    colors[ImGuiCol_SliderGrab]             = my_awesome_blue;
+    colors[ImGuiCol_SliderGrabActive]       = my_awesome_blue_active;
 // #1A237E
     colors[ImGuiCol_Button]                 = my_awesome_blue;
     colors[ImGuiCol_ButtonHovered]          = my_awesome_blue_hovered;

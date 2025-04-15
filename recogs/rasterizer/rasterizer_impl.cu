@@ -220,6 +220,8 @@ int CudaRasterizer::Rasterizer::forward(
 	float* out_color_depth,
 	int* radii,
 	bool debug,
+        bool show_border,
+        float border_size,
         cudaStream_t stream)
 {
 	const float focal_y = height / (2.0f * tan_fovy);
@@ -337,6 +339,8 @@ int CudaRasterizer::Rasterizer::forward(
 		imgState.accum_alpha,
 		imgState.n_contrib,
 		background,
+                show_border,
+                border_size,
 		out_color_depth,
                 stream), false)
 

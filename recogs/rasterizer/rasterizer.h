@@ -52,6 +52,8 @@ namespace CudaRasterizer
                         float* out_color_depth,
 			int* radii,
 			bool debug,
+                        bool show_border,
+                        float border_size,
                         cudaStream_t stream);
 
 		static void backward(

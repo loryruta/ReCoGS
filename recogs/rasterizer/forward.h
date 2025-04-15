@@ -62,6 +62,8 @@ namespace FORWARD
 		float* final_T,
 		uint32_t* n_contrib,
 		const float* bg_color,
+                bool show_border,
+                float border_size,
 		float* out_color_depth,
                 cudaStream_t stream);
 }

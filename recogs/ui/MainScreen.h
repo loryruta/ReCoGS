@@ -35,7 +35,7 @@ private:
     std::unique_ptr<ui::TrainingCamerasSlider> m_training_cameras_ui;
 
 public:
-    explicit MainScreen(App& app, std::optional<GSCamera> initial_view = {});
+    explicit MainScreen(App& app, std::optional<GSCamera> initial_view = std::nullopt);
     ~MainScreen() override;
 
     [[nodiscard]] const char* name() const override { return "MainScreen"; }

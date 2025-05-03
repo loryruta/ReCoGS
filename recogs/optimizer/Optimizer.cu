@@ -74,10 +74,12 @@ void Optimizer::start()
     CHECK_CUDA(cudaStreamCreate(&stream));
 
     // Load training cameras, make sure they live on GPU
-    std::vector<GSCamera> training_cameras = m_app.cameras();
-    for (GSCamera& camera : training_cameras) {
-        camera.set_resolution(m_resolution.x, m_resolution.y);
-        camera.update(stream);
+    std::vector<GSCamera> training_cameras;
+    for (const GSCamera& camera : m_app.cameras()) {
+        GSCamera& training_camera = training_cameras.emplace_back();
+        training_camera.copy(camera);
+        training_camera.set_resolution(m_resolution.x, m_resolution.y);
+        training_camera.update(stream);
     }
     CHECK_CUDA(cudaStreamSynchronize(stream));
 

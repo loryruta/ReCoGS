@@ -48,8 +48,10 @@ void SelectScreen_Toolbar::ui()
     });
 }
 
-SelectScreen::SelectScreen(App& app, GSCamera camera) : m_app(app), m_camera(std::move(camera))
+SelectScreen::SelectScreen(App& app, const GSCamera& camera) : m_app(app)
 {
+    m_camera.copy(camera, m_app.stream());
+
     Window& window = app.window();
     m_key_callback = window.add_key_callback([this](int key, int scancode, int action, int mods) {
         if (action == GLFW_PRESS) {
@@ -59,13 +61,24 @@ SelectScreen::SelectScreen(App& app, GSCamera camera) : m_app(app), m_camera(std
                     // Estimate depth using stereo matching HV
                     Image4fHWC depth = Image4fHWC::malloc(resolution.x, resolution.y);
                     image_fill(depth, Image4fHWC::Value{INFINITY}, m_app.stream());
-                    m_app.stereo_depth_estimator().estimate_hv(m_camera, 0.07f, depth, m_app.stream());
+
+                    StereoDepthEstimatorParams stereo_params;
+                    stereo_params.background_d = m_app.background_d();
+                    stereo_params.scene = &m_app.scene();
+                    stereo_params.camera = &m_camera;
+                    stereo_params.rasterizer = &m_app.gs_rasterizer();
+                    stereo_params.b = 0.07f;
+                    stereo_params.inout_color_depth = &depth;
+                    stereo_params.stream = m_app.stream();
+                    stereo_params.debug = false;
+                    m_app.stereo_depth_estimator().estimate_hv(stereo_params);
+
                     // Populate the 3D selection with 2D selection unprojection
                     m_selection2d->populate_selection3d(depth);
                 }
-                m_app.set_screen(std::make_shared<MainScreen>(m_app, m_camera));
+                m_app.set_screen(std::make_shared<MainScreen>(m_app, m_camera.clone(m_app.stream())));
             } else if (key == GLFW_KEY_ESCAPE) {
-                m_app.set_screen(std::make_shared<MainScreen>(m_app, m_camera));
+                m_app.set_screen(std::make_shared<MainScreen>(m_app, m_camera.clone(m_app.stream())));
             }
         }
     });
@@ -90,7 +103,7 @@ void SelectScreen::resize(int width, int height)
     m_camera_texture = std::make_unique<CudaTexture>(width, height);
     // TODO unsupported yet! Update camera resolution also!
     m_depthbuffer = std::make_unique<Image1fCHW>(Image1fCHW::malloc(width, height));
-    m_selection2d = std::make_unique<Selection2d>(m_app.selection3d(), m_camera);
+    m_selection2d = std::make_unique<Selection2d>(m_app.selection3d(), m_camera.clone(m_app.stream()));
 }
 
 CudaTexture& SelectScreen::render_camera_texture()

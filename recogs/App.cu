@@ -69,10 +69,7 @@ App::App(const Params& params)
     m_gs_rasterizer = std::make_unique<GSRasterizer>();
     m_selection_renderer = std::make_unique<SelectionRenderer>();
 
-    {
-        StereoDepthEstimator::Options options{};
-        m_stereo_depth_estimator = std::make_unique<StereoDepthEstimator>(*this, options);
-    }
+    m_stereo_depth_estimator = std::make_unique<StereoDepthEstimator>(*this);
 
     m_window->add_key_callback([this](int key, int scancode, int action, int mods) {
         if (action == GLFW_PRESS) {

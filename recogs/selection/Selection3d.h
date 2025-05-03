@@ -18,6 +18,7 @@ private:
     thrust::device_vector<glm::vec3> m_points;
 
 public:
+    /// Screen-space radius of a point
     int point_radius = 2;
 
     explicit Selection3d(App& app);

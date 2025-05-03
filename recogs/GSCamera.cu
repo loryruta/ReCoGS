@@ -40,6 +40,24 @@ void GSCamera::set_resolution(int new_width, int new_height)
     height = new_height;
 }
 
+void GSCamera::copy(const GSCamera& other, cudaStream_t stream)
+{
+    position = other.position;
+    rotation = other.rotation;
+    fx = other.fx;
+    fy = other.fy;
+    width = other.width;
+    height = other.height;
+    if (stream) update(stream);
+}
+
+GSCamera GSCamera::clone(cudaStream_t stream) const
+{
+    GSCamera cloned;
+    cloned.copy(*this, stream);
+    return cloned;
+}
+
 void GSCamera::update(cudaStream_t stream)
 {
     m_tan_fovx = (float(width) * 0.5f) / fx;
@@ -92,4 +110,23 @@ void GSCamera::deserialize(nlohmann::json json)
     rotation = glm::quat_cast(rot_mat); // Rotation matrix -> Quaternion
     fx = json["fx"];
     fy = json["fy"];
+}
+
+GSCamera& GSCamera::operator=(GSCamera&& other) noexcept
+{
+    position = other.position;
+    rotation = other.rotation;
+    fx = other.fx;
+    fy = other.fy;
+    width = other.width;
+    height = other.height;
+    // Computed attributes
+    m_tan_fovx = other.m_tan_fovx;
+    m_tan_fovy = other.m_tan_fovy;
+    m_view_matrix = other.m_view_matrix;
+    m_view_proj = other.m_view_proj;
+    m_viewmatrix = std::move(other.m_viewmatrix);
+    m_projmatrix = std::move(other.m_projmatrix);
+    m_campos = std::move(other.m_campos);
+    return *this;
 }

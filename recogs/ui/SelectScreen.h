@@ -40,7 +40,7 @@ private:
     static constexpr float k_select_zoom_speed = 0.07f; // Scale speed applied in normalized  space
 
     App& m_app;
-    const GSCamera m_camera;
+    GSCamera m_camera;
 
     std::unique_ptr<CudaTexture> m_camera_texture;
     std::unique_ptr<CudaTexture> m_cuda_texture;
@@ -64,7 +64,7 @@ private:
     enum class Mode { BRUSH, ERASE } m_mode = Mode::BRUSH;
 
 public:
-    explicit SelectScreen(App& app, GSCamera camera);
+    explicit SelectScreen(App& app, const GSCamera& camera);
     ~SelectScreen() override;
 
     [[nodiscard]] const char* name() const override { return "SelectScreen"; }

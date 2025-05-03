@@ -77,8 +77,7 @@ __global__ void prepare_pcvnet_output_kernel( //
 }
 } // namespace
 
-StereoDepthEstimator::StereoDepthEstimator(App& app, Options options)
-    : m_app(app), m_options(std::move(options)), debug(options.debug), debug_image_prefix(options.debug_image_prefix)
+StereoDepthEstimator::StereoDepthEstimator(App& app) : m_app(app)
 {
     PCVNetEngine::Options pcvnet_engine_options{};
     pcvnet_engine_options.onnx_filepath = "pcvnet.onnx";
@@ -87,11 +86,23 @@ StereoDepthEstimator::StereoDepthEstimator(App& app, Options options)
     m_pcvnet_engine->build_or_load();
 }
 
-void StereoDepthEstimator::estimate_single_axis(
-    const GSCamera& camera, Axis axis, float b, Image4fHWC& inout_color_depth, cudaStream_t stream)
+void StereoDepthEstimator::estimate_single_axis(const StereoDepthEstimatorParams& params)
 {
+    const float* background_d = params.background_d;
+    const Scene& scene = *params.scene;
+    const GSCamera& camera = *params.camera;
+    GSRasterizer& rasterizer = *params.rasterizer;
+    cudaStream_t stream = params.stream;
+    int axis = params.axis;
+    float b = params.b;
+    Image4fHWC& inout_color_depth = *params.inout_color_depth;
+    bool debug = params.debug;
+    std::string debug_image_prefix = params.debug_image_prefix;
+
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     // Configure App's GSRasterizer
-    m_app.gs_rasterizer().show_borders = false;
+    rasterizer.show_borders = false;
 
     dim3 num_blocks{};
     dim3 block_dim{};
@@ -106,13 +117,13 @@ void StereoDepthEstimator::estimate_single_axis(
     Image4fHWC im1 = Image4fHWC::ref(width, height, RCGS_TPTR(m_im1));
 
     // Render im0
-    m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), false /* scene_2 */, camera, im0, stream);
+    rasterizer.forward(background_d, scene, false /* scene_2 */, camera, im0, stream);
 
     // Render im1
-    GSCamera rview = camera;
-    rview.position += (axis == Axis::H ? camera.right() : -camera.up()) * b;
+    GSCamera rview = camera.clone();
+    rview.position += (axis == 0 ? camera.right() : -camera.up()) * b;
     rview.update(stream);
-    m_app.gs_rasterizer().forward(m_app.background_d(), m_app.scene(), false /* scene_2 */, rview, im1, stream);
+    rasterizer.forward(background_d, scene, false /* scene_2 */, rview, im1, stream);
     if (debug) {
         image_save(im0, fmt::format("estimatedepth-{}im0.png", debug_image_prefix), stream);
         image_save(im1, fmt::format("estimatedepth-{}im1.png", debug_image_prefix), stream);
@@ -121,7 +132,7 @@ void StereoDepthEstimator::estimate_single_axis(
     // Pad im0, im1
     int padded_width = PCVNetEngine::k_io_width;
     int padded_height = PCVNetEngine::k_io_height;
-    bool rotate90cw = axis == Axis::V;
+    bool rotate90cw = axis == 1;
     if (rotate90cw) {
         swap(padded_width, padded_height);
     }
@@ -152,24 +163,25 @@ void StereoDepthEstimator::estimate_single_axis(
     num_blocks.x = div_ceil(width, 16);
     num_blocks.y = div_ceil(height, 16);
     block_dim = {16, 16};
-    if (axis == Axis::H) {
+    if (axis == 0) {
         prepare_pcvnet_output_kernel<<<num_blocks, block_dim, 0, stream>>>(
             pcvnet_disparity_map, false /* rotated90cw */, camera.fx, b, inout_color_depth);
     } else {
         prepare_pcvnet_output_kernel<<<num_blocks, block_dim, 0, stream>>>(
             pcvnet_disparity_map, true /* rotated90cw */, camera.fy, b, inout_color_depth);
     }
-//    if (debug) {
-//         Image3fCHW depth_rgb = image_depthbuffer_to_rgb(inout_color_depth, stream);
-//         image_save(depth_rgb, fmt::format("estimatedepth-{}depth.png", debug_image_prefix));
-//    }
+    //    if (debug) {
+    //         Image3fCHW depth_rgb = image_depthbuffer_to_rgb(inout_color_depth, stream);
+    //         image_save(depth_rgb, fmt::format("estimatedepth-{}depth.png", debug_image_prefix));
+    //    }
 }
 
-void StereoDepthEstimator::estimate_hv(const GSCamera& camera,
-                                       float b,
-                                       Image4fHWC& inout_color_depth,
-                                       cudaStream_t stream)
+void StereoDepthEstimator::estimate_hv(StereoDepthEstimatorParams& params)
 {
-    estimate_single_axis(camera, Axis::H, b, inout_color_depth, stream);
-    estimate_single_axis(camera, Axis::V, b, inout_color_depth, stream);
+    CHECK_ARG(params.is_valid());
+
+    params.axis = 0;
+    estimate_single_axis(params);
+    params.axis = 1;
+    estimate_single_axis(params);
 }

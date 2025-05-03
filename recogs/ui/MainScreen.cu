@@ -17,11 +17,11 @@ MainScreen::MainScreen(App& app, std::optional<GSCamera> initial_view) : m_app(a
 {
     // Init camera
     if (initial_view) {
-        m_camera = *initial_view;
+        m_camera = std::move(*initial_view);
     } else if (!app.cameras().empty()) {
-        m_camera = app.cameras().at(18);
+        m_camera.copy(app.cameras().at(18), m_app.stream());
     } else {
-        m_camera = GSCamera{};
+        m_camera.copy(GSCamera{}, m_app.stream());
     }
     m_camera_controller = std::make_unique<GSCameraController>(m_app.window(), m_camera);
 
@@ -45,7 +45,7 @@ MainScreen::MainScreen(App& app, std::optional<GSCamera> initial_view) : m_app(a
     m_training_cameras_ui->on_select = [this](int i) {
         printf("[DEBUG] [MainScreen] Setting view to training camera: %d\n", i);
         glm::ivec2 resolution = m_app.window().framebuffer_size();
-        m_camera = m_app.cameras().at(i);
+        m_camera.copy(m_app.cameras().at(i), m_app.stream());
         m_camera.set_resolution(resolution.x, resolution.y);
         m_camera.update(m_app.stream());
     };
@@ -97,18 +97,29 @@ void MainScreen::render(Image4fHWC& out_color_depth)
     }
 
     // Capture stereo
-    if (m_ui_stereo_test.capture == ui::StereoTest::Capture_HORIZONTAL) {
-        printf("[DEBUG] [MainScreen] Capturing horizontal stereo...\n");
-        m_app.stereo_depth_estimator().estimate_single_axis(
-            m_camera, StereoDepthEstimator::Axis::H, 0.07f, out_color_depth, stream);
-    } else if (m_ui_stereo_test.capture == ui::StereoTest::Capture_VERTICAL) {
-        printf("[DEBUG] [MainScreen] Capturing vertical stereo...\n");
-        m_app.stereo_depth_estimator().estimate_single_axis(
-            m_camera, StereoDepthEstimator::Axis::V, 0.07f, out_color_depth, stream);
-    } else if (m_ui_stereo_test.capture == ui::StereoTest::Capture_HV) {
-        printf("[DEBUG] [MainScreen] Capturing horizontal/vertical stereo...\n");
-        m_app.stereo_depth_estimator().estimate_hv(m_camera, 0.07f, out_color_depth, stream);
+    if (m_ui_stereo_test.capture != ui::StereoTest::Capture_NONE)
+    {
+        StereoDepthEstimatorParams stereo_params;
+        stereo_params.background_d = m_app.background_d();
+        stereo_params.scene = &m_app.scene();
+        stereo_params.camera = &m_camera;
+        stereo_params.rasterizer = &m_app.gs_rasterizer();
+        stereo_params.b = 0.07f;
+        stereo_params.inout_color_depth = &out_color_depth;
+        stereo_params.stream = stream;
+        stereo_params.debug = false;
+
+        if (m_ui_stereo_test.capture == ui::StereoTest::Capture_HORIZONTAL) {
+            stereo_params.axis = 0;
+            m_app.stereo_depth_estimator().estimate_single_axis(stereo_params);
+        } else if (m_ui_stereo_test.capture == ui::StereoTest::Capture_VERTICAL) {
+            stereo_params.axis = 1;
+            m_app.stereo_depth_estimator().estimate_single_axis(stereo_params);
+        } else if (m_ui_stereo_test.capture == ui::StereoTest::Capture_HV) {
+            m_app.stereo_depth_estimator().estimate_hv(stereo_params);
+        }
     }
+
     if (m_ui_stereo_test.capture != ui::StereoTest::Capture_NONE) { // Only once and display it
         m_ui_stereo_test.current_capture = m_ui_stereo_test.capture;
         m_ui_stereo_test.capture = ui::StereoTest::Capture_NONE;

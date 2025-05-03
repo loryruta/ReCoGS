@@ -29,7 +29,8 @@ TrainingCamerasSlider::TrainingCamerasSlider(App& app, int resolution) : m_app(a
     };
     m_image_slider->provide_texture = [this](int i) -> GLuint {
         // Render the scene from the camera perspective
-        GSCamera camera = m_app.cameras().at(i);
+        GSCamera camera;
+        camera.copy(m_app.cameras().at(i), m_app.stream());
         camera.set_resolution(m_resolution, m_resolution);
         camera.update(m_app.stream());
         GSRasterizer& rasterizer = m_app.gs_rasterizer();

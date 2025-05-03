@@ -1,6 +1,6 @@
 #include "utils/camera_projections.h"
 
-namespace gs_train
+namespace recogs
 {
 template <typename CALLBACK>
 void Selection3d::project(const GSCamera& camera, CALLBACK callback, cudaStream_t stream) const
@@ -23,4 +23,4 @@ void Selection3d::project(const GSCamera& camera, CALLBACK callback, cudaStream_
         },
         stream);
 }
-} // namespace gs_train
+} // namespace recogs

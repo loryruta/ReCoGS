@@ -8,7 +8,7 @@
 
 #define NUM_THREADS 1024
 
-using namespace gs_train;
+using namespace recogs;
 
 GSLoss::GSLoss()
 {

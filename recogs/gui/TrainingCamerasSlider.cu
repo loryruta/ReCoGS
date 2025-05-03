@@ -4,8 +4,8 @@
 
 #include "App.h"
 
-using namespace gs_train;
-using namespace gs_train::ui;
+using namespace recogs;
+using namespace recogs::ui;
 
 TrainingCamerasSlider::TrainingCamerasSlider(App& app, int resolution) : m_app(app), m_resolution(resolution)
 {

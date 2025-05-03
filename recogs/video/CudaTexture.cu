@@ -2,7 +2,7 @@
 
 #include "utils/cuda_utils.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 CudaTexture::CudaTexture(int width, int height) : m_width(width), m_height(height)
 {

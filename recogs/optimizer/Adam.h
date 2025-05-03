@@ -6,7 +6,7 @@
 // Reference:
 // https://pytorch.org/docs/stable/generated/torch.optim.Adam.html
 
-namespace gs_train
+namespace recogs
 {
 class Adam
 {
@@ -47,4 +47,4 @@ public:
     void zero_grad(cudaStream_t stream);
     void step(cudaStream_t stream);
 };
-} // namespace gs_train
+} // namespace recogs

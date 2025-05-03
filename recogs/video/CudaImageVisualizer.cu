@@ -6,7 +6,7 @@
 #include "utils/image/image_copy.h"
 #include "utils/image/image_fill.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 CudaImageVisualizer::CudaImageVisualizer(std::shared_ptr<Window> window) : m_window(std::move(window))
 {

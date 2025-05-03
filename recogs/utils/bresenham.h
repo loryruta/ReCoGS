@@ -2,7 +2,7 @@
 
 #include "utils/misc_utils.h"
 
-namespace gs_train
+namespace recogs
 {
 // Bresenham's Line Algorithm:
 // https://youtu.be/CceepU1vIKo?t=923

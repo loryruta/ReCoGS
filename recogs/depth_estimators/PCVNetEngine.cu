@@ -12,7 +12,7 @@
 // Reference:
 // https://github.com/cyrusbehr/tensorrt-cpp-api
 
-using namespace gs_train;
+using namespace recogs;
 
 namespace
 {

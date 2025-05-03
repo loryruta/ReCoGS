@@ -3,12 +3,12 @@
 #include <cstdio>
 #include <cstdlib>
 
-#define CHECK_STATE(condition, ...) gs_train::check_state(!!(condition), #condition, __FILE__, __LINE__)
+#define CHECK_STATE(condition, ...) recogs::check_state(!!(condition), #condition, __FILE__, __LINE__)
 #define CHECK_ARG CHECK_STATE
 #define RCGS_LIKELY(x) __builtin_expect(!!(x), 1)
 #define RCGS_UNLIKELY(x) __builtin_expect(!!(x), 0)
 
-namespace gs_train
+namespace recogs
 {
 inline void check_state(bool condition, char const* condition_str, char const* file, int line)
 {
@@ -28,4 +28,4 @@ INT div_ceil(INT a, INT b)
     if (a == 0) return 0;
     return 1 + ((a - 1) / b); // if a != 0
 }
-} // namespace gs_train
+} // namespace recogs

@@ -2,7 +2,7 @@
 
 #include <cuda/std/numeric>
 
-namespace gs_train
+namespace recogs
 {
 template <typename T>
 struct Sum {
@@ -25,4 +25,4 @@ struct Max {
     __forceinline__ __host__ __device__ T operator()(const T& a, const T& b) const { return a > b ? a : b; }
 };
 
-} // namespace gs_train
+} // namespace recogs

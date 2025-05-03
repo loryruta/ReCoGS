@@ -2,7 +2,7 @@
 
 #include "utils/misc_utils.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 void Window::on_resize_callback(GLFWwindow* handle, int width, int height)
 {

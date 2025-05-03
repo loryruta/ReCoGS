@@ -4,7 +4,7 @@
 
 #include "utils/cuda_utils.h"
 
-namespace gs_train
+namespace recogs
 {
 /// A RAII wrapper for a buffer held in device memory
 struct DeviceBuffer {
@@ -94,4 +94,4 @@ struct DeviceBuffer {
         return buffer;
     }
 };
-} // namespace gs_train
+} // namespace recogs

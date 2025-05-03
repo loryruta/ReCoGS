@@ -5,7 +5,7 @@
 
 #include "utils/cuda_utils.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 GLMappedResource::GLMappedResource(int W, int H) : m_W(W), m_H(H)
 {

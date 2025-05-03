@@ -5,7 +5,7 @@
 #include "GSCamera.h"
 #include "GSRasterizer.h"
 
-namespace gs_train
+namespace recogs
 {
 // Forward decl
 class App;
@@ -25,4 +25,4 @@ public:
     void start();
     void signal_stop();
 };
-} // namespace gs_train
+} // namespace recogs

@@ -22,7 +22,7 @@
 #include "video/CudaImageVisualizer.h"
 #include "video/Window.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 namespace
 {

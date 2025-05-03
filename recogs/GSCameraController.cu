@@ -2,7 +2,7 @@
 
 #include "utils/imgui_utils.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 GSCameraController::GSCameraController(Window& window, GSCamera& camera) : m_window(window), m_camera(camera)
 {

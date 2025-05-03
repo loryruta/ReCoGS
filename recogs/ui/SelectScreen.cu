@@ -10,7 +10,7 @@
 #include "utils/imgui_utils.h"
 #include "video/gl_utils.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 SelectScreen_Toolbar::SelectScreen_Toolbar(SelectScreen& parent) : m_parent(parent)
 {

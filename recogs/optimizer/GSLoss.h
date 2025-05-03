@@ -6,7 +6,7 @@
 #include "utils/DeviceBuffer.h"
 #include "utils/image/Image.h"
 
-namespace gs_train
+namespace recogs
 {
 class GSLoss
 {
@@ -49,4 +49,4 @@ public:
     ///     A device pointer to the gradient of the loss w.r.t. the predicted image
     void backward(const Image3fCHW& img_pred, const Image3fCHW& img_gt, float* out_dL_dy, cudaStream_t stream);
 };
-} // namespace gs_train
+} // namespace recogs

@@ -4,7 +4,7 @@
 
 #include "utils/DeviceBuffer.h"
 
-namespace gs_train
+namespace recogs
 {
 struct Scene {
     int num_vertices;
@@ -41,4 +41,4 @@ struct Scene {
     /// Number of bytes occupied in memory by the scene
     [[nodiscard]] size_t num_bytes() const;
 };
-} // namespace gs_train
+} // namespace recogs

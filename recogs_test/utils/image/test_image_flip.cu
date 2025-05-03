@@ -4,7 +4,7 @@
 #include "utils/image/image_flip.h"
 #include "utils/cuda_utils.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 TEST_CASE("Image flip X")
 {

@@ -11,7 +11,7 @@
 #include "utils/image/image_save.h"
 #include "utils/imgui_utils.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 MainScreen::MainScreen(App& app, std::optional<GSCamera> initial_view) : m_app(app)
 {

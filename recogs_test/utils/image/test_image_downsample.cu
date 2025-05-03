@@ -7,7 +7,7 @@
 #include "utils/image/image_load.h"
 #include "utils/image/image_save.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 TEST_CASE("image_downsample - koala")
 {

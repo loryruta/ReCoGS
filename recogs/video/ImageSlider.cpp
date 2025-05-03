@@ -5,7 +5,7 @@
 
 #include <imgui.h>
 
-using namespace gs_train;
+using namespace recogs;
 
 ImageSlider::ImageSlider(int N) : m_N(N)
 {

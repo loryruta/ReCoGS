@@ -10,7 +10,7 @@
 // clang-format on
 #include <glm/glm.hpp>
 
-namespace gs_train
+namespace recogs
 {
 /// A wrapper of the GLFW window
 class Window
@@ -91,4 +91,4 @@ private:
     static void on_mouse_button_callback(GLFWwindow* handle, int button, int action, int mods);
     static void on_scroll_callback(GLFWwindow* handle, double xoffset, double yoffset);
 };
-} // namespace gs_train
+} // namespace recogs

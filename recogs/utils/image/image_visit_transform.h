@@ -3,7 +3,7 @@
 #include "Image.h"
 #include "utils/misc_utils.h"
 
-namespace gs_train
+namespace recogs
 {
 namespace detail
 {
@@ -46,4 +46,4 @@ void image_transform(Image<C, T, MEMORY_LAYOUT>& image, CALLBACK callback, cudaS
 {
     detail::image_visit_transform(image, callback, stream);
 }
-} // namespace gs_train
+} // namespace recogs

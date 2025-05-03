@@ -2,7 +2,7 @@
 
 #include "utils/image/Image.h"
 
-namespace gs_train
+namespace recogs
 {
 class Screen
 {
@@ -17,4 +17,4 @@ public:
     virtual void render(Image4fHWC& out_color_depth) = 0;
     virtual void ui() = 0;
 };
-} // namespace gs_train
+} // namespace recogs

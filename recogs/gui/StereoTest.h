@@ -5,7 +5,7 @@
 #include "utils/imgui_utils.h"
 #include "video/gl_utils.h"
 
-namespace gs_train
+namespace recogs
 {
 namespace ui
 {
@@ -32,4 +32,4 @@ public:
 };
 } // namespace ui
 
-} // namespace gs_train
+} // namespace recogs

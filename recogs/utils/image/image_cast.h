@@ -3,7 +3,7 @@
 #include "Image.h"
 #include "utils/misc_utils.h"
 
-namespace gs_train
+namespace recogs
 {
 namespace detail
 {
@@ -44,4 +44,4 @@ void image_cast( //
     block_dim.y = 32;
     detail::image_cast_kernel<<<num_blocks, block_dim, 0, stream>>>(src_image, dst_image);
 }
-} // namespace gs_train
+} // namespace recogs

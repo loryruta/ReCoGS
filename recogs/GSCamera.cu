@@ -2,7 +2,7 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-using namespace gs_train;
+using namespace recogs;
 
 GSCamera::GSCamera()
 {

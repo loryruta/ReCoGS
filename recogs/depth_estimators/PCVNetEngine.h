@@ -7,7 +7,7 @@
 #include "NvInfer.h"
 #include "utils/image/Image.h"
 
-namespace gs_train
+namespace recogs
 {
 
 struct PCVNetEngine {
@@ -52,4 +52,4 @@ private:
     void load();
 };
 
-} // namespace gs_train
+} // namespace recogs

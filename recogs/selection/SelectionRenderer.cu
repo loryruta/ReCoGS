@@ -4,7 +4,7 @@
 #include "utils/image/image_fill.h"
 #include "utils/image/image_visit_transform.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 void SelectionRenderer::render( //
     const Selection3d& selection3d,

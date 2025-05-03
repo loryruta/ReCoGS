@@ -11,7 +11,7 @@
 #include "utils/image/image_copy.h"
 #include "utils/image/image_save.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 namespace
 {

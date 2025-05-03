@@ -2,7 +2,7 @@
 
 #include <imgui.h>
 
-namespace gs_train::ui
+namespace recogs::ui
 {
 void apply_style(ImGuiStyle& style) {
     // Pick colors from here:
@@ -73,4 +73,4 @@ void apply_style(ImGuiStyle& style) {
     // clang-format on
 }
 
-} // namespace gs_train::ui
+} // namespace recogs::ui

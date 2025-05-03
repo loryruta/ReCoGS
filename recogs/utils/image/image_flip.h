@@ -2,7 +2,7 @@
 
 #include "Image.h"
 
-namespace gs_train
+namespace recogs
 {
 namespace detail
 {
@@ -55,4 +55,4 @@ void image_flip_y(const Image<C, T, MEMORY_LAYOUT>& image)
     detail::image_flip_y_kernel<<<num_blocks, block_dim>>>(image);
 }
 
-} // namespace gs_train
+} // namespace recogs

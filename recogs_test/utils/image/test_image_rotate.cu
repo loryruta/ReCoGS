@@ -7,7 +7,7 @@
 #include "utils/image/image_rotate.h"
 #include "utils/image/image_save.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 TEST_CASE("image_rotate_90_clockwise - qualitative")
 {

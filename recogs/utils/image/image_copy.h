@@ -3,7 +3,7 @@
 #include "Image.h"
 #include "utils/AABB.h"
 
-namespace gs_train
+namespace recogs
 {
 namespace detail
 {
@@ -70,4 +70,4 @@ void image_copy( //
     image_copy(src_image, src_region, dst_image, glm::ivec2{} /* dst_pos */, stream);
 }
 
-} // namespace gs_train
+} // namespace recogs

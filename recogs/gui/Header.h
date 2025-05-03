@@ -2,7 +2,7 @@
 
 #include <functional>
 
-namespace gs_train::ui
+namespace recogs::ui
 {
 class Header
 {
@@ -68,4 +68,4 @@ public:
         ImGui::End();
     }
 };
-} // namespace gs_train::ui
+} // namespace recogs::ui

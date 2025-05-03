@@ -1,6 +1,6 @@
 #pragma once
 
-namespace gs_train
+namespace recogs
 {
 namespace detail
 {
@@ -90,4 +90,4 @@ void unproject_points( //
         camera.inv_K(),
         callback);
 }
-} // namespace gs_train
+} // namespace recogs

@@ -7,7 +7,7 @@
 #include "utils/cuda_utils.h"
 #include "utils/misc_utils.h"
 
-namespace gs_train
+namespace recogs
 {
 enum class ImageMemoryLayout : uint8_t { HWC, CHW };
 
@@ -167,4 +167,4 @@ using Image1fCHW = Image<1, float, ImageMemoryLayout::CHW>;
 using Image3fCHW = Image<3, float, ImageMemoryLayout::CHW>;
 using Image4fCHW = Image<4, float, ImageMemoryLayout::CHW>;
 
-} // namespace gs_train
+} // namespace recogs

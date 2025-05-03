@@ -3,7 +3,7 @@
 #include "App.h"
 #include "utils/remove_statistical_outliers.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 Selection3d::Selection3d(App& app) : m_app(app) {}
 

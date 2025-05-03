@@ -4,7 +4,7 @@
 
 #include "App.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 int main(int argc, char* argv[])
 {

@@ -10,7 +10,7 @@
 // CUDA implementation of:
 // https://github.com/isl-org/Open3D/blob/da4d8fcdf60a59d20b2fd9f86f2e0955c5ba3c45/cpp/open3d/geometry/PointCloud.cpp#L602
 
-namespace gs_train
+namespace recogs
 {
 namespace detail
 {
@@ -150,4 +150,4 @@ thrust::device_vector<glm::vec3> remove_statistical_outliers( //
 
     return filtered_points;
 }
-} // namespace gs_train
+} // namespace recogs

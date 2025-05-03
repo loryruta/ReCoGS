@@ -7,7 +7,7 @@
 #include "Selection2d.h"
 #include "utils/image/Image.h"
 
-namespace gs_train
+namespace recogs
 {
 class Selection3d
 {
@@ -44,6 +44,6 @@ public:
     /// Clear the points signaled to \c true in the provided bitmask.
     void clear(const thrust::device_vector<bool>& clear_bitmask, cudaStream_t stream);
 };
-} // namespace gs_train
+} // namespace recogs
 
 #include "Selection3d.inl"

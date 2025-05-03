@@ -7,7 +7,7 @@
 
 #define NUM_THREADS 512
 
-using namespace gs_train;
+using namespace recogs;
 
 namespace
 {

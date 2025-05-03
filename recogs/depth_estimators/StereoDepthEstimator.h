@@ -11,7 +11,7 @@
 #include "utils/image/Image.h"
 #include "utils/image/image_copy.h"
 
-namespace gs_train
+namespace recogs
 {
 // Forward decl
 class App;
@@ -59,4 +59,4 @@ public:
     /// Estimate depth by performing horizontal and vertical stereo matching.
     void estimate_hv(StereoDepthEstimatorParams& params);
 };
-} // namespace gs_train
+} // namespace recogs

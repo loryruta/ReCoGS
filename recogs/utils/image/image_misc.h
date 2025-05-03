@@ -5,7 +5,7 @@
 
 // TODO Lord forgive me for the mess of this file but I have a deadline...
 
-namespace gs_train
+namespace recogs
 {
 __constant__ const glm::vec3 k_viridis_colors[] = {
     {0.267004, 0.004874, 0.329415}, {0.268510, 0.009605, 0.335427}, {0.269944, 0.014625, 0.341379},
@@ -156,4 +156,4 @@ inline void image_depth_to_rgb_inplace(Image4fHWC& color_depth, cudaStream_t str
         stream);
 }
 
-} // namespace gs_train
+} // namespace recogs

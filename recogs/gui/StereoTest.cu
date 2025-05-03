@@ -1,6 +1,6 @@
 #include "StereoTest.h"
 
-using namespace gs_train::ui;
+using namespace recogs::ui;
 
 StereoTest::StereoTest()
 {

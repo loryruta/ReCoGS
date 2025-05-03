@@ -6,7 +6,7 @@
 #define BX 32
 #define BY 32
 
-using namespace gs_train;
+using namespace recogs;
 
 float* FusedSSIM::forward( //
     float C1,

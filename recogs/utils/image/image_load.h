@@ -9,7 +9,7 @@
 #include "utils/image/image_visit_transform.h"
 #include "utils/stb_image.h"
 
-namespace gs_train
+namespace recogs
 {
 template <int C> // T = float
 void image_load(const std::filesystem::path& filepath,
@@ -70,4 +70,4 @@ void image_load_chw(const std::filesystem::path& filepath,
     CHECK_CUDA(cudaStreamSynchronize(stream));
     out_image_chw = std::make_unique<OutImageT>(std::move(image_chw));
 }
-} // namespace gs_train
+} // namespace recogs

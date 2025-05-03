@@ -6,7 +6,7 @@
 #include "video/GLMappedResource.h"
 #include "video/ImageSlider.h"
 
-namespace gs_train
+namespace recogs
 {
 // Forward decl
 class App;
@@ -33,4 +33,4 @@ public:
     void ui();
 };
 } // namespace ui
-} // namespace gs_train
+} // namespace recogs

@@ -10,7 +10,7 @@
         if (condition_) ImGui::EndDisabled();                                                                          \
     } while (false)
 
-namespace gs_train
+namespace recogs
 {
 /// Whether the user is interacting with ImGui UIs (e.g. hovering a window).
 /// In such a case, the interaction event shouldn't be forwarded to, for example, the camera controller.
@@ -27,4 +27,4 @@ inline void imgui_disable_ui_interaction()
     io.WantCaptureKeyboard = false;
     io.WantCaptureMouse = false;
 }
-} // namespace gs_train
+} // namespace recogs

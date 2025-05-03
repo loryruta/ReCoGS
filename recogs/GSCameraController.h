@@ -5,7 +5,7 @@
 #include "GSCamera.h"
 #include "video/Window.h"
 
-namespace gs_train
+namespace recogs
 {
 class GSCameraController
 {
@@ -29,4 +29,4 @@ public:
     /// Function that has to be called when drawing UI.
     void ui();
 };
-} // namespace gs_train
+} // namespace recogs

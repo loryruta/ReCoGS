@@ -8,7 +8,7 @@
 #include "utils/image/Image.h"
 #include "video/CudaTexture.h"
 
-namespace gs_train
+namespace recogs
 {
 // Forward decl
 class App;
@@ -80,4 +80,4 @@ private:
 
     void on_scroll(double xoffset, double yoffset);
 };
-} // namespace gs_train
+} // namespace recogs

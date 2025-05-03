@@ -5,7 +5,7 @@
 #include "ssim.h"
 #include "utils/cuda_utils.h"
 
-namespace gs_train
+namespace recogs
 {
 class FusedSSIM
 {
@@ -48,4 +48,4 @@ public:
         const float* dL_dmap,
         cudaStream_t stream);
 };
-} // namespace gs_train
+} // namespace recogs

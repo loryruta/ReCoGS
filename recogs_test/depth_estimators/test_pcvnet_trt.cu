@@ -10,7 +10,7 @@
 // Only testing what is strictly required for the tool (engine building and inference).
 // Extensive testing with different configurations (and results) are done in Python
 
-using namespace gs_train;
+using namespace recogs;
 
 TEST_CASE("PCVNet TensorRT")
 {

@@ -7,7 +7,7 @@
 #include "utils/cuda_utils.h"
 #include "utils/warp_ops.h"
 
-namespace gs_train
+namespace recogs
 {
 namespace detail
 {
@@ -122,4 +122,4 @@ __host__ typename Image<C, T, MEMORY_LAYOUT>::Value image_max( //
 {
     return image_reduce<C, T, MEMORY_LAYOUT, Max<T>>(image, stream);
 }
-} // namespace gs_train
+} // namespace recogs

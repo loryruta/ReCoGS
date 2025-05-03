@@ -6,7 +6,7 @@
 #include "utils/misc_utils.h"
 #include "utils/stb_image_write.h"
 
-namespace gs_train
+namespace recogs
 {
 /// Save the image to the provided PNG or JPEG file.
 /// Device operations are performed on the provided stream, towards which this function eventually synchronizes.
@@ -93,4 +93,4 @@ void image_save_pfm(Image<C, float, ImageMemoryLayout::HWC>& image, const std::f
     fwrite(image_data.data(), sizeof(float), image.height * image.width * C, f);
     fclose(f);
 }
-} // namespace gs_train
+} // namespace recogs

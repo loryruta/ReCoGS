@@ -4,7 +4,7 @@
 
 #include "Image.h"
 
-namespace gs_train
+namespace recogs
 {
 namespace detail
 {
@@ -33,4 +33,4 @@ void image_fill_custom(Image<C, T, MEMORY_LAYOUT>& image,
     detail::image_fill_custom_kernel<Image<C, T, MEMORY_LAYOUT>>
         <<<num_blocks, block_dim, 0, stream>>>(image, x_num, y_num, fill_value);
 }
-} // namespace gs_train
+} // namespace recogs

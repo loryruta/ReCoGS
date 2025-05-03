@@ -8,11 +8,11 @@
 
 #include "utils/misc_utils.h"
 
-#define CHECK_CUDA(_error) gs_train::check_cuda_error(_error, __FILE_NAME__, __LINE__)
+#define CHECK_CUDA(_error) recogs::check_cuda_error(_error, __FILE_NAME__, __LINE__)
 
 #define RCGS_TPTR(_x) thrust::raw_pointer_cast((_x).data())
 
-namespace gs_train
+namespace recogs
 {
 namespace detail
 {
@@ -118,4 +118,4 @@ __forceinline__ __device__ uint32_t get_warp_id()
     return ret;
 }
 
-} // namespace gs_train
+} // namespace recogs

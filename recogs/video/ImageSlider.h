@@ -8,7 +8,7 @@
 
 #include "utils/Stopwatch.h"
 
-namespace gs_train
+namespace recogs
 {
 class ImageSlider
 {
@@ -47,4 +47,4 @@ public:
 private:
     void init_texture_if_uninit(int i);
 };
-} // namespace gs_train
+} // namespace recogs

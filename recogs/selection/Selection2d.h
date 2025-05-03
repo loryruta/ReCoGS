@@ -6,7 +6,7 @@
 #include "utils/DeviceBuffer.h"
 #include "utils/image/Image.h"
 
-namespace gs_train
+namespace recogs
 {
 // Forward decl
 class App;
@@ -56,4 +56,4 @@ public:
 private:
     void reproject_ref_map(cudaStream_t stream);
 };
-} // namespace gs_train
+} // namespace recogs

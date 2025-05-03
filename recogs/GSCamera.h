@@ -10,7 +10,7 @@
 
 #include "utils/DeviceBuffer.h"
 
-namespace gs_train
+namespace recogs
 {
 /// A class representing a camera compatible with the 3DGS rasterizer from INRIA.
 class GSCamera
@@ -76,4 +76,4 @@ public:
 
     GSCamera& operator=(GSCamera&& other) noexcept;
 };
-} // namespace gs_train
+} // namespace recogs

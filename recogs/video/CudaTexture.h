@@ -2,7 +2,7 @@
 
 #include "utils/image/Image.h"
 
-namespace gs_train
+namespace recogs
 {
 class CudaTexture
 {
@@ -24,4 +24,4 @@ public:
 
     void write(const Image4fHWC& image, cudaStream_t stream);
 };
-} // namespace gs_train
+} // namespace recogs

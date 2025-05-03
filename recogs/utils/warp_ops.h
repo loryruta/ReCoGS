@@ -2,7 +2,7 @@
 
 #define FULL_MASK 0xFFFFFFFF
 
-namespace gs_train
+namespace recogs
 {
 /// Perform a reduction within a warp. We expect all threads to run this function.
 /// \return the reduced value for the current lane. The aggregated value is held by the lane 0

@@ -2,7 +2,7 @@
 
 #include "Image.h"
 
-namespace gs_train
+namespace recogs
 {
 namespace detail
 {
@@ -27,4 +27,4 @@ void image_fill(Image<C, T, MEMORY_LAYOUT>& image,
     dim3 block_dim{32, 32};
     detail::image_fill_kernel<Image<C, T, MEMORY_LAYOUT>><<<num_blocks, block_dim, 0, stream>>>(image, fill_value);
 }
-} // namespace gs_train
+} // namespace recogs

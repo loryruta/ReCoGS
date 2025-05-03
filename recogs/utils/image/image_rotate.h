@@ -3,7 +3,7 @@
 #include "Image.h"
 #include "utils/misc_utils.h"
 
-namespace gs_train
+namespace recogs
 {
 namespace detail
 {
@@ -34,4 +34,4 @@ void image_rotate_90_clockwise(const Image<C, T, MEMORY_LAYOUT>& src_image, Imag
     dim3 block_dim{32, 32};
     detail::image_rotate_90_clockwise_kernel<<<num_blocks, block_dim>>>(src_image, dst_image);
 }
-} // namespace gs_train
+} // namespace recogs

@@ -4,7 +4,7 @@
 #include "Selection3d.h"
 #include "utils/image/Image.h"
 
-namespace gs_train
+namespace recogs
 {
 class SelectionRenderer
 {
@@ -26,4 +26,4 @@ public:
         Image4fHWC& out_color_depth,
         cudaStream_t stream);
 };
-} // namespace gs_train
+} // namespace recogs

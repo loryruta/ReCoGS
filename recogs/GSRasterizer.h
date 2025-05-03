@@ -7,7 +7,7 @@
 #include "optimizer/GSLoss.h"
 #include "utils/image/Image.h"
 
-namespace gs_train
+namespace recogs
 {
 /// An interface class to the diff_gaussian_rasterizer code.
 /// Reference:
@@ -103,4 +103,4 @@ private:
         float* dL_drot,
         cudaStream_t stream);
 };
-} // namespace gs_train
+} // namespace recogs

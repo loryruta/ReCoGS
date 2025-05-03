@@ -4,7 +4,7 @@
 
 #include "gl_utils.h"
 
-namespace gs_train
+namespace recogs
 {
 /// Draw a texture to screen
 class DrawTexture

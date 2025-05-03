@@ -15,7 +15,7 @@
 #include "utils/image/image_save.h"
 #include "utils/str_utils.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 void App::Params::validate() const
 {

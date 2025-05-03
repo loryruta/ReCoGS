@@ -1,6 +1,6 @@
 #include "Scene.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 Scene::Scene(int num_vertices) : num_vertices(num_vertices)
 {

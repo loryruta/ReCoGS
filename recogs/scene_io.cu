@@ -8,7 +8,7 @@
 
 #include "utils/misc_utils.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 namespace
 {

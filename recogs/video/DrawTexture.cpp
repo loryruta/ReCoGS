@@ -1,6 +1,6 @@
 #include "DrawTexture.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 namespace
 {

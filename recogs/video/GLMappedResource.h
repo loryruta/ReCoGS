@@ -4,7 +4,7 @@
 
 #include "utils/image/Image.h"
 
-namespace gs_train
+namespace recogs
 {
 struct GLMappedResource {
 private:
@@ -27,4 +27,4 @@ public:
     ///     Device image data with memory layout (H, W, 4).
     void write(const Image4fHWC& image, cudaStream_t stream);
 };
-} // namespace gs_train
+} // namespace recogs

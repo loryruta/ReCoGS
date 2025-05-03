@@ -2,7 +2,7 @@
 
 #include <exception>
 
-namespace gs_train
+namespace recogs
 {
 ///
 class CustomException : public std::exception

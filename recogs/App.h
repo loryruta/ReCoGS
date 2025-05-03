@@ -16,7 +16,7 @@
 #include "video/GLMappedResource.h"
 #include "video/Window.h"
 
-namespace gs_train
+namespace recogs
 {
 class App
 {
@@ -113,4 +113,4 @@ private:
     void save_screenshot();
     void resize_screenbuffers(int width, int height);
 };
-} // namespace gs_train
+} // namespace recogs

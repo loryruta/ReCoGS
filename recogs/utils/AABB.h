@@ -6,7 +6,7 @@
 
 #include "cuda_utils.h"
 
-namespace gs_train
+namespace recogs
 {
 template <glm::length_t LENGTH, typename T>
 using Point = glm::vec<LENGTH, T>;
@@ -111,4 +111,4 @@ using AABB2i = AABB<2, int>;
 using AABB3i = AABB<3, int>;
 using AABB3f = AABB<3, float>;
 
-} // namespace gs_train
+} // namespace recogs

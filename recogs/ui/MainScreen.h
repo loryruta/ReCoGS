@@ -10,7 +10,7 @@
 #include "video/GLMappedResource.h"
 #include "video/ImageSlider.h"
 
-namespace gs_train
+namespace recogs
 {
 // Forward decl
 class App;
@@ -48,4 +48,4 @@ public:
 private:
     void render_training_cameras();
 };
-} // namespace gs_train
+} // namespace recogs

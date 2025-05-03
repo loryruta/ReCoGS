@@ -2,7 +2,7 @@
 
 #include "rasterizer/rasterizer.h"
 
-using namespace gs_train;
+using namespace recogs;
 
 namespace
 {

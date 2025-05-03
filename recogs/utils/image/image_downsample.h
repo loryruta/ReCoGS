@@ -3,7 +3,7 @@
 #include "Image.h"
 #include "utils/misc_utils.h"
 
-namespace gs_train
+namespace recogs
 {
 namespace detail
 {
@@ -57,4 +57,4 @@ void image_downsample(const Image<C, T, MEMORY_LAYOUT>& image,
     block_dim.y = 32;
     detail::image_downsample_kernel<<<num_blocks, block_dim>>>(image, num_downsample, out_image);
 }
-} // namespace gs_train
+} // namespace recogs

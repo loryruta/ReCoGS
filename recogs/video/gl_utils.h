@@ -10,7 +10,7 @@
 #include "utils/misc_utils.h"
 #include "utils/stb_image.h"
 
-namespace gs_train
+namespace recogs
 {
 /// A RAII wrapper for GL shader
 struct Shader {
@@ -131,4 +131,4 @@ inline GLuint load_texture(const std::filesystem::path& filepath, int channels, 
     glBindTexture(GL_TEXTURE_2D, 0);
     return texture;
 }
-} // namespace gs_train
+} // namespace recogs

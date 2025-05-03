@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <sstream>
 
-namespace gs_train
+namespace recogs
 {
 class Stopwatch
 {

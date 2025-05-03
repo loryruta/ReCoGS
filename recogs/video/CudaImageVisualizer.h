@@ -7,7 +7,7 @@
 #include "Window.h"
 #include "utils/image/Image.h"
 
-namespace gs_train
+namespace recogs
 {
 class CudaImageVisualizer
 {
@@ -36,4 +36,4 @@ public:
 private:
     void worker();
 };
-} // namespace gs_train
+} // namespace recogs

@@ -76,6 +76,8 @@ set(LIB_SOURCES
         Scene.h
         scene_io.cu
         scene_io.h
+        ScenePointcloud.cu
+        ScenePointcloud.h
 )
 
 set(VIDEO_SOURCES

@@ -120,10 +120,10 @@ void StereoDepthEstimator::estimate_single_axis(const StereoDepthEstimatorParams
     rasterizer.forward(background_d, scene, false /* scene_2 */, camera, im0, stream);
 
     // Render im1
-    GSCamera rview = camera.clone();
-    rview.position += (axis == 0 ? camera.right() : -camera.up()) * b;
-    rview.update(stream);
-    rasterizer.forward(background_d, scene, false /* scene_2 */, rview, im1, stream);
+    m_rview = camera.clone();
+    m_rview.position += (axis == 0 ? camera.right() : -camera.up()) * b;
+    m_rview.update(stream);
+    rasterizer.forward(background_d, scene, false /* scene_2 */, m_rview, im1, stream);
     if (debug) {
         image_save(im0, fmt::format("estimatedepth-{}im0.png", debug_image_prefix), stream);
         image_save(im1, fmt::format("estimatedepth-{}im1.png", debug_image_prefix), stream);

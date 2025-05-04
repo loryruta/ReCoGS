@@ -39,6 +39,7 @@ private:
 
     std::unique_ptr<PCVNetEngine> m_pcvnet_engine;
 
+    GSCamera m_rview;
     thrust::device_vector<float> m_im0;
     thrust::device_vector<float> m_im1;
     thrust::device_vector<float> m_pcvnet_im0;           // Padded/rotated

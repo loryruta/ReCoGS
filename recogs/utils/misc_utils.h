@@ -2,6 +2,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 
 #define CHECK_STATE(condition, ...) recogs::check_state(!!(condition), #condition, __FILE__, __LINE__)
 #define CHECK_ARG CHECK_STATE
@@ -27,5 +28,12 @@ INT div_ceil(INT a, INT b)
 {
     if (a == 0) return 0;
     return 1 + ((a - 1) / b); // if a != 0
+}
+
+inline size_t get_filesize(const std::filesystem::path& filepath)
+{
+    FILE* f = fopen(filepath.c_str(), "r");
+    fseek(f, 0L, SEEK_END);
+    return ftell(f);
 }
 } // namespace recogs

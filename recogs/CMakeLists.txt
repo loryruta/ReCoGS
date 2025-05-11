@@ -38,6 +38,11 @@ set(LIB_SOURCES
         selection/SelectionRenderer.cu
         selection/SelectionRenderer.h
 
+        svo/SVONode.h
+        svo/SVOBuilder.cu
+        svo/SVOBuilder.h
+        svo/SVONode.h
+
         ui/MainScreen.cu
         ui/MainScreen.h
         ui/Screen.h

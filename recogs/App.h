@@ -79,8 +79,10 @@ public:
 
     [[nodiscard]] Scene& scene() const { return *m_scene; }
     [[nodiscard]] const float* background_d() const { return m_scene_background.data_ptr<float>(); }
-    [[nodiscard]] Selection3d& selection3d() const { return *m_selection3d; };
+    [[nodiscard]] Selection3d& selection3d() const { return *m_selection3d; }
     [[nodiscard]] std::vector<GSCamera> const& cameras() const { return m_training_cameras; }
+
+    [[nodiscard]] Image4fHWC& colordepth() const { return *m_color_depth; }
 
     [[nodiscard]] GSRasterizer& gs_rasterizer() { return *m_gs_rasterizer; }
     [[nodiscard]] SelectionRenderer& selection_renderer() { return *m_selection_renderer; }

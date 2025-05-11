@@ -6,9 +6,9 @@
 
 namespace recogs
 {
-std::string num_bytes_to_string(std::size_t bytes)
+inline std::string num_bytes_to_string(std::size_t bytes)
 {
-    const char* suffixes[] = {"B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
+    const char* suffixes[] = {"bytes", "Kb", "Mb", "Gb", "Tb", "Pb", "Eb", "Zb", "Yb"};
     double size = static_cast<double>(bytes);
     int order = 0;
 

@@ -118,4 +118,6 @@ __forceinline__ __device__ uint32_t get_warp_id()
     return ret;
 }
 
+__forceinline__ __device__ float sign(float value) { return value < 0 ? -1 : 1; }
+
 } // namespace recogs

@@ -49,6 +49,8 @@ public:
 
     /// Return the view matrix (or extrinsic parameters matrix).
     [[nodiscard]] const glm::mat4& viewmatrix() const { return m_view_matrix; }
+    /// Return the view/projection matrix.
+    [[nodiscard]] const glm::mat4& viewproj() const { return m_view_proj; }
     /// Return the inverse of the view matrix.
     [[nodiscard]] glm::mat4 inv_view() const;
     /// Return the intrinsic parameters matrix.

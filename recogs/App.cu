@@ -57,6 +57,9 @@ App::App(const Params& params)
     // Init CUDA stream
     CHECK_CUDA(cudaStreamCreate(&m_stream));
 
+    // Compute the scene min/max
+    m_scene->compute_minmax(m_stream);
+
     // Load cameras
     m_training_cameras = read_cameras_from_json(m_scene_folder, m_stream);
 

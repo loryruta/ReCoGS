@@ -41,6 +41,34 @@ void Scene::zero_grad(cudaStream_t stream)
     thrust::fill(thrust::cuda::par.on(stream), dL_drot.begin(), dL_drot.end(), 0);
 }
 
+void Scene::compute_minmax(cudaStream_t stream)
+{
+    if (has_computed_minmax()) return;
+    const glm::vec3* begin = (glm::vec3*) RCGS_TPTR(means);
+    const glm::vec3* end = begin + num_vertices;
+    auto min_op = [] __device__(const glm::vec3& a, const glm::vec3& b) -> glm::vec3 { return glm::min(a, b); };
+    auto max_op = [] __device__(const glm::vec3& a, const glm::vec3& b) -> glm::vec3 { return glm::max(a, b); };
+    m_min = thrust::reduce(thrust::cuda::par.on(stream), begin, end, glm::vec3(INFINITY), min_op);
+    m_max = thrust::reduce(thrust::cuda::par.on(stream), begin, end, glm::vec3(-INFINITY), max_op);
+    // clang-format off
+    printf("[INFO ] [Scene] Min/max computed: (%f, %f, %f) -> (%f, %f, %f)\n",
+           m_min.x, m_min.y, m_min.z,
+           m_max.x, m_max.y, m_max.z);
+    // clang-format on
+}
+
+glm::vec3 Scene::min() const
+{
+    CHECK_STATE(has_computed_minmax());
+    return m_min;
+}
+
+glm::vec3 Scene::max() const
+{
+    CHECK_STATE(has_computed_minmax());
+    return m_max;
+}
+
 size_t Scene::num_bytes() const
 {
     size_t bytes = means.size() + shs.size() + opacities.size() + scales.size() + rotations.size();

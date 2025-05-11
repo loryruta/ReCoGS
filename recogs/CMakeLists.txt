@@ -42,6 +42,8 @@ set(LIB_SOURCES
         svo/SVOBuilder.cu
         svo/SVOBuilder.h
         svo/SVONode.h
+        svo/SVORenderer.cu
+        svo/SVORenderer.h
 
         ui/MainScreen.cu
         ui/MainScreen.h

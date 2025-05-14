@@ -56,14 +56,44 @@ struct CastResult {
 };
 
 __device__ bool
-cast_ray(const glm::vec3& oct_min, const glm::vec3& oct_max, const Ray3f& ray, const SVONode* svo, CastResult& result)
+test_ray_aabb(const Ray3f& ray, const glm::vec3& min_, const glm::vec3& max_, float& out_tmin, float& out_tmax)
 {
+    glm::vec3 tmin_xyz = (min_ - ray.o) / ray.d;
+    glm::vec3 tmax_xyz = (max_ - ray.o) / ray.d;
+    glm::vec3 t1 = min(tmin_xyz, tmax_xyz);
+    glm::vec3 t2 = max(tmin_xyz, tmax_xyz);
+    out_tmin = max(max(t1.x, t1.y), t1.z);       // tmin
+    out_tmax = min(min(t2.x, t2.y), t2.z);       // tmax
+    return out_tmin <= out_tmax && out_tmax > 0; // Intersecting and not behind
+}
+
+__constant__ glm::vec3 k_octet_colormap[]{
+    glm::vec3(0, 0, 1),
+    glm::vec3(0, 1, 0),
+    glm::vec3(1, 0, 0),
+    glm::vec3(1, 0, 1),
+    glm::vec3(0, 1, 1),
+    glm::vec3(1, 1, 0),
+    glm::vec3(0.5, 0.5, 0.5),
+    glm::vec3(1, 1, 1),
+};
+
+__device__ bool cast_ray(const Ray3f& ray,
+                         const glm::vec3& svo_min,
+                         const glm::vec3& svo_max,
+                         const SVONode* svo,
+                         CastResult& result,
+                         glm::vec3& out_color)
+{
+    // Perform a ray-aabb intersection test to determine tmin and tmax of the SVO
+    float tmin, tmax;
+    if (!test_ray_aabb(ray, svo_min, svo_max, tmin, tmax)) return false;
+
     int iter = 0;
+    glm::vec3 svo_mid = (svo_min + svo_max) * 0.5f;
+    glm::vec3 svo_ext = svo_max - svo_min;
 
-    glm::vec3 oct_mid = (oct_max + oct_min) / 2.0f;
-
-    // Precompute the coefficients of tx(x), ty(y), and tz(z).
-
+    // Precompute the coefficients of t_x(x), t_y(y), and t_z(z)
     float tx_coef = 1.0f / ray.d.x;
     float ty_coef = 1.0f / ray.d.y;
     float tz_coef = 1.0f / ray.d.z;
@@ -71,33 +101,27 @@ cast_ray(const glm::vec3& oct_min, const glm::vec3& oct_max, const Ray3f& ray, c
     float ty_bias = -ty_coef * ray.o.y;
     float tz_bias = -tz_coef * ray.o.z;
 
-    // Select octant mask to mirror the coordinate system so that ray direction is negative along each axis.
-    int dir_mask = 7;
+    int dir_mask = 0;
     if (ray.d.x > 0.0f) dir_mask ^= 1;
     if (ray.d.y > 0.0f) dir_mask ^= 2;
     if (ray.d.z > 0.0f) dir_mask ^= 4;
 
-    // Initialize the active span of t-values.
-
-    // TODO calculated using ray-aabb intersection test REWRITE THIS CODE DOWN HERE!
-    float t_min = fmaxf(fmaxf(2.0f * tx_coef - tx_bias, 2.0f * ty_coef - ty_bias), 2.0f * tz_coef - tz_bias);
-    float t_max = fminf(fminf(tx_coef - tx_bias, ty_coef - ty_bias), tz_coef - tz_bias);
-
-    t_min = fmaxf(t_min, 0.0f); // TODO
-    t_max = fminf(t_max, 1.0f); // TODO
-
-    // Initialize the current voxel to the first child of the root.
+    // Initialize the current voxel to the first child of the root
     const SVONode* parent = svo;
     const SVONode* child_descriptor = nullptr; // Invalid until fetched
-    int idx = 0;
-    float3 pos = make_float3(1.0f, 1.0f, 1.0f);
     int depth = CAST_STACK_DEPTH - 1;
-    float scale_exp2 = 0.5f; // exp2f(scale - s_max)
+    float scale_exp2 = 0.5f;
 
-    // Project octree center position to understand which node to enter
-    if (oct_mid.x * tx_coef + tx_bias > t_min) idx ^= 1, pos.x = oct_mid.x;
-    if (oct_mid.y * ty_coef + ty_bias > t_min) idx ^= 2, pos.y = oct_mid.y;
-    if (oct_mid.z * tz_coef + tz_bias > t_min) idx ^= 4, pos.z = oct_mid.z;
+    int idx = 0;
+    // Project octree center position to understand which node to enter first
+    if (svo_mid.x * tx_coef + tx_bias > tmin) idx |= 1;
+    if (svo_mid.y * ty_coef + ty_bias > tmin) idx |= 2;
+    if (svo_mid.z * tz_coef + tz_bias > tmin) idx |= 4;
+
+    glm::vec3 corner = svo_mid;
+    if ((idx & 1) == 0) corner.x += sign(ray.d.x) * svo_ext.x * scale_exp2;
+    if ((idx & 2) == 0) corner.y += sign(ray.d.y) * svo_ext.y * scale_exp2;
+    if ((idx & 4) == 0) corner.z += sign(ray.d.z) * svo_ext.z * scale_exp2;
 
     struct Record {
         uint32_t parent_idx;
@@ -107,93 +131,108 @@ cast_ray(const glm::vec3& oct_min, const glm::vec3& oct_max, const Ray3f& ray, c
 
     // Traverse voxels along the ray as long as the current ray stays within the octree
     while (true) {
-#if (MAX_RAYCAST_ITERATIONS > 0)
-        if (iter > MAX_RAYCAST_ITERATIONS) break;
-#endif
         // Fetch child descriptor unless it is already valid.
         if (!child_descriptor) child_descriptor = parent;
-
-        // Determine maximum t-value of the cube by evaluating tx(), ty(), and tz() at its corner
-        float tx_corner = pos.x * tx_coef + tx_bias;
-        float ty_corner = pos.y * ty_coef + ty_bias;
-        float tz_corner = pos.z * tz_coef + tz_bias;
-        float tc_max = fminf(fminf(tx_corner, ty_corner), tz_corner);
 
         // Process voxel if the corresponding bit in valid mask is set and the active t-span is non-empty.
         // This is where the magic happens (see the paper for more details):
         // https://research.nvidia.com/sites/default/files/pubs/2010-02_Efficient-Sparse-Voxel/laine2010tr1_paper.pdf
 
         int child_idx = idx ^ dir_mask;
-        int child_bit = int(child_descriptor->children_mask) & (1 << child_idx);
-        if (child_bit != 0 && t_min <= t_max) {
-            // INTERSECT
-            // Intersect active t-span with the cube and evaluate tx(), ty(), and tz() at the center of the voxel
-            float tv_max = fminf(t_max, tc_max);
-            float half = scale_exp2 * 0.5f;
-            float tx_center = half * tx_coef + tx_corner;
-            float ty_center = half * ty_coef + ty_corner;
-            float tz_center = half * tz_coef + tz_corner;
-
-            // Descend to the first child if the resulting t-span is non-empty
-            if (t_min <= tv_max) {
-                // PUSH
-                // Write current parent to the stack
-                if (depth >= CAST_STACK_DEPTH) return false; // ERROR: no more size in the stack
-
-                // Find child descriptor corresponding to the current voxel
-                parent = svo + child_descriptor->first_child_offset + child_idx;
-
-                // Select child voxel that the ray enters first
-                idx = 0;
-                depth--;
-                scale_exp2 = half;
-
-                if (tx_center > t_min) idx ^= 1, pos.x += scale_exp2;
-                if (ty_center > t_min) idx ^= 2, pos.y += scale_exp2;
-                if (tz_center > t_min) idx ^= 4, pos.z += scale_exp2;
-
-                // Update active t-span and invalidate cached child descriptor.
-                t_max = tv_max;
-                child_descriptor = nullptr;
-                continue;
-            }
+        // assert(child_idx <= 7);
+        int child_bit = int(child_descriptor->children_mask) & (1 << child_idx); // Child exist?
+        if (child_bit) {
+            out_color = k_octet_colormap[child_idx];
+            return true;
         }
 
-        // ADVANCE
+        //        if (child_bit && tmin <= tmax) {
+        //            // INTERSECT
+        //            // Intersect active t-span with the cube and evaluate tx(), ty(), and tz() at the center of the
+        //            voxel float tv_max = fminf(tmax, tc_max); float half = scale_exp2 * 0.5f; float tx_center = half *
+        //            tx_coef + tx_corner; float ty_center = half * ty_coef + ty_corner; float tz_center = half *
+        //            tz_coef + tz_corner;
+        //
+        //            // Descend to the first child if the resulting t-span is non-empty
+        //            if (tmin <= tv_max) {
+        //                // PUSH
+        //                // Write current parent to the stack
+        //                if (depth >= CAST_STACK_DEPTH) return false; // ERROR: no more size in the stack
+        //
+        //                // Find child descriptor corresponding to the current voxel
+        //                parent = svo + child_descriptor->first_child_offset + child_idx;
+        //
+        //                // Select child voxel that the ray enters first
+        //                idx = 0;
+        //                depth--;
+        //                scale_exp2 = half;
+        //
+        //                if (tx_center > tmin) idx ^= 1, pos.x += scale_exp2;
+        //                if (ty_center > tmin) idx ^= 2, pos.y += scale_exp2;
+        //                if (tz_center > tmin) idx ^= 4, pos.z += scale_exp2;
+        //
+        //                // Update active t-span and invalidate cached child descriptor.
+        //                tmax = tv_max;
+        //                child_descriptor = nullptr;
+        //                continue;
+        //            }
+        //        }
+
+        // ---------------------------------------------------------------- ADVANCE
+
+        // Determine maximum t-value of the cube by evaluating tx(), ty(), and tz() at its corner
+        float tx_corner = corner.x * tx_coef + tx_bias;
+        float ty_corner = corner.y * ty_coef + ty_bias;
+        float tz_corner = corner.z * tz_coef + tz_bias;
+        float tmax_corner = fminf(fminf(tx_corner, ty_corner), tz_corner);
+
         // Step along the ray
         int step_mask = 0;
-        if (tx_corner <= tc_max) step_mask ^= 1, pos.x += sign(ray.d.x) * scale_exp2;
-        if (ty_corner <= tc_max) step_mask ^= 2, pos.y += sign(ray.d.y) * scale_exp2;
-        if (tz_corner <= tc_max) step_mask ^= 4, pos.z += sign(ray.d.z) * scale_exp2;
+        if (tx_corner <= tmax_corner) {
+            step_mask ^= 1;
+            corner.x += sign(ray.d.x) * svo_ext.x * scale_exp2;
+        }
+        if (ty_corner <= tmax_corner) {
+            step_mask ^= 2;
+            corner.y += sign(ray.d.y) * svo_ext.y * scale_exp2;
+        }
+        if (tz_corner <= tmax_corner) {
+            step_mask ^= 4;
+            corner.z += sign(ray.d.z) * svo_ext.z * scale_exp2;
+        }
 
         // Update active t-span and flip bits of the child slot index
-        t_min = tc_max;
+        tmin = tmax_corner;
         idx ^= step_mask;
 
         // Proceed with pop if the bit flips disagree with the ray direction
         if ((idx & step_mask) != 0) {
-            // POP
+            // ---------------------------------------------------------------- POP
             // Find the highest differing bit between the two positions.
+            return false;
 
             unsigned int differing_bits = 0;
-            if ((step_mask & 1) != 0) differing_bits |= __float_as_int(pos.x) ^ __float_as_int(pos.x + scale_exp2);
-            if ((step_mask & 2) != 0) differing_bits |= __float_as_int(pos.y) ^ __float_as_int(pos.y + scale_exp2);
-            if ((step_mask & 4) != 0) differing_bits |= __float_as_int(pos.z) ^ __float_as_int(pos.z + scale_exp2);
+            if ((step_mask & 1) != 0)
+                differing_bits |= __float_as_int(corner.x) ^ __float_as_int(corner.x + scale_exp2);
+            if ((step_mask & 2) != 0)
+                differing_bits |= __float_as_int(corner.y) ^ __float_as_int(corner.y + scale_exp2);
+            if ((step_mask & 4) != 0)
+                differing_bits |= __float_as_int(corner.z) ^ __float_as_int(corner.z + scale_exp2);
             depth = (__float_as_int((float) differing_bits) >> 23) - 127;        // position of the highest bit
             scale_exp2 = __int_as_float((depth - CAST_STACK_DEPTH + 127) << 23); // exp2f(scale - s_max)
 
             // Restore parent voxel from the stack
             parent = svo + stack[depth].parent_idx;
-            t_max = stack[depth].t_max;
+            tmax = stack[depth].t_max;
             depth--;
 
             // Round cube position and extract child slot index
-            int shx = __float_as_int(pos.x) >> depth;
-            int shy = __float_as_int(pos.y) >> depth;
-            int shz = __float_as_int(pos.z) >> depth;
-            pos.x = __int_as_float(shx << depth);
-            pos.y = __int_as_float(shy << depth);
-            pos.z = __int_as_float(shz << depth);
+            int shx = __float_as_int(corner.x) >> depth;
+            int shy = __float_as_int(corner.y) >> depth;
+            int shz = __float_as_int(corner.z) >> depth;
+            corner.x = __int_as_float(shx << depth);
+            corner.y = __int_as_float(shy << depth);
+            corner.z = __int_as_float(shz << depth);
             idx = (shx & 1) | ((shy & 1) << 1) | ((shz & 1) << 2);
 
             // Prevent same parent from being stored again and invalidate cached child descriptor.
@@ -206,43 +245,56 @@ cast_ray(const glm::vec3& oct_min, const glm::vec3& oct_max, const Ray3f& ray, c
     if (depth >= CAST_STACK_DEPTH || iter > MAX_RAYCAST_ITERATIONS)
 #endif
     {
-        t_min = 2.0f;
+        return false;
     }
 
     // Output results
-    result.t = t_min;
+    //    result.t = t_min;
     result.iter = iter;
-    result.pos.x = fminf(fmaxf(ray.o.x + t_min * ray.d.x, pos.x + EPSILON), pos.x + scale_exp2 - EPSILON);
-    result.pos.y = fminf(fmaxf(ray.o.y + t_min * ray.d.y, pos.y + EPSILON), pos.y + scale_exp2 - EPSILON);
-    result.pos.z = fminf(fmaxf(ray.o.z + t_min * ray.d.z, pos.z + EPSILON), pos.z + scale_exp2 - EPSILON);
+    //    result.pos.x = fminf(fmaxf(ray.o.x + t_min * ray.d.x, pos.x + EPSILON), pos.x + scale_exp2 - EPSILON);
+    //    result.pos.y = fminf(fmaxf(ray.o.y + t_min * ray.d.y, pos.y + EPSILON), pos.y + scale_exp2 - EPSILON);
+    //    result.pos.z = fminf(fmaxf(ray.o.z + t_min * ray.d.z, pos.z + EPSILON), pos.z + scale_exp2 - EPSILON);
     result.node = parent;
     result.child_idx = idx ^ dir_mask ^ 7;
     result.stack_ptr = depth;
-    return true;
+    return false;
 }
 
-__global__ void cast_ray_kernel(
-    glm::vec3 oct_min, glm::vec3 oct_max, const SVONode* svo, glm::mat4 cam_viewproj, Image4fHWC color_depth)
+__global__ void cast_ray_kernel(glm::vec3 svo_min,
+                                glm::vec3 svo_max,
+                                const SVONode* svo,
+                                glm::vec3 cam_pos,
+                                glm::mat4 cam_view,
+                                glm::mat4 cam_proj,
+                                Image4fHWC color_depth)
 {
     uint32_t px = blockIdx.x * blockDim.x + threadIdx.x;
-    uint32_t py = blockIdx.x * blockDim.x + threadIdx.x;
+    uint32_t py = blockIdx.y * blockDim.y + threadIdx.y;
     if (px >= color_depth.width || py >= color_depth.height) return;
+
+    glm::vec4 frag_coord;
+    frag_coord.x = (float(px) / float(color_depth.width)) * 2.0f - 1.0f;
+    frag_coord.y = (float(py) / float(color_depth.height)) * 2.0f - 1.0f;
+    frag_coord.z = 1.0f;
+    frag_coord.w = 1.0f;
 
     // Generate ray
     Ray3f ray{};
-    ray.o = -cam_viewproj[3];
-    ray.d = glm::normalize(glm::inverse(cam_viewproj) * glm::vec4());
-    // Get rid of small ray direction components to avoid division by zero
+    ray.o = cam_pos;
+    ray.d = glm::normalize(glm::mat3(glm::inverse(cam_view)) * (glm::inverse(cam_proj) * frag_coord));
     if (fabsf(ray.d.x) < EPSILON) ray.d.x = copysignf(EPSILON, ray.d.x);
     if (fabsf(ray.d.y) < EPSILON) ray.d.y = copysignf(EPSILON, ray.d.y);
     if (fabsf(ray.d.z) < EPSILON) ray.d.z = copysignf(EPSILON, ray.d.z);
 
-    color_depth.set_value(px, py, glm::vec4(0, 1, 0, 1));
-
-    // Ray casting against the SVO
-    //    CastResult cast_result{};
-    //    CastStack stack{};
-    //    cast_ray(oct_min, oct_max, ray, svo, cast_result, stack);
+    // Ray casting against SVO
+    CastResult cast_result{};
+    glm::vec3 color;
+    bool intersecting = cast_ray(ray, svo_min, svo_max, svo, cast_result, color);
+    if (intersecting) {
+        color_depth.set_value(px, py, glm::vec4(color, 1));
+    } else {
+        color_depth.set_value(px, py, glm::vec4(0));
+    }
 }
 } // namespace
 
@@ -255,5 +307,6 @@ void SVORenderer::render(const SVO& svo, const GSCamera& camera, Image4fHWC& col
     dim3 blocks_dim;
     blocks_dim.x = 16;
     blocks_dim.y = 16;
-    cast_ray_kernel<<<num_blocks, blocks_dim>>>(svo_minmax.min, svo_minmax.max, svo_d, camera.viewproj(), color_depth);
+    cast_ray_kernel<<<num_blocks, blocks_dim, 0, stream>>>(
+        svo.min, svo.max, RCGS_TPTR(svo.nodes), camera.position, camera.viewmatrix(), camera.projmatrix(), color_depth);
 }

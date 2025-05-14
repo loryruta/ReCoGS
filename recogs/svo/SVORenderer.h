@@ -15,6 +15,6 @@ public:
 
     /// \param svo_d SVO allocated on GPU memory
     /// \param color_depth Output color/depth buffer
-    void render(const AABB3f& svo_minmax, const SVONode* svo_d, const GSCamera& camera, Image4fHWC color_depth);
+    void render(const SVO& svo, const GSCamera& camera, Image4fHWC& color_depth, cudaStream_t stream);
 };
 } // namespace recogs

@@ -1,7 +1,11 @@
 #pragma once
 
+#include <glm/glm.hpp>
+#include <thrust/device_vector.h>
+
 namespace recogs
 {
+/// A node of the sparse voxel octree.
 struct SVONode {
     /// The mask indicating the children of this node
     uint32_t children_mask{}; // 32-bit because we have to do atomics
@@ -12,4 +16,12 @@ struct SVONode {
         uint32_t data;
     };
 };
+
+/// A struct representing a SVO in world-space.
+struct SVO {
+    glm::vec3 min;
+    glm::vec3 max;
+    thrust::device_vector<SVONode> nodes;
+};
+
 } // namespace recogs

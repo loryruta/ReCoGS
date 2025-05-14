@@ -246,7 +246,7 @@ __global__ void cast_ray_kernel(
 }
 } // namespace
 
-void SVORenderer::render(const AABB3f& svo_minmax, const SVONode* svo_d, const GSCamera& camera, Image4fHWC color_depth)
+void SVORenderer::render(const SVO& svo, const GSCamera& camera, Image4fHWC& color_depth, cudaStream_t stream)
 {
     glm::ivec2 resolution = camera.resolution();
     dim3 num_blocks;

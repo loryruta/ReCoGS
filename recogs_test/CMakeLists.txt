@@ -11,6 +11,8 @@ add_executable(recogs_test
         utils/image/test_image_flip.cu
         #utils/image/test_image_reduce.cu
         utils/image/test_image_rotate.cu
+
+        svo_test.cu
 )
 target_link_libraries(recogs_test PRIVATE
         recogs_lib

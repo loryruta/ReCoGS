@@ -38,7 +38,7 @@ set(LIB_SOURCES
         selection/SelectionRenderer.cu
         selection/SelectionRenderer.h
 
-        svo/SVONode.h
+        svo/svo_utils.h
         svo/SVOBuilder.cu
         svo/SVOBuilder.h
         svo/SVONode.h

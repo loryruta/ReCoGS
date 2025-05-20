@@ -16,6 +16,8 @@ private:
     glm::vec3 m_max;
 
 public:
+    std::string name = "untitled";
+
     int num_vertices;
 
     // Parameters

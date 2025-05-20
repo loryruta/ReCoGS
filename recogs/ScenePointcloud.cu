@@ -1,10 +1,13 @@
 #include "ScenePointcloud.h"
 
+#include <fstream>
+
 #include <fmt/format.h>
 
 #include "App.h"
 #include "depth_estimators/StereoDepthEstimator.h"
 #include "svo/SVOBuilder.h"
+#include "svo/svo_utils.h"
 #include "utils/Stopwatch.h"
 #include "utils/image/image_fill.h"
 #include "utils/str_utils.h"
@@ -36,8 +39,8 @@ __global__ void unproject_points_to_grid_kernel(Image4fHWC color_depth,
     p = inv_view * glm::vec4(p, 1); // World-space
     // Normalize the point within the scene grid and obtain the voxel location
     glm::ivec3 voxel_loc = ((p - scene_min) / scene_ext) * glm::vec3(float(1 << octree_resolution));
-    //printf("voxel loc: %d %d %d\n", voxel_loc.x, voxel_loc.y, voxel_loc.z);
-    // Compute the morton code
+    // printf("voxel loc: %d %d %d\n", voxel_loc.x, voxel_loc.y, voxel_loc.z);
+    //  Compute the morton code
     uint64_t morton_code = 0;
     for (int level = 0; level < octree_resolution; ++level) {
         morton_code |= (voxel_loc.x & 1) << (level * 3);
@@ -52,6 +55,28 @@ __global__ void unproject_points_to_grid_kernel(Image4fHWC color_depth,
     out_points[i] = morton_code;
 }
 } // namespace
+
+void ScenePointcloud::export_voxels_to_pcd(const std::unordered_map<uint64_t, uint16_t>& voxels,
+                                           const std::filesystem::path& out_filepath)
+{
+    size_t num_voxels = voxels.size();
+    std::ofstream os(out_filepath, std::ios::binary);
+    os << "VERSION 0.7\n";
+    os << "FIELDS x y z w\n";
+    os << "SIZE 4 4 4 2\n";
+    os << "TYPE U U U U\n";
+    os << "COUNT 1 1 1 1\n";
+    os << "WIDTH " << std::to_string(num_voxels) << "\n";
+    os << "HEIGHT 1\n";
+    os << "VIEWPOINT 0 0 0 1 0 0 0\n";
+    os << "VIEWPOINT " << std::to_string(num_voxels) << "\n";
+    os << "DATA binary\n";
+    for (const auto& [morton_code, weight] : voxels) {
+        glm::ivec3 voxel_loc = from_morton_code(morton_code);
+        os.write((const char*) &voxel_loc, sizeof(uint) * 3);
+        os.write((const char*) &weight, sizeof(uint16_t));
+    }
+}
 
 void ScenePointcloud::generate(const Scene& scene, const std::vector<GSCamera>& cameras, glm::ivec2 resolution)
 {
@@ -171,17 +196,10 @@ void ScenePointcloud::generate(const Scene& scene, const std::vector<GSCamera>& 
     for (const auto& [point, count] : pointcloud_hashmap) {
         linear_voxels.emplace_back(point);
     }
-    // Write points/weights to a binary file
-    FILE* f = fopen(m_output_filepath.c_str(), "w");
-    uint64_t num_points = pointcloud_hashmap.size();
-    fwrite(&num_points, sizeof(uint64_t), 1, f);
-    printf("[INFO ] [ScenePointcloud] Writing %zu points to binary file: %s\n", num_points, m_output_filepath.c_str());
-    printf("[DEBUG] [ScenePointcloud]   Writing points...\n");
-    for (const auto& [morton_code, count] : pointcloud_hashmap) {
-        fwrite(&morton_code, sizeof(uint64_t), 1, f);
-    }
-    printf("[DEBUG] [ScenePointcloud]   Writing weights...\n");
-    fclose(f);
+
+    // Save the pointcloud to a binary file
+    std::filesystem::path voxels_filepath = fmt::format("voxels-{}-{}.pcd", scene.name, octree_resolution);
+    export_voxels_to_pcd(pointcloud_hashmap, voxels_filepath);
 
     // Build a SVO
     SVOBuilder svo_builder;

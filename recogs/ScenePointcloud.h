@@ -26,5 +26,7 @@ public:
 
     /// Generate the pointcloud from all the training cameras of the scene.
     void generate(const Scene& scene, const std::vector<GSCamera>& cameras, glm::ivec2 resolution);
+
+    void export_voxels_to_pcd(const std::unordered_map<uint64_t, uint16_t>& voxels, const std::filesystem::path& out_filepath);
 };
 } // namespace recogs

@@ -20,6 +20,7 @@ private:
     float m_tan_fovx;
     float m_tan_fovy;
     glm::mat4 m_view_matrix;
+    glm::mat4 m_proj_matrix;
     glm::mat4 m_view_proj;
     thrust::device_vector<float> m_viewmatrix;
     thrust::device_vector<float> m_projmatrix;
@@ -49,6 +50,7 @@ public:
 
     /// Return the view matrix (or extrinsic parameters matrix).
     [[nodiscard]] const glm::mat4& viewmatrix() const { return m_view_matrix; }
+    [[nodiscard]] const glm::mat4& projmatrix() const { return m_proj_matrix; }
     /// Return the view/projection matrix.
     [[nodiscard]] const glm::mat4& viewproj() const { return m_view_proj; }
     /// Return the inverse of the view matrix.
@@ -75,6 +77,7 @@ public:
     void update(cudaStream_t stream);
 
     void deserialize(nlohmann::json json);
+    void log_info() const;
 
     GSCamera& operator=(GSCamera&& other) noexcept;
 };

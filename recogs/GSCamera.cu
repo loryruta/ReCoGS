@@ -74,15 +74,14 @@ void GSCamera::update(cudaStream_t stream)
     float right = m_tan_fovx * znear;
     float left = -right;
     const float zsign = 1.0f;
-    glm::mat4 proj_matrix{};
-    proj_matrix[0][0] = 2.0f * znear / (right - left);
-    proj_matrix[1][1] = 2.0f * znear / (top - bottom);
-    proj_matrix[2][0] = (right + left) / (right - left);
-    proj_matrix[2][1] = (top + bottom) / (top - bottom);
-    proj_matrix[2][3] = zsign;
-    proj_matrix[2][2] = zsign * zfar / (zfar - znear);
-    proj_matrix[3][2] = -(zfar * znear) / (zfar - znear);
-    m_view_proj = proj_matrix * m_view_matrix;
+    m_proj_matrix[0][0] = 2.0f * znear / (right - left);
+    m_proj_matrix[1][1] = 2.0f * znear / (top - bottom);
+    m_proj_matrix[2][0] = (right + left) / (right - left);
+    m_proj_matrix[2][1] = (top + bottom) / (top - bottom);
+    m_proj_matrix[2][3] = zsign;
+    m_proj_matrix[2][2] = zsign * zfar / (zfar - znear);
+    m_proj_matrix[3][2] = -(zfar * znear) / (zfar - znear);
+    m_view_proj = m_proj_matrix * m_view_matrix;
 
     CHECK_CUDA(cudaMemcpyAsync(
         RCGS_TPTR(m_viewmatrix), glm::value_ptr(m_view_matrix), 16 * sizeof(float), cudaMemcpyHostToDevice, stream));
@@ -110,6 +109,18 @@ void GSCamera::deserialize(nlohmann::json json)
     rotation = glm::quat_cast(rot_mat); // Rotation matrix -> Quaternion
     fx = json["fx"];
     fy = json["fy"];
+}
+
+void GSCamera::log_info() const
+{
+    glm::vec3 forward_ = forward();
+    glm::vec3 up_ = up();
+    // clang-format off
+    printf("[DEBUG] [GSCamera] Position: (%f, %f, %f), Forward: (%.1f, %.1f, %.1f), Up: (%.1f, %.1f, %.1f)\n",
+           position.x, position.y, position.z,
+           forward_.x, forward_.y, forward_.z,
+           up_.x, up_.y, up_.z);
+    // clang-format on
 }
 
 GSCamera& GSCamera::operator=(GSCamera&& other) noexcept

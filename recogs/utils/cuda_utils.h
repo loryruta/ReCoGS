@@ -12,6 +12,11 @@
 
 #define RCGS_TPTR(_x) thrust::raw_pointer_cast((_x).data())
 
+/// Condition for selecting the first thread of the first block (any dimension).
+#define RCGS_B0T0                                                                                                      \
+    ((blockIdx.x == 0 && threadIdx.x == 0) && (blockIdx.y == 0 && threadIdx.y == 0) &&                                 \
+     (blockIdx.z == 0 && threadIdx.z == 0))
+
 namespace recogs
 {
 namespace detail

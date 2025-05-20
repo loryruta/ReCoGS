@@ -71,6 +71,7 @@ App::App(const Params& params)
 
     m_gs_rasterizer = std::make_unique<GSRasterizer>();
     m_selection_renderer = std::make_unique<SelectionRenderer>();
+    m_svo_renderer = std::make_unique<SVORenderer>();
 
     m_stereo_depth_estimator = std::make_unique<StereoDepthEstimator>(*this);
 

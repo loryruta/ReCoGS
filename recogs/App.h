@@ -10,6 +10,7 @@
 #include "optimizer/Optimizer.h"
 #include "selection/Selection3d.h"
 #include "selection/SelectionRenderer.h"
+#include "svo/SVORenderer.h"
 #include "ui/Screen.h"
 #include "utils/image/Image.h"
 #include "video/DrawTexture.h"
@@ -52,6 +53,7 @@ private:
 
     std::unique_ptr<GSRasterizer> m_gs_rasterizer;
     std::unique_ptr<SelectionRenderer> m_selection_renderer;
+    std::unique_ptr<SVORenderer> m_svo_renderer;
 
     std::unique_ptr<StereoDepthEstimator> m_stereo_depth_estimator;
 
@@ -86,6 +88,7 @@ public:
 
     [[nodiscard]] GSRasterizer& gs_rasterizer() { return *m_gs_rasterizer; }
     [[nodiscard]] SelectionRenderer& selection_renderer() { return *m_selection_renderer; }
+    [[nodiscard]] SVORenderer& svo_renderer() { return *m_svo_renderer; }
 
     [[nodiscard]] StereoDepthEstimator& stereo_depth_estimator() { return *m_stereo_depth_estimator; }
 

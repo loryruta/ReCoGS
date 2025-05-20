@@ -50,6 +50,8 @@ set(LIB_SOURCES
         ui/Screen.h
         ui/SelectScreen.cu
         ui/SelectScreen.h
+        ui/SVOScreen.cu
+        ui/SVOScreen.h
 
         utils/image/image.cu
         utils/image/Image.h

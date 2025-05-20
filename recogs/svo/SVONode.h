@@ -15,6 +15,9 @@ struct SVONode {
         uint32_t first_child_offset = UINT32_MAX;
         uint32_t data;
     };
+
+    __forceinline__ __host__ __device__ bool is_parent() const { return first_child_offset & 0x80000000; }
+    __forceinline__ __host__ __device__ bool is_leaf() const { return !is_parent(); }
 };
 
 /// A struct representing a SVO in world-space.

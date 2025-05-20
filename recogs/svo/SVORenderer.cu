@@ -35,6 +35,10 @@ using namespace recogs;
 // Reference:
 // https://research.nvidia.com/publication/2010-02_efficient-sparse-voxel-octrees-analysis-extensions-and-implementation
 
+// TODO Current issues:
+//   1. The SVO renders when its behind the camera
+//   2. How to UV-map individual voxels for shadowing?
+
 #define CAST_STACK_DEPTH 21
 #define EPSILON exp2f(-CAST_STACK_DEPTH)
 #define MAX_RAYCAST_ITERATIONS 10000
@@ -48,11 +52,9 @@ struct Ray3f {
 
 struct CastResult {
     float t;
-    float3 pos;
+    int depth;
     int iter;
-    const SVONode* node;
-    int child_idx;
-    int stack_ptr;
+    int idx;
 };
 
 __device__ bool
@@ -78,14 +80,12 @@ __constant__ glm::vec3 k_octet_colormap[]{
     glm::vec3(1, 1, 1),
 };
 
-__device__ bool
-cast_ray(const Ray3f& ray, const glm::vec3& svo_min, const glm::vec3& svo_max, const SVONode* svo, CastResult& result)
+__device__ bool cast_ray(
+    const Ray3f& ray, const glm::vec3& svo_min, const glm::vec3& svo_max, const SVONode* svo, CastResult& cast_result)
 {
     // Perform a ray-aabb intersection test to determine tmin and tmax of the SVO
     float tmin, tmax;
     if (!test_ray_aabb(ray, svo_min, svo_max, tmin, tmax)) return false;
-
-    //   tmin = max(tmin, 0.f);
 
     glm::vec3 size = svo_max - svo_min;
 
@@ -119,10 +119,6 @@ cast_ray(const Ray3f& ray, const glm::vec3& svo_min, const glm::vec3& svo_max, c
     if ((idx & 2) == 0) corner.y += sign(ray.d.y) * size.y * scale;
     if ((idx & 4) == 0) corner.z += sign(ray.d.z) * size.z * scale;
 
-    if (RCGS_B0T0) printf("-- BEGIN tmin: %f\n", tmin);
-    // if (RCGS_B0T0) printf("   center: %f %f %f ; idx: %d, %f %f %f\n", center.x, center.y, center.z, idx, tx_coef,
-    // tx_bias, tmin);
-
     struct Record {
         uint32_t parent_idx;
         int idx;
@@ -136,38 +132,34 @@ cast_ray(const Ray3f& ray, const glm::vec3& svo_min, const glm::vec3& svo_max, c
     while (true) {
         ++iter;
         if (iter == 256) break;
-
         const SVONode& cur_parent = svo[cur_node_addr];
         assert(cur_parent.is_parent()); // Must be a parent
-
         // Process voxel if the corresponding bit in valid mask is set and the active t-span is non-empty.
         // This is where the magic happens (see the paper for more details):
         // https://research.nvidia.com/sites/default/files/pubs/2010-02_Efficient-Sparse-Voxel/laine2010tr1_paper.pdf
         uint8_t child_idx = idx ^ dir_mask;
         uint8_t child_mask = 1 << child_idx;
         uint8_t child_bit = cur_parent.children_mask & child_mask; // Child exist?
-
-        if (RCGS_B0T0) printf("  CURRENT CHILD %d -- SET? %d\n", child_idx, child_bit);
-
-        // if (RCGS_B0T0) printf("  child_idx: %d (%d XOR %d); set? %d\n", child_idx, idx, dir_mask, child_bit);
         if (child_bit) {
             uint32_t value = cur_parent.first_child_offset & 0x7FFFFFFF;
             uint8_t child_addr = value + __popc(cur_parent.children_mask & (child_mask - 1));
             const SVONode& child_node = svo[child_addr];
             if (child_node.is_leaf()) {
-                if (RCGS_B0T0) printf("  LEAF\n");
+                cast_result.t = tmin;
+                cast_result.depth = depth;
+                cast_result.iter = iter;
+                cast_result.idx = idx;
                 return true; // Hit a child node!
             } else {
                 // ---------------------------------------------------------------- PUSH
-                if (depth >= CAST_STACK_DEPTH) return false; // Stack overflow
-                if (RCGS_B0T0) printf("  PUSH %d\n", depth);
+                if (depth >= CAST_STACK_DEPTH) return false;
                 stack[depth].parent_idx = cur_node_addr;
                 stack[depth].idx = idx;
                 stack[depth].corner = corner;
                 depth++;
                 scale *= 0.5f;
-                // Move the center to the sub-node
-                center.x = corner.x - sign(ray.d.x) * size.x * scale; // TODO recover from corner
+                // Compute the center of the sub-node (using the recovered corner position)
+                center.x = corner.x - sign(ray.d.x) * size.x * scale;
                 center.y = corner.y - sign(ray.d.y) * size.y * scale;
                 center.z = corner.z - sign(ray.d.z) * size.z * scale;
                 // Initialize the first node `idx` to enter
@@ -181,7 +173,7 @@ cast_ray(const Ray3f& ray, const glm::vec3& svo_min, const glm::vec3& svo_max, c
             }
         }
         // ---------------------------------------------------------------- ADVANCE
-advance:
+    advance:
         // Determine maximum t-value of the cube by evaluating tx(), ty(), and tz() at its corner
         float tx_corner = corner.x * tx_coef + tx_bias;
         float ty_corner = corner.y * ty_coef + ty_bias;
@@ -208,28 +200,17 @@ advance:
 
         if ((idx & step_mask) != 0) {
             // ---------------------------------------------------------------- POP
-            if (RCGS_B0T0) printf("  POP FROM %d\n", depth);
-            if (depth == 0) {
-                if (RCGS_B0T0) printf("    DONE\n");
-                return false;
-            }
+            if (depth == 0) return false;
             --depth;
             scale *= 2.0f;
             cur_node_addr = stack[depth].parent_idx;
             idx = stack[depth].idx;
             corner = stack[depth].corner;
-
             // When we pop, we don't want to enter again the same parent node; so we jump to the advance algorithm with
             // a beautiful goto
             goto advance;
         }
     }
-
-    assert(iter);
-
-    // We should never reach this point
-    printf("MAX ITERATION REACHED block (%d %d) thread (%d %d)\n", blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y);
-
     return false;
 }
 
@@ -261,17 +242,42 @@ __global__ void cast_ray_kernel(glm::vec3 svo_min,
 
     // Ray casting against SVO
     CastResult cast_result{};
-    bool intersecting = cast_ray(ray, svo_min, svo_max, svo, cast_result);
-    if (RCGS_B0T0) {
-        color_depth.set_value(px, py, glm::vec4(0, 1, 0, 1));
+    bool hit = cast_ray(ray, svo_min, svo_max, svo, cast_result);
+    if (!hit) {
+        color_depth.set_value(px, py, glm::vec4(0));
         return;
     }
 
-    if (intersecting) {
-        color_depth.set_value(px, py, glm::vec4(1));
-    } else {
-        color_depth.set_value(px, py, glm::vec4(0));
-    }
+    int resolution = 1 << (cast_result.depth + 1);
+    glm::vec3 hit_pos = ray.o + cast_result.t * ray.d;
+
+    glm::vec3 voxel_size = (svo_max - svo_min) / float(resolution);
+    //    if (RCGS_B0T0)
+    //        printf("size: %f %f %f, resolution: %d, voxel_size %f %f %f\n",
+    //               (svo_max - svo_min).x,
+    //               (svo_max - svo_min).y,
+    //               (svo_max - svo_min).z,
+    //               resolution,
+    //               voxel_size.x,
+    //               voxel_size.y,
+    //               voxel_size.z);
+
+    // glm::vec3 color = glm::mod(hit_pos - svo_min, voxel_size) / voxel_size;
+    glm::vec3 color = k_octet_colormap[cast_result.idx];
+    color_depth.set_value(px, py, glm::vec4(color, 1));
+
+    //    if (RCGS_B0T0)
+    //        printf(
+    //            "t: %f, depth: %d, res: %d, hit_pos %f %f %f, voxel size: %f %f %f\n",
+    //            cast_result.t,
+    //            cast_result.depth,
+    //            resolution,
+    //            hit_pos.x,
+    //            hit_pos.y,
+    //            hit_pos.z,
+    //            voxel_size.x,
+    //            voxel_size.y,
+    //            voxel_size.z);
 }
 } // namespace
 

@@ -14,7 +14,7 @@ public:
 
     virtual void resize(int width, int height) = 0;
     virtual void update(float dt) = 0;
-    virtual void render(Image4fHWC& out_color_depth) = 0;
+    virtual void render(Image4fHWC& color_depth) = 0;
     virtual void ui() = 0;
 };
 } // namespace recogs

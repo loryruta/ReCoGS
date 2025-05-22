@@ -5,6 +5,17 @@ set(LIB_SOURCES
         depth_estimators/StereoDepthEstimator.cu
         depth_estimators/StereoDepthEstimator.h
 
+        disk/auxiliary.h
+        disk/config.h
+        disk/DiskRasterizer.cu
+        disk/DiskRasterizer.h
+        disk/Disks.h
+        disk/forward.cu
+        disk/forward.h
+        disk/rasterizer.h
+        disk/rasterizer_impl.cu
+        disk/rasterizer_impl.h
+
         gui/recogs_style.h
         gui/StereoTest.cu
         gui/StereoTest.h

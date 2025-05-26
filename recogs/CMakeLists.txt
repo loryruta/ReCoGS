@@ -34,6 +34,9 @@ set(LIB_SOURCES
         optimizer/Optimizer.cu
         optimizer/Optimizer.h
 
+        pcd/remove_statistical_outliers.h
+        pcd/render_ss_points.h
+
         rasterizer/backward.cu
         rasterizer/backward.h
         rasterizer/forward.cu
@@ -79,7 +82,6 @@ set(LIB_SOURCES
         utils/DeviceBuffer.h
         utils/cuda_utils.h
         utils/misc_utils.h
-        utils/remove_statistical_outliers.h
         utils/stb_image.cpp
         utils/stb_image.h
         utils/stb_image_write.h

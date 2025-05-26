@@ -9,6 +9,7 @@
 
 // CUDA implementation of:
 // https://github.com/isl-org/Open3D/blob/da4d8fcdf60a59d20b2fd9f86f2e0955c5ba3c45/cpp/open3d/geometry/PointCloud.cpp#L602
+// Looks like Open3D's implementation is CPU only...
 
 namespace recogs
 {

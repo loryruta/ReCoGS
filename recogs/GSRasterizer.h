@@ -14,6 +14,7 @@ namespace recogs
 /// https://github.com/graphdeco-inria/diff-gaussian-rasterization
 class GSRasterizer
 {
+private:
     thrust::device_vector<uint8_t> m_geometry_buffer;
     thrust::device_vector<uint8_t> m_binning_buffer;
     thrust::device_vector<uint8_t> m_image_buffer;

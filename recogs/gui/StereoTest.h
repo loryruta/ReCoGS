@@ -25,6 +25,8 @@ public:
     /// The currently displayed capture.
     int current_capture = Capture_NONE;
 
+    bool show_normalmap = false;
+
     explicit StereoTest();
     ~StereoTest();
 

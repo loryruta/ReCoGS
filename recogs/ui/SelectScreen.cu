@@ -48,79 +48,100 @@ void SelectScreen_Toolbar::ui()
     });
 }
 
-SelectScreen::SelectScreen(App& app, const GSCamera& camera) : m_app(app)
+SelectScreen::SelectScreen(GSCamera camera) : m_camera(std::move(camera))
 {
-    m_camera.copy(camera, m_app.stream());
-
-    Window& window = app.window();
-    m_key_callback = window.add_key_callback([this](int key, int scancode, int action, int mods) {
-        if (action == GLFW_PRESS) {
-            if (key == GLFW_KEY_ENTER) {
-                {
-                    glm::ivec2 resolution = m_app.resolution();
-                    // Estimate depth using stereo matching HV
-                    Image4fHWC depth = Image4fHWC::malloc(resolution.x, resolution.y);
-                    image_fill(depth, Image4fHWC::Value{INFINITY}, m_app.stream());
-
-                    StereoDepthEstimatorParams stereo_params;
-                    stereo_params.background_d = m_app.background_d();
-                    stereo_params.scene = &m_app.scene();
-                    stereo_params.camera = &m_camera;
-                    stereo_params.rasterizer = &m_app.gs_rasterizer();
-                    stereo_params.b = 0.07f;
-                    stereo_params.inout_color_depth = &depth;
-                    stereo_params.stream = m_app.stream();
-                    stereo_params.debug = false;
-                    m_app.stereo_depth_estimator().estimate_hv(stereo_params);
-
-                    // Populate the 3D selection with 2D selection unprojection
-                    m_selection2d->populate_selection3d(depth);
-                }
-                m_app.set_screen(std::make_shared<MainScreen>(m_app, m_camera.clone(m_app.stream())));
-            } else if (key == GLFW_KEY_ESCAPE) {
-                m_app.set_screen(std::make_shared<MainScreen>(m_app, m_camera.clone(m_app.stream())));
-            }
-        }
-    });
-    printf("[DEBUG] [SelectScreen] Screen created\n");
-
+    Window& window = g_app->window();
+    m_key_callback = window.add_key_callback(
+        [this](int key, int scancode, int action, int mods) { _on_key(key, scancode, action, mods); });
     m_scroll_callback =
-        window.add_scroll_callback([&](double xoffset, double yoffset) { on_scroll(xoffset, yoffset); });
-
+        window.add_scroll_callback([&](double xoffset, double yoffset) { _on_scroll(xoffset, yoffset); });
     m_toolbar = std::make_unique<SelectScreen_Toolbar>(*this);
 }
 
 SelectScreen::~SelectScreen()
 {
-    Window& window = m_app.window();
+    Window& window = g_app->window();
     CHECK_STATE(window.remove_key_callback(m_key_callback));
     CHECK_STATE(window.remove_scroll_callback(m_scroll_callback));
 }
 
 void SelectScreen::resize(int width, int height)
 {
-    m_color_depth = std::make_unique<Image4fHWC>(Image4fHWC::malloc(width, height));
+    m_camera.set_resolution(width, height);
+    m_camera.update(g_stream);
+    m_color_depth = std::make_unique<Image4fHWC>(Image4fHWC::malloc(width, height, g_stream));
+    _render_scene_and_accurate_depth();
+    m_camera_colorbuffer = std::make_unique<Image4fHWC>(Image4fHWC::malloc(width, height, g_stream));
     m_camera_texture = std::make_unique<CudaTexture>(width, height);
-    // TODO unsupported yet! Update camera resolution also!
-    m_depthbuffer = std::make_unique<Image1fCHW>(Image1fCHW::malloc(width, height));
-    m_selection2d = std::make_unique<Selection2d>(m_app.selection3d(), m_camera.clone(m_app.stream()));
+    m_cuda_texture = std::make_unique<CudaTexture>(width, height);
+    m_camera_offset = {};
+    m_camera_scale = 1.f;
+    m_sel2d = std::make_unique<Sel2d>(m_camera, *m_color_depth);
+    m_last_cursor_pos_l = {};
+    m_last_cursor_pos_r = {};
+
+    CHECK_CUDA(cudaStreamSynchronize(g_stream));
 }
 
-CudaTexture& SelectScreen::render_camera_texture()
+void SelectScreen::_render_scene_and_accurate_depth()
 {
-    cudaStream_t stream = m_app.stream();
-    // Render GS scene
-    m_app.gs_rasterizer().show_borders = false;
-    m_app.gs_rasterizer().forward(
-        m_app.background_d(), m_app.scene(), true /* scene_2 */, m_camera, *m_color_depth, stream);
-    // Render 2D and 3D selection (already projected to 2D)
-    m_app.selection_renderer().render(*m_selection2d, *m_color_depth, stream);
-    // Blit colorbuffer onto texture
-    m_camera_texture->write(*m_color_depth, stream);
+    // Clear color/depth
+    image_fill(*m_color_depth, Image4fHWC::Value{INFINITY}, g_stream);
+    // Render 3DGS scene
+    g_app->gs_rasterizer().show_borders = false;
+    g_app->gs_rasterizer().forward(
+        g_app->background_d(), g_app->scene(), true /* scene_2 */, m_camera, *m_color_depth, g_stream);
+    // Estimate an accurate depthmap with stereo matching
+    StereoDepthEstimatorParams stereo_params;
+    stereo_params.background_d = g_app->background_d();
+    stereo_params.scene = &g_app->scene();
+    stereo_params.camera = &m_camera;
+    stereo_params.rasterizer = &g_app->gs_rasterizer();
+    stereo_params.b = 0.07f;
+    stereo_params.inout_color_depth = m_color_depth.get();
+    stereo_params.stream = g_stream;
+    stereo_params.debug = false;
+    g_app->stereo_depth_estimator().estimate_hv(stereo_params);
+}
+
+CudaTexture& SelectScreen::_render_camera_texture()
+{
+    // Copy the 3DGS view to the camera colorbuffer
+    image_copy(*m_color_depth, *m_camera_colorbuffer, g_stream);
+    // Draw the fill mask on foreground and behind the sel3d mask (depth-test already performed)
+    const Image1u8& fill_mask = m_sel2d->fill_mask();
+    const Image1u8& sel3d_mask = m_sel2d->sel3d_mask();
+    image_visit(
+        *m_camera_colorbuffer,
+        [fill_mask, sel3d_mask] __device__(Image4fHWC & colorbuffer, int x, int y) {
+            if (fill_mask.value(x, y).r) {
+                colorbuffer.set_value(x, y, glm::vec4(1)); // White
+            } else if (sel3d_mask.value(x, y).r) {
+                colorbuffer.set_value(x, y, glm::vec4(0.7f, 0.7f, 0.7f, 1)); // Light gray
+            }
+            return 0; // TODO temporary
+        },
+        g_stream);
+    // Blit the colorbuffer to the texture for visualization
+    m_camera_texture->write(*m_camera_colorbuffer, g_stream);
     return *m_camera_texture;
 }
 
-void SelectScreen::on_scroll(double xoffset, double yoffset)
+void SelectScreen::_on_key(int key, int scancode, int action, int mods)
+{
+    if (action == GLFW_PRESS) {
+        if (key == GLFW_KEY_ENTER) {
+            glm::ivec2 resolution = g_app->resolution();
+            // Populate the 3D selection with 2D selection unprojection
+            m_sel2d->populate_sel3d(g_stream);
+            g_app->set_screen(std::make_shared<MainScreen>(m_camera.clone(g_stream)));
+        } else if (key == GLFW_KEY_ESCAPE) {
+            g_app->set_screen(std::make_shared<MainScreen>(m_camera.clone(g_stream)));
+        }
+    }
+}
+
+void SelectScreen::_on_scroll(double xoffset, double yoffset)
 {
     float dscale = -float(yoffset) * k_select_zoom_speed;
     m_camera_scale += dscale;
@@ -130,7 +151,7 @@ void SelectScreen::update(float dt)
 {
     if (imgui_want_ui_interaction()) return;
 
-    Window& window = m_app.window();
+    Window& window = g_app->window();
     glm::dvec2 cursor_pos = window.cursor_pos();
 
     bool mouse_pressed_l = window.is_mouse_button_pressed(GLFW_MOUSE_BUTTON_LEFT);
@@ -151,21 +172,13 @@ void SelectScreen::update(float dt)
     if (mouse_pressed_l && m_last_cursor_pos_l) {
         // Brush
         if (m_mode == Mode::BRUSH) {
-            m_selection2d->fill_line(*m_last_cursor_pos_l,
-                                     cursor_pos,
-                                     25, // radius
-                                     m_camera_offset,
-                                     m_camera_scale,
-                                     m_app.stream());
+            m_sel2d->fill_line(
+                *m_last_cursor_pos_l, cursor_pos, 25 /* radius */, m_camera_scale, m_camera_offset, g_stream);
         }
         // Eraser
         else if (m_mode == Mode::ERASE) {
-            m_selection2d->clear_line(*m_last_cursor_pos_l,
-                                      cursor_pos,
-                                      25, // radius
-                                      m_camera_offset,
-                                      m_camera_scale,
-                                      m_app.stream());
+            m_sel2d->clear_line(
+                *m_last_cursor_pos_l, cursor_pos, 25 /* radius */, m_camera_scale, m_camera_offset, g_stream);
         }
     }
 
@@ -180,10 +193,7 @@ void SelectScreen::update(float dt)
 
 void SelectScreen::render(Image4fHWC& out_color_depth)
 {
-    cudaStream_t stream = m_app.stream();
-
-    CudaTexture& camera_texture = render_camera_texture();
-
+    CudaTexture& camera_texture = _render_camera_texture();
     image_visit(
         out_color_depth,
         [offset = m_camera_offset,
@@ -201,14 +211,14 @@ void SelectScreen::render(Image4fHWC& out_color_depth)
             color_depth.set_value(x, y, glm::vec4(color.x, color.y, color.z, 0 /* depth */));
             return 0; // TODO temporary
         },
-        stream);
+        g_stream);
 }
 
 void SelectScreen::ui()
 {
     constexpr int k_selection_toolbar_width = 60;
 
-    glm::vec2 resolution = m_app.window().framebuffer_size();
+    glm::vec2 resolution = g_app->window().framebuffer_size();
 
     if (ImGui::Begin(
             "Toolbar", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {

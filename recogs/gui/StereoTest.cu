@@ -35,4 +35,5 @@ void StereoTest::ui()
             capture = Capture_HV;
         }
     });
+    ImGui::Checkbox("Show Normal map", &show_normalmap);
 }

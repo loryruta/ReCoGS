@@ -5,32 +5,32 @@
 
 using namespace recogs;
 
-DiskRasterizerScreen::DiskRasterizerScreen(App& app) : m_app(app)
+DiskRasterizerScreen::DiskRasterizerScreen()
 {
     m_disks = create_disks_scene();
-    m_camera_controller = std::make_unique<GSCameraController>(m_app.window(), m_camera);
+    m_camera_controller = std::make_unique<GSCameraController>(g_app->window(), m_camera);
 }
 
 void DiskRasterizerScreen::resize(int width, int height)
 {
     m_camera.set_resolution(width, height);
-    m_camera.update(m_app.stream());
+    m_camera.update(g_stream);
 }
 
 void DiskRasterizerScreen::update(float dt)
 {
     if (m_camera_controller) {
         bool updated = m_camera_controller->update(dt);
-        if (updated) m_camera.update(m_app.stream());
+        if (updated) m_camera.update(g_stream);
         // m_camera.log_info();
     }
 }
 
 void DiskRasterizerScreen::render(Image4fHWC& color_depth)
 {
-    image_fill(color_depth, glm::vec4(0), m_app.stream());
+    image_fill(color_depth, glm::vec4(0), g_stream);
     if (m_disks) {
-        m_app.disk_rasterizer().forward(*m_disks, m_camera, color_depth, m_app.stream());
+        g_app->disk_rasterizer().forward(*m_disks, m_camera, color_depth, g_stream);
     }
 }
 
@@ -43,7 +43,7 @@ std::unique_ptr<Disks> DiskRasterizerScreen::create_disks_scene()
     std::vector<glm::vec4> rotations;
 
     positions.emplace_back(0, 0, 0);
-    scales.emplace_back(1, 0.5f);
+    scales.emplace_back(1, 1);
     rotations.emplace_back(0, 0, 0, 1);
 
     // GPU allocation & upload

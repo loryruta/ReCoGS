@@ -7,10 +7,12 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 
+#include "ScenePointcloud.h"
 #include "gui/recogs_style.h"
 #include "scene_io.h"
+#include "selection/SSPcdSel3d.h"
+#include "ui/DiskRasterizerScreen.h"
 #include "ui/MainScreen.h"
-#include "utils/image/image_fill.h"
 #include "utils/image/image_misc.h"
 #include "utils/image/image_save.h"
 #include "utils/str_utils.h"
@@ -25,6 +27,9 @@ void App::Params::validate() const
 
 App::App(const Params& params)
 {
+    CHECK_STATE(!g_app, "Only one App can be instanced");
+    g_app = this;
+
     params.validate();
 
     m_scene_ply = params.scene_ply;
@@ -39,7 +44,7 @@ App::App(const Params& params)
     float background[]{0.0f, 0.0f, 0.0f, 0.0f};
     m_scene_background.fit_data(background, std::size(background));
 
-    m_selection3d = std::make_unique<Selection3d>(*this);
+    m_sel3d = std::unique_ptr<Sel3d>(new SSPcdSel3d());
 
     // Init window
     m_window = std::make_unique<Window>(Window::create(1080, 720, "ReCoGS", false));
@@ -55,13 +60,13 @@ App::App(const Params& params)
     ui::apply_style(ImGui::GetStyle());
 
     // Init CUDA stream
-    CHECK_CUDA(cudaStreamCreate(&m_stream));
+    CHECK_CUDA(cudaStreamCreate(&g_stream));
 
     // Compute the scene min/max
-    m_scene->compute_minmax(m_stream);
+    m_scene->compute_minmax(g_stream);
 
     // Load cameras
-    m_training_cameras = read_cameras_from_json(m_scene_folder, m_stream);
+    m_training_cameras = read_cameras_from_json(m_scene_folder, g_stream);
 
     // Init screenbuffers
     glm::ivec2 resolution = m_window->framebuffer_size();
@@ -70,8 +75,8 @@ App::App(const Params& params)
     m_draw_texture = std::make_unique<DrawTexture>();
 
     m_gs_rasterizer = std::make_unique<GSRasterizer>();
-    m_selection_renderer = std::make_unique<SelectionRenderer>();
     m_svo_renderer = std::make_unique<SVORenderer>();
+    m_disk_rasterizer = std::make_unique<DiskRasterizer>();
 
     m_stereo_depth_estimator = std::make_unique<StereoDepthEstimator>(*this);
 
@@ -93,8 +98,8 @@ App::App(const Params& params)
 
     set_screen(std::make_shared<MainScreen>(*this));
 
-    m_optimizer = std::make_unique<Optimizer>(*this);
-    m_optimizer_thread = std::make_unique<std::thread>([this]() { m_optimizer->start(); });
+    set_screen(std::make_shared<MainScreen>());
+
 }
 
 App::~App()
@@ -103,13 +108,15 @@ App::~App()
     m_optimizer->signal_stop();
     m_optimizer_thread->join();
 
-    CHECK_CUDA(cudaStreamSynchronize(m_stream));
-    CHECK_CUDA(cudaStreamDestroy(m_stream));
+    CHECK_CUDA(cudaStreamSynchronize(g_stream));
+    CHECK_CUDA(cudaStreamDestroy(g_stream));
 
     // Shutdown ImGui
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+
+    g_app = nullptr;
 }
 
 void App::start()
@@ -154,12 +161,12 @@ void App::start()
         // Show depth
         if (show_depth) {
             // TODO depth scale factor in app args
-            image_depth_to_rgb_inplace(*m_color_depth, m_stream, 0.5);
+            image_depth_to_rgb_inplace(*m_color_depth, g_stream, 0.5);
         }
 
         // CUDA colorbuffer -> OpenGL texture
-        m_gl_mapped_resource->write(*m_color_depth, m_stream);
-        CHECK_CUDA(cudaStreamSynchronize(m_stream));
+        m_gl_mapped_resource->write(*m_color_depth, g_stream);
+        CHECK_CUDA(cudaStreamSynchronize(g_stream));
 
         // Display OpenGL texture
         glClearColor(0, 0, 1, 0);
@@ -192,8 +199,6 @@ void App::start()
         m_end_of_frame_jobs.clear();
     }
 }
-
-void App::stop() { m_window->set_should_close(true); }
 
 void App::save_screenshot()
 {

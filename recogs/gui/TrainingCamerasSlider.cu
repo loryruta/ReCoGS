@@ -7,9 +7,9 @@
 using namespace recogs;
 using namespace recogs::ui;
 
-TrainingCamerasSlider::TrainingCamerasSlider(App& app, int resolution) : m_app(app), m_resolution(resolution)
+TrainingCamerasSlider::TrainingCamerasSlider(int resolution) : m_resolution(resolution)
 {
-    size_t N = m_app.cameras().size();
+    size_t N = g_app->cameras().size();
 
     // Init colorbuffer used as a target for rendering
     m_colorbuffer = std::make_unique<Image4fHWC>(Image4fHWC::malloc(resolution, resolution));
@@ -30,15 +30,15 @@ TrainingCamerasSlider::TrainingCamerasSlider(App& app, int resolution) : m_app(a
     m_image_slider->provide_texture = [this](int i) -> GLuint {
         // Render the scene from the camera perspective
         GSCamera camera;
-        camera.copy(m_app.cameras().at(i), m_app.stream());
+        camera.copy(g_app->cameras().at(i), g_stream);
         camera.set_resolution(m_resolution, m_resolution);
-        camera.update(m_app.stream());
-        GSRasterizer& rasterizer = m_app.gs_rasterizer();
+        camera.update(g_stream);
+        GSRasterizer& rasterizer = g_app->gs_rasterizer();
         rasterizer.show_borders = false;
-        rasterizer.forward(m_app.background_d(), m_app.scene(), false, camera, *m_colorbuffer, m_app.stream());
+        rasterizer.forward(g_app->background_d(), g_app->scene(), false, camera, *m_colorbuffer, g_stream);
         // Copy the colorbuffer into the GL mapped texture
         GLMappedResource& resource = m_gl_mapped_textures.at(i);
-        resource.write(*m_colorbuffer, m_app.stream());
+        resource.write(*m_colorbuffer, g_stream);
         return resource.texture();
     };
 }

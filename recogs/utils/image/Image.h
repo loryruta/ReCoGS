@@ -37,7 +37,7 @@ private:
     T* m_data_d = nullptr;
 
 public:
-    uint32_t width;
+    uint32_t width; // TODO use int so no explicit casting
     uint32_t height;
     bool owned = true;
 
@@ -160,6 +160,7 @@ public:
 };
 
 using Image1u = Image<1, uint8_t, ImageMemoryLayout::CHW>;
+using Image1u8 = Image<1, uint8_t, ImageMemoryLayout::HWC>;
 using Image1fHWC = Image<1, float, ImageMemoryLayout::HWC>;
 using Image3fHWC = Image<3, float, ImageMemoryLayout::HWC>;
 using Image4fHWC = Image<4, float, ImageMemoryLayout::HWC>;

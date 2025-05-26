@@ -20,7 +20,9 @@ void SVOScreen::update(float dt)
 {
     if (m_camera_controller) {
         bool updated = m_camera_controller->update(dt);
-        if (updated) m_camera.update(m_app.stream());
+        if (updated) {
+            m_camera.update(g_stream);
+        }
         // m_camera.log_info();
     }
 }
@@ -28,7 +30,7 @@ void SVOScreen::update(float dt)
 void SVOScreen::render(Image4fHWC& out_color_depth)
 {
     if (m_svo) {
-        m_app.svo_renderer().render(*m_svo, m_camera, out_color_depth, m_app.stream());
+        m_app.svo_renderer().render(*m_svo, m_camera, out_color_depth, g_stream);
     }
 }
 

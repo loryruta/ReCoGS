@@ -6,21 +6,15 @@
 
 namespace recogs
 {
-// Forward decl
-class App;
-
 class DiskRasterizerScreen : public Screen
 {
 private:
-    App& m_app;
-
-    // Scene
     GSCamera m_camera;
     std::unique_ptr<GSCameraController> m_camera_controller;
     std::unique_ptr<Disks> m_disks;
 
 public:
-    explicit DiskRasterizerScreen(App& app);
+    explicit DiskRasterizerScreen();
     ~DiskRasterizerScreen() = default;
 
     [[nodiscard]] const char* name() const { return "DiskRasterizerScreen"; };

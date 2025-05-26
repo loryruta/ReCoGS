@@ -16,7 +16,6 @@ namespace ui
 class TrainingCamerasSlider
 {
 private:
-    App& m_app;
     const int m_resolution;
 
     std::unique_ptr<Image4fHWC> m_colorbuffer;
@@ -27,7 +26,7 @@ public:
     /// Function called when a training camera is selected.
     std::function<void(int)> on_select;
 
-    explicit TrainingCamerasSlider(App& app, int resolution);
+    explicit TrainingCamerasSlider(int resolution);
     ~TrainingCamerasSlider() = default;
 
     void ui();

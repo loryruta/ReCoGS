@@ -45,12 +45,13 @@ set(LIB_SOURCES
         rasterizer/rasterizer_impl.cu
         rasterizer/rasterizer_impl.h
 
-        selection/Selection2d.cu
-        selection/Selection2d.h
-        selection/Selection3d.cu
-        selection/Selection3d.h
-        selection/SelectionRenderer.cu
-        selection/SelectionRenderer.h
+        #        selection/DiskSel3d.cu
+        #        selection/DiskSel3d.h
+        selection/Sel2d.cu
+        selection/Sel2d.h
+        selection/Sel3d.h
+        selection/SSPcdSel3d.cu
+        selection/SSPcdSel3d.h
 
         svo/svo_utils.h
         svo/SVOBuilder.cu
@@ -59,6 +60,8 @@ set(LIB_SOURCES
         svo/SVORenderer.cu
         svo/SVORenderer.h
 
+        ui/DiskRasterizerScreen.cu
+        ui/DiskRasterizerScreen.h
         ui/MainScreen.cu
         ui/MainScreen.h
         ui/Screen.h

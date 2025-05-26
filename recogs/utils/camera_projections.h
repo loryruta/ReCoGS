@@ -5,12 +5,8 @@ namespace recogs
 namespace detail
 {
 template <typename CALLBACK>
-__global__ void project_points_kernel( //
-    const glm::vec3* ws_points,
-    size_t num_points,
-    glm::mat4 view_matrix,
-    glm::mat3 K,
-    CALLBACK callback)
+__global__ void project_points_kernel(
+    const glm::vec3* ws_points, size_t num_points, glm::mat4 view_matrix, glm::mat3 K, CALLBACK callback)
 {
     uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_points) return;
@@ -18,13 +14,16 @@ __global__ void project_points_kernel( //
     if (vs_point.z < 0) return; // Behind the camera
     glm::vec3 ss_point = K * vs_point;
     ss_point /= ss_point.z;
-    callback(ss_point.x, ss_point.y, vs_point.z);
+    int2 pixel;
+    pixel.x = (int) ss_point.x;
+    pixel.y = (int) ss_point.y;
+    callback(i, pixel, vs_point.z);
 }
 
 /// \param ss_points_d list of screen-space points to unproject; encoded as 16-bit X, Y
 template <typename CALLBACK>
 __global__ void unproject_points_kernel( //
-    const uint32_t* ss_points,
+    const glm::ivec2* ss_points,
     size_t num_points,
     Image4fHWC color_depth,
     glm::mat4 inv_view,
@@ -33,8 +32,8 @@ __global__ void unproject_points_kernel( //
 {
     uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_points) return;
-    uint32_t px = ss_points[i] >> 16;
-    uint32_t py = ss_points[i] & 0xFFFF;
+    uint32_t px = ss_points[i].x;
+    uint32_t py = ss_points[i].y;
     uint32_t W = color_depth.width;
     uint32_t H = color_depth.height;
     if (px >= W || py >= H) return;
@@ -43,16 +42,15 @@ __global__ void unproject_points_kernel( //
     float view_z = color_depth.value(px, py).w;
     p *= (view_z / p.z);            // View-space
     p = inv_view * glm::vec4(p, 1); // World-space
-    callback(p);
+    callback(i, p);
 }
 } // namespace detail
 
 template <typename CALLBACK>
-void project_points( //
-    const thrust::device_vector<glm::vec3>& ws_points,
-    const GSCamera& camera,
-    CALLBACK callback,
-    cudaStream_t stream)
+void project_points(const thrust::device_vector<glm::vec3>& ws_points,
+                    const GSCamera& camera,
+                    CALLBACK callback,
+                    cudaStream_t stream)
 {
     if (ws_points.empty()) return;
 
@@ -68,12 +66,11 @@ void project_points( //
 }
 
 template <typename CALLBACK>
-void unproject_points( //
-    const thrust::device_vector<uint32_t>& ss_points,
-    const Image4fHWC& color_depth,
-    const GSCamera& camera,
-    CALLBACK callback,
-    cudaStream_t stream)
+void unproject_points(const thrust::device_vector<glm::ivec2>& ss_points,
+                      const Image4fHWC& color_depth,
+                      const GSCamera& camera,
+                      CALLBACK callback,
+                      cudaStream_t stream)
 {
     CHECK_ARG(color_depth.size() == camera.resolution());
 

@@ -74,6 +74,7 @@ void GSCamera::update(cudaStream_t stream)
     float right = m_tan_fovx * znear;
     float left = -right;
     const float zsign = 1.0f;
+    m_proj_matrix = {};
     m_proj_matrix[0][0] = 2.0f * znear / (right - left);
     m_proj_matrix[1][1] = 2.0f * znear / (top - bottom);
     m_proj_matrix[2][0] = (right + left) / (right - left);

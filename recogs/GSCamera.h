@@ -35,7 +35,7 @@ public:
     int height = 1090;
 
     explicit GSCamera();
-    GSCamera(GSCamera&) = delete;
+    GSCamera(const GSCamera&) = delete;
     GSCamera(GSCamera&&) noexcept = default;
     ~GSCamera() = default;
 

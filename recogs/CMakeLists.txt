@@ -64,6 +64,7 @@ set(LIB_SOURCES
         ui/SVOScreen.cu
         ui/SVOScreen.h
 
+        utils/image/depthmap_to_normalmap.h
         utils/image/image.cu
         utils/image/Image.h
         utils/image/image_cast.h

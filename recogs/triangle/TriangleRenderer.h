@@ -32,7 +32,7 @@ public:
     ~TriangleRenderer() = default;
 
     // TODO camera to fix depths from view-space to window-space
-    void render(Image4fHWC& color_depth, const std::function<void()>& gl_pipeline, cudaStream_t stream);
+    void render(const GSCamera& camera, Image4fHWC& color_depth, const std::function<void()>& gl_pipeline, cudaStream_t stream);
 
     void
     render_disks(const GSCamera& camera, const DiskBuffer& disk_buffer, Image4fHWC& color_depth, cudaStream_t stream);

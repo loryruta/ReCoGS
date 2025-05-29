@@ -67,8 +67,6 @@ void GSCamera::update(cudaStream_t stream)
     m_view_matrix = glm::inverse(inv_view());
 
     // Projection matrix
-    const float znear = 0.01f;
-    const float zfar = 1000.0f;
     float top = m_tan_fovy * znear;
     float bottom = -top;
     float right = m_tan_fovx * znear;

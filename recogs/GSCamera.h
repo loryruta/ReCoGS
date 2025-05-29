@@ -33,6 +33,8 @@ public:
     float fy = 1164.6601287484507f;
     int width = 1959;
     int height = 1090;
+    float znear = 0.01f;
+    float zfar = 1000.0f;
 
     explicit GSCamera();
     GSCamera(const GSCamera&) = delete;

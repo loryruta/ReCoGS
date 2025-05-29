@@ -15,8 +15,9 @@ namespace recogs
 /// A RAII wrapper for GL shader
 struct Shader {
     GLuint handle;
+    std::string name;
 
-    explicit Shader(GLenum type) : handle(glCreateShader(type)) {};
+    explicit Shader(GLenum type, std::string name = "untitled") : handle(glCreateShader(type)), name(name) {};
     Shader(const Shader&) = delete;
     Shader(Shader&& other) noexcept
     {
@@ -30,6 +31,7 @@ struct Shader {
 
     void source_from_str(const std::string& src_str)
     {
+        printf("[DEBUG] [GL/Shader] Attaching source to \"%s\"...\n", name.c_str());
         const char* src_ptr = src_str.c_str();
         glShaderSource(handle, 1, &src_ptr, nullptr);
     }
@@ -46,6 +48,7 @@ struct Shader {
 
     void compile()
     {
+        printf("[DEBUG] [GL/Shader] Compiling \"%s\"...\n", name.c_str());
         glCompileShader(handle);
         GLint status;
         glGetShaderiv(handle, GL_COMPILE_STATUS, &status);

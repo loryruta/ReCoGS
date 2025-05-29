@@ -1,7 +1,7 @@
 #include "CudaImageVisualizer.h"
 
 #include "DrawTexture.h"
-#include "GLMappedResource.h"
+#include "GLTextureMapped.h"
 #include "utils/cuda_utils.h"
 #include "utils/image/image_copy.h"
 #include "utils/image/image_fill.h"
@@ -50,7 +50,7 @@ void CudaImageVisualizer::worker()
     const glm::ivec2 fb_size = m_window->framebuffer_size();
     const int W = fb_size.x;
     const int H = fb_size.y;
-    GLMappedResource gl_mapped_resource(fb_size.x, fb_size.y);
+    GLTextureMapped gl_mapped_resource = GLTextureMapped::create_rgba32f(fb_size.x, fb_size.y);
     DrawTexture draw_texture{};
 
     Image4fCHW colorbuffer_chw = Image4fCHW::malloc(W, H);

@@ -60,6 +60,9 @@ set(LIB_SOURCES
         svo/SVORenderer.cu
         svo/SVORenderer.h
 
+        triangle/TriangleRenderer.cu
+        triangle/TriangleRenderer.h
+
         ui/DiskRasterizerScreen.cu
         ui/DiskRasterizerScreen.h
         ui/MainScreen.cu

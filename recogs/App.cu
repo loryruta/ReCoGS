@@ -10,7 +10,7 @@
 #include "ScenePointcloud.h"
 #include "gui/recogs_style.h"
 #include "scene_io.h"
-#include "selection/SSPcdSel3d.h"
+#include "selection/DiskSel3d.h"
 #include "ui/DiskRasterizerScreen.h"
 #include "ui/MainScreen.h"
 #include "utils/image/image_misc.h"
@@ -18,6 +18,26 @@
 #include "utils/str_utils.h"
 
 using namespace recogs;
+
+namespace
+{
+void GLAPIENTRY MessageCallback(GLenum source,
+                                GLenum type,
+                                GLuint id,
+                                GLenum severity,
+                                GLsizei length,
+                                const GLchar* message,
+                                const void* userParam)
+{
+    if (type == GL_DEBUG_TYPE_ERROR) {
+        printf("[ERROR] GL CALLBACK: %s type = 0x%x, severity = 0x%x, message = %s\n",
+               (type == GL_DEBUG_TYPE_ERROR ? "** GL ERROR **" : ""),
+               type,
+               severity,
+               message);
+    }
+}
+} // namespace
 
 void App::Params::validate() const
 {
@@ -32,6 +52,14 @@ App::App(const Params& params)
 
     params.validate();
 
+    // Init window
+    m_window = std::make_unique<Window>(Window::create(1080, 720, "ReCoGS", false));
+    m_window->make_context();
+    glfwSwapInterval(0);
+
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(MessageCallback, 0);
+
     m_scene_ply = params.scene_ply;
     m_scene_folder = m_scene_ply.parent_path().parent_path().parent_path();
 
@@ -44,11 +72,7 @@ App::App(const Params& params)
     float background[]{0.0f, 0.0f, 0.0f, 0.0f};
     m_scene_background.fit_data(background, std::size(background));
 
-    m_sel3d = std::unique_ptr<Sel3d>(new SSPcdSel3d());
-
-    // Init window
-    m_window = std::make_unique<Window>(Window::create(1080, 720, "ReCoGS", false));
-    m_window->make_context();
+    m_sel3d = std::unique_ptr<Sel3d>(new DiskPcdSel3d());
 
     // Init ImGui
     IMGUI_CHECKVERSION();
@@ -76,7 +100,7 @@ App::App(const Params& params)
 
     m_gs_rasterizer = std::make_unique<GSRasterizer>();
     m_svo_renderer = std::make_unique<SVORenderer>();
-    m_disk_rasterizer = std::make_unique<DiskRasterizer>();
+    m_triangle_renderer = std::make_unique<TriangleRenderer>();
 
     m_stereo_depth_estimator = std::make_unique<StereoDepthEstimator>(*this);
 
@@ -96,10 +120,14 @@ App::App(const Params& params)
     });
     m_window->add_resize_callback([this](int width, int height) { resize_screenbuffers(width, height); });
 
-    set_screen(std::make_shared<MainScreen>(*this));
+    // TODO Scene pointcloud -> octree tests
+    // ScenePointcloud scene_pointcloud(*this, "scenepointcloud.bin");
+    // scene_pointcloud.generate(*m_scene, m_training_cameras, {1080, 720});
 
     set_screen(std::make_shared<MainScreen>());
 
+    //    m_optimizer = std::make_unique<Optimizer>(*this);
+    //    m_optimizer_thread = std::make_unique<std::thread>([this]() { m_optimizer->start(); });
 }
 
 App::~App()
@@ -228,7 +256,9 @@ void App::resize_screenbuffers(int width, int height)
 {
     printf("[DEBUG] [App] Resizing to (%d, %d)\n", width, height);
 
-    m_gl_mapped_resource = std::make_unique<GLMappedResource>(width, height);
+    m_gl_mapped_resource = std::make_unique<GLTextureMapped>(GLTextureMapped::create_rgba32f(width, height));
     m_color_depth = std::make_unique<Image4fHWC>(Image4fHWC::malloc(width, height));
-    if (m_screen) m_screen->resize(width, height);
+    if (m_screen) {
+        m_screen->resize(width, height);
+    }
 }

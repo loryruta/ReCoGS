@@ -34,8 +34,8 @@ set(LIB_SOURCES
         rasterizer/rasterizer_impl.cu
         rasterizer/rasterizer_impl.h
 
-        #        selection/DiskSel3d.cu
-        #        selection/DiskSel3d.h
+        selection/DiskSel3d.cu
+        selection/DiskSel3d.h
         selection/Sel2d.cu
         selection/Sel2d.h
         selection/Sel3d.h
@@ -106,8 +106,8 @@ set(VIDEO_SOURCES
         video/DrawTexture.cpp
         video/DrawTexture.h
         video/gl_utils.h
-        video/GLMappedResource.cu
-        video/GLMappedResource.h
+        video/GLTextureMapped.cu
+        video/GLTextureMapped.h
         video/ImageSlider.cpp
         video/ImageSlider.h
         video/Window.cpp

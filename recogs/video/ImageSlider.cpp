@@ -7,7 +7,7 @@
 
 using namespace recogs;
 
-ImageSlider::ImageSlider(int N) : m_N(N)
+ImageSlider::ImageSlider(std::string id, int N) : m_id(std::move(id)), m_N(N)
 {
     m_textures.resize(N, 0); // Initialize all textures to invalid handles
 }
@@ -57,7 +57,9 @@ void ImageSlider::ui()
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.f, 0.f, 0.f, 0.f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
-        if (ImGui::ImageButton((ImTextureID) (intptr_t) m_textures.at(i), ImVec2(image_w, image_h))) {
+        std::string button_id = "##" + m_id + "_Image_" + std::to_string(i);
+        if (ImGui::ImageButton(
+                button_id.c_str(), (ImTextureID) (intptr_t) m_textures.at(i), ImVec2(image_w, image_h))) {
             on_image_click(i);
         }
         ImGui::PopStyleColor(3);

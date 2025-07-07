@@ -22,7 +22,7 @@ GLTextureMapped::GLTextureMapped(GLTextureMapped&& other) noexcept
 
 GLTextureMapped::~GLTextureMapped()
 {
-    if (m_graphics_resource) CHECK_CUDA(cudaGraphicsUnmapResources(1, &m_graphics_resource));
+    if (m_graphics_resource) CHECK_CUDA(cudaGraphicsUnregisterResource(m_graphics_resource));
     if (m_texture) glDeleteTextures(1, &m_texture);
 }
 

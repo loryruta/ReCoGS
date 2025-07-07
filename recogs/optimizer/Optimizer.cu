@@ -134,16 +134,17 @@ void Optimizer::start()
 
         // Compute ground truth
         gs_rasterizer.forward(m_app.background_d(), scene, false /* scene_2 */, sampled_camera, gt, stream);
-        m_app.selection3d().project( //
-            sampled_camera,
-            [gt] __device__(uint32_t x, uint32_t y, float view_z) mutable {
-                float z = gt.value(x, y).w;
-                if (view_z > z) return; // Depth testing
-                glm::vec3 color = gt.value(x, y);
-                color *= glm::vec3(1, 0.25f, 0.5f); // TODO apply any edit
-                gt.set_value(x, y, glm::vec4(color, z));
-            },
-            stream);
+        // TODO
+        //        m_app.selection3d().project( //
+        //            sampled_camera,
+        //            [gt] __device__(uint32_t x, uint32_t y, float view_z) mutable {
+        //                float z = gt.value(x, y).w;
+        //                if (view_z > z) return; // Depth testing
+        //                glm::vec3 color = gt.value(x, y);
+        //                color *= glm::vec3(1, 0.25f, 0.5f); // TODO apply any edit
+        //                gt.set_value(x, y, glm::vec4(color, z));
+        //            },
+        //            stream);
 
         // Compute prediction
         // NOTE: gs_rasterizer will save internal state during the forward; thus this code doesn't have to be moved!

@@ -7,18 +7,21 @@
 #include "GSRasterizer.h"
 #include "Scene.h"
 #include "depth_estimators/StereoDepthEstimator.h"
-#include "disk/DiskRasterizer.h"
 #include "optimizer/Optimizer.h"
 #include "selection/Sel3d.h"
 #include "svo/SVORenderer.h"
+#include "triangle/TriangleRenderer.h"
 #include "ui/Screen.h"
 #include "utils/image/Image.h"
 #include "video/DrawTexture.h"
-#include "video/GLMappedResource.h"
+#include "video/GLTextureMapped.h"
 #include "video/Window.h"
 
 namespace recogs
 {
+// Forward decl
+class DiskRasterizer;
+
 class App
 {
 public:
@@ -40,7 +43,7 @@ private:
 
     /* UI/Display */
     std::unique_ptr<Window> m_window;
-    std::unique_ptr<GLMappedResource> m_gl_mapped_resource{};
+    std::unique_ptr<GLTextureMapped> m_gl_mapped_resource{};
     std::unique_ptr<DrawTexture> m_draw_texture{}; // Lazily initialized because needs OpenGL
     std::unique_ptr<Image4fHWC> m_color_depth;
     bool m_take_screenshot = false;
@@ -50,7 +53,7 @@ private:
 
     std::unique_ptr<GSRasterizer> m_gs_rasterizer;
     std::unique_ptr<SVORenderer> m_svo_renderer;
-    std::unique_ptr<DiskRasterizer> m_disk_rasterizer;
+    std::unique_ptr<TriangleRenderer> m_triangle_renderer;
 
     std::unique_ptr<StereoDepthEstimator> m_stereo_depth_estimator;
 
@@ -84,7 +87,7 @@ public:
 
     [[nodiscard]] GSRasterizer& gs_rasterizer() { return *m_gs_rasterizer; }
     [[nodiscard]] SVORenderer& svo_renderer() { return *m_svo_renderer; }
-    [[nodiscard]] DiskRasterizer& disk_rasterizer() { return *m_disk_rasterizer; }
+    [[nodiscard]] TriangleRenderer& triangle_renderer() { return *m_triangle_renderer; }
 
     [[nodiscard]] StereoDepthEstimator& stereo_depth_estimator() { return *m_stereo_depth_estimator; }
 
@@ -102,8 +105,11 @@ public:
             m_screen.reset();
             // Create and set the new screen
             m_screen = new_screen;
-            glm::ivec2 resolution_ = resolution();
-            m_screen->resize(resolution_.x, resolution_.y);
+            if (new_screen) {
+                glm::ivec2 resolution_ = resolution();
+                m_screen->resize(resolution_.x, resolution_.y);
+                printf("[DEBUG] [App] Resized %s to (%d, %d)\n", to_name, resolution_.x, resolution_.y);
+            }
         });
     }
 

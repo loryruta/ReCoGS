@@ -15,13 +15,13 @@ TrainingCamerasSlider::TrainingCamerasSlider(int resolution) : m_resolution(reso
     m_colorbuffer = std::make_unique<Image4fHWC>(Image4fHWC::malloc(resolution, resolution));
 
     // Init GL-CUDA mapped textures
-    m_gl_mapped_textures.reserve(N);
+    m_gl_textures_mapped.reserve(N);
     for (int i = 0; i < N; ++i) {
-        m_gl_mapped_textures.emplace_back(resolution, resolution);
+        m_gl_textures_mapped.emplace_back(GLTextureMapped::create_rgba32f(resolution, resolution));
     }
 
     // Init ImageSlider (imgui utility for displaying them)
-    m_image_slider = std::make_unique<ImageSlider>(N);
+    m_image_slider = std::make_unique<ImageSlider>("TrainingCamerasSlider", N);
     m_image_slider->on_image_click = [this](int i) {
         if (on_select) {
             on_select(i);
@@ -37,7 +37,7 @@ TrainingCamerasSlider::TrainingCamerasSlider(int resolution) : m_resolution(reso
         rasterizer.show_borders = false;
         rasterizer.forward(g_app->background_d(), g_app->scene(), false, camera, *m_colorbuffer, g_stream);
         // Copy the colorbuffer into the GL mapped texture
-        GLMappedResource& resource = m_gl_mapped_textures.at(i);
+        GLTextureMapped& resource = m_gl_textures_mapped.at(i);
         resource.write(*m_colorbuffer, g_stream);
         return resource.texture();
     };

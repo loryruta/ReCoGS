@@ -2,7 +2,7 @@
 
 #include "GSCameraController.h"
 #include "Screen.h"
-#include "disk/Disks.h"
+#include "triangle/DiskBuffer.h"
 
 namespace recogs
 {
@@ -11,7 +11,7 @@ class DiskRasterizerScreen : public Screen
 private:
     GSCamera m_camera;
     std::unique_ptr<GSCameraController> m_camera_controller;
-    std::unique_ptr<Disks> m_disks;
+    DiskBuffer m_disk_buffer;
 
 public:
     explicit DiskRasterizerScreen();
@@ -25,6 +25,6 @@ public:
     void ui() override;
 
 private:
-    static std::unique_ptr<Disks> create_disks_scene();
+    void init_disks_scene();
 };
 } // namespace recogs

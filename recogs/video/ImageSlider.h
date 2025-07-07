@@ -15,6 +15,7 @@ class ImageSlider
 private:
     constexpr static double k_slide_accel_elapsed_time = 0.2;
 
+    const std::string m_id;
     const int m_N;
     std::vector<GLuint> m_textures;
     int m_start_texture_idx = 0;
@@ -29,7 +30,7 @@ public:
     std::function<GLuint(int)> provide_texture; /// Function called to generate the texture
 
     /// \param N the total number of images
-    explicit ImageSlider(int N);
+    explicit ImageSlider(std::string id, int N);
     ~ImageSlider() = default;
 
     /// Retrieve a constant reference of the i-th texture.

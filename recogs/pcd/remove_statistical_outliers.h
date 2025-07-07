@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include <cukd/knn.h>
 #include <glm/glm.hpp>
 #include <thrust/device_vector.h>
@@ -78,7 +80,7 @@ __global__ void filter_pointcloud_kernel( //
     const float* variance_sum,
     const float* avg_distances,
     uint32_t* out_num_filtered_points,
-    glm::vec3* out_filtered_points)
+    uint32_t* out_filtered_indices)
 {
     uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= num_points) return;
@@ -88,20 +90,23 @@ __global__ void filter_pointcloud_kernel( //
     float avg_distance_threshold = avg_distances_avg + std_ratio * std_dev;
     if (avg_distances[i] < avg_distance_threshold) {
         uint32_t out_i = atomicAdd(out_num_filtered_points, 1);
-        out_filtered_points[out_i] = points[i];
+        out_filtered_indices[out_i] = i;
     } else { // Discard
     }
 }
 } // namespace detail
 
+/// CUDA implementation of remove statistical outlier function from Open3D.
+/// Removes points whose average neighbor distance is above a threshold (more isolated than other points).
+/// \return
+///     A list of indices of the points to keep. \c thrust::gather can be used to filter the input points.
 template <int K>
-thrust::device_vector<glm::vec3> remove_statistical_outliers( //
-    thrust::device_vector<glm::vec3>& points,
-    float std_ratio,
-    float cutoff_radius,
-    cudaStream_t stream)
+thrust::device_vector<uint32_t> remove_statistical_outliers(thrust::device_vector<glm::vec3>& points,
+                                                            float std_ratio,
+                                                            float cutoff_radius,
+                                                            cudaStream_t stream)
 {
-    if (points.size() <= K) return points;
+    if (points.size() <= K) return thrust::device_vector<uint32_t>{};
 
     size_t num_points = points.size();
 
@@ -110,9 +115,7 @@ thrust::device_vector<glm::vec3> remove_statistical_outliers( //
     thrust::device_vector<float> pointcloud_mean(1, 0.0f);
     thrust::device_vector<float> variance(1, 0.0f);
     thrust::device_vector<uint32_t> num_filtered_points(1, 0);
-    thrust::device_vector<glm::vec3> filtered_points(num_points); // Pre-allocated to fit all points
-
-    uint32_t* num_filtered_points_d = thrust::raw_pointer_cast(num_filtered_points.data());
+    thrust::device_vector<uint32_t> filtered_indices(num_points); // Pre-allocated to fit all points
 
     dim3 num_blocks = div_ceil<size_t>(num_points, 512);
     dim3 block_dim = 512;
@@ -132,23 +135,21 @@ thrust::device_vector<glm::vec3> remove_statistical_outliers( //
     // Compute variance of avg distance for the whole pointcloud
     detail::compute_var_kernel<<<num_blocks, block_dim, 0, stream>>>( //
         num_points,
-        thrust::raw_pointer_cast(avg_distances.data()),
-        thrust::raw_pointer_cast(pointcloud_mean.data()),
-        thrust::raw_pointer_cast(variance.data()));
+        RCGS_TPTR(avg_distances),
+        RCGS_TPTR(pointcloud_mean),
+        RCGS_TPTR(variance));
     // Compute an avg distance threshold and filter points based on it
     detail::filter_pointcloud_kernel<<<num_blocks, block_dim, 0, stream>>>( //
-        thrust::raw_pointer_cast(points.data()),
+        RCGS_TPTR(points),
         num_points,
-        thrust::raw_pointer_cast(pointcloud_mean.data()),
+        RCGS_TPTR(pointcloud_mean),
         std_ratio,
-        thrust::raw_pointer_cast(variance.data()),
-        thrust::raw_pointer_cast(avg_distances.data()),
-        num_filtered_points_d,
-        thrust::raw_pointer_cast(filtered_points.data()));
-
+        RCGS_TPTR(variance),
+        RCGS_TPTR(avg_distances),
+        RCGS_TPTR(num_filtered_points),
+        RCGS_TPTR(filtered_indices));
     // Cap the filtered points to the actual size
-    filtered_points.resize(to_host(num_filtered_points_d));
-
-    return filtered_points;
+    filtered_indices.resize(num_filtered_points[0]);
+    return filtered_indices;
 }
 } // namespace recogs

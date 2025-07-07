@@ -31,7 +31,9 @@ void SSPcdSel3d::append(const Image1u8& fill_mask,
     constexpr float k_std_ratio = 0.007f;
     constexpr float k_cutoff_radius = 10.0f;
     // Error? Don't worry, it's a fake IDE error (too many templates down there...)
-    new_points = remove_statistical_outliers<k_nb_neighbors>(new_points, k_std_ratio, k_cutoff_radius, stream);
+    thrust::device_vector<uint32_t> keep_indices =
+        remove_statistical_outliers<k_nb_neighbors>(new_points, k_std_ratio, k_cutoff_radius, stream);
+    // TODO
     printf("[DEBUG] [SSPcdSel3d] Compaction from %zu to %zu points\n", old_points_count, new_points.size());
     // Append the new points
     m_points.insert(m_points.end(), new_points.begin(), new_points.end());

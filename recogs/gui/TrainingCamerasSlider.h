@@ -3,7 +3,7 @@
 #include <memory>
 
 #include "utils/image/Image.h"
-#include "video/GLMappedResource.h"
+#include "video/GLTextureMapped.h"
 #include "video/ImageSlider.h"
 
 namespace recogs
@@ -19,7 +19,7 @@ private:
     const int m_resolution;
 
     std::unique_ptr<Image4fHWC> m_colorbuffer;
-    std::vector<GLMappedResource> m_gl_mapped_textures;
+    std::vector<GLTextureMapped> m_gl_textures_mapped;
     std::unique_ptr<ImageSlider> m_image_slider;
 
 public:

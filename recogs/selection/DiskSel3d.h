@@ -4,8 +4,7 @@
 
 #include "GSCamera.h"
 #include "Sel3d.h"
-#include "disk/DiskRasterizer.h"
-#include "disk/Disks.h"
+#include "triangle/DiskBuffer.h"
 #include "utils/image/Image.h"
 
 namespace recogs
@@ -13,25 +12,22 @@ namespace recogs
 class DiskPcdSel3d : public Sel3d
 {
 private:
-    std::unique_ptr<Disks> m_disks;
+    DiskBuffer m_disk_buffer;
 
 public:
     explicit DiskPcdSel3d();
     ~DiskPcdSel3d() = default;
 
-    void append(const Image1u8& fill_mask,
-                const GSCamera& camera,
-                const Image4fHWC& color_depth,
-                cudaStream_t stream) override;
+    [[nodiscard]] const DiskBuffer& disk_buffer() const { return m_disk_buffer; }
 
-    void clear(const Image1u8& edit_mask,
-               const GSCamera& camera,
-               const Image4fHWC& color_depth,
-               cudaStream_t stream) override;
+    void
+    append(const Image1u8& fill_mask, const GSCamera& camera, const Image4fHWC& depthmap, cudaStream_t stream) override;
+
+    void clear(const Image1u8& clear_mask, const GSCamera& camera, cudaStream_t) override;
 
     void project(const GSCamera& camera,
-                 Image4fHWC& color_depth,
-                 const FillPixelT& fill_pixel_fn,
-                 cudaStream_t stream) override;
+                 const Image4fHWC& depthmap,
+                 Image1u8& sel3d_mask,
+                 cudaStream_t stream) const override;
 };
 } // namespace recogs

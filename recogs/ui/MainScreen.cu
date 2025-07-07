@@ -5,6 +5,7 @@
 #include "App.h"
 #include "GSRasterizer.h"
 #include "gui/Header.h"
+#include "selection/DiskSel3d.h"
 #include "ui/SelectScreen.h"
 #include "utils/image/depthmap_to_normalmap.h"
 #include "utils/image/image_fill.h"
@@ -56,6 +57,7 @@ MainScreen::~MainScreen()
 {
     Window& window = g_app->window();
     CHECK_STATE(window.remove_key_callback(m_key_callback));
+    printf("[DEBUG] [MainScreen] Bye bye\n");
 }
 
 void MainScreen::resize(int width, int height)
@@ -99,6 +101,29 @@ void MainScreen::_render_sel3d(Image4fHWC& color_depth)
         g_stream);
 }
 
+void MainScreen::_render_disk_sel3d(Image4fHWC& color_depth)
+{
+    DiskPcdSel3d* disk_sel3d = dynamic_cast<DiskPcdSel3d*>(&g_app->sel3d());
+    CHECK_ARG(disk_sel3d, "Selection 3D is not a DiskPcdSel3d");
+    const DiskBuffer& disk_buffer = disk_sel3d->disk_buffer();
+    if (disk_buffer.empty()) return;
+
+    g_app->triangle_renderer().render_disks(m_camera, disk_buffer, color_depth, g_stream);
+
+    //    auto f = [color_depth] __device__(uint2 pixel, float depth, float2 uv) mutable {
+    //        int W = (int) color_depth.width;
+    //        // Depth test
+    //        uint32_t view_z_u32 = __float_as_uint(depth);
+    //        uint32_t* depth_ptr = reinterpret_cast<uint32_t*>(&color_depth.data_d()[(pixel.y * W + pixel.x) * 4 + 3]);
+    //        uint32_t old_z = atomicMin(depth_ptr, view_z_u32);
+    //        if (old_z <= view_z_u32) return;
+    //        // Set color
+    //        glm::vec3 color(sqrtf(uv.x * uv.x + uv.y * uv.y));
+    //        color_depth.set_value(pixel.x, pixel.y, glm::vec4(color, 1));
+    //    };
+    //    g_app->disk_rasterizer().rasterize(disk_sel3d->disks(), m_camera, f, g_stream);
+}
+
 void MainScreen::render(Image4fHWC& color_depth)
 {
     Scene& scene = g_app->scene();
@@ -110,7 +135,9 @@ void MainScreen::render(Image4fHWC& color_depth)
         g_app->gs_rasterizer().forward(
             g_app->background_d(), scene, true /* scene_2 */, m_camera, color_depth, g_stream);
         // Render selection
-        if (m_view_selection) _render_sel3d(color_depth);
+        if (m_view_selection) {
+            _render_disk_sel3d(color_depth);
+        }
     }
 
     // Capture stereo

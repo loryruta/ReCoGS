@@ -97,6 +97,10 @@ layout(location = 0) uniform mat4 u_camera;
 
 out vec2 v_uv;
 
+vec3 quat_rot(vec4 q, vec3 v){
+   return v + 2.0 * cross(cross(v, q.xyz ) + q.w * v, q.xyz);
+}
+
 void main()
 {
     const vec2 vertices[] = vec2[](
@@ -109,7 +113,7 @@ void main()
     );
 
     vec3 p = vec3(a_scale * vertices[gl_VertexID], 0);
-    // TODO apply rotation
+    p = quat_rot(a_rotation, p);
     p += a_position.xyz;
 
     gl_Position = u_camera * vec4(p, 1);
@@ -343,9 +347,9 @@ void TriangleRenderer::render_disks(const GSCamera& camera,
             glUniformMatrix4fv(0, 1, GL_FALSE, glm::value_ptr(camera.viewproj()));
             glBindVertexArray(disk_buffer.vao());
             glBindBuffer(GL_ARRAY_BUFFER, disk_buffer.vbo());
-            glDepthMask(GL_FALSE); // Don't perform depth test against generated fragments
+            //glDepthMask(GL_FALSE); // Don't perform depth test against generated fragments
             glDrawArraysInstanced(GL_TRIANGLES, 0, 6, (GLsizei) disk_buffer.size());
-            glDepthMask(GL_TRUE);
+            //glDepthMask(GL_TRUE);
         },
         stream);
 }

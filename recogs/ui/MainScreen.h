@@ -7,7 +7,7 @@
 #include "gui/StereoTest.h"
 #include "gui/TrainingCamerasSlider.h"
 #include "utils/image/Image.h"
-#include "video/GLMappedResource.h"
+#include "video/GLTextureMapped.h"
 #include "video/ImageSlider.h"
 
 namespace recogs
@@ -46,5 +46,6 @@ public:
     void ui() override;
 
     void _render_sel3d(Image4fHWC& color_depth);
+    void _render_disk_sel3d(Image4fHWC& color_depth);
 };
 } // namespace recogs

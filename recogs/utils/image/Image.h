@@ -22,7 +22,7 @@ enum class ImageMemoryLayout : uint8_t { HWC, CHW };
 ///     For example:
 ///     - HWC (H, W, C) is the format for stbi_write_*
 ///     - CHW (C, H, W) is the format for libtorch
-template <int C, typename T, ImageMemoryLayout MEMORY_LAYOUT>
+template <int C, typename T, ImageMemoryLayout MEMORY_LAYOUT = ImageMemoryLayout::HWC>
 class Image
 {
     static_assert(C >= 1, "Number of components must be at least 1");
@@ -139,7 +139,7 @@ public:
     }
 
     /// Allocate a image owning new data (uninitialized).
-    __host__ static Image malloc(uint32_t width, uint32_t height, cudaStream_t stream = CU_STREAM_LEGACY)
+    __host__ static Image malloc(uint32_t width, uint32_t height, cudaStream_t stream = 0)
     {
         Image image(width, height, nullptr);
         CHECK_CUDA(cudaMallocAsync(&image.m_data_d, width * height * C * sizeof(T), stream));

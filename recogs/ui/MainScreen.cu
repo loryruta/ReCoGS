@@ -108,20 +108,55 @@ void MainScreen::_render_disk_sel3d(Image4fHWC& color_depth)
     const DiskBuffer& disk_buffer = disk_sel3d->disk_buffer();
     if (disk_buffer.empty()) return;
 
-    g_app->triangle_renderer().render_disks(m_camera, disk_buffer, color_depth, g_stream);
-
-    //    auto f = [color_depth] __device__(uint2 pixel, float depth, float2 uv) mutable {
-    //        int W = (int) color_depth.width;
-    //        // Depth test
-    //        uint32_t view_z_u32 = __float_as_uint(depth);
-    //        uint32_t* depth_ptr = reinterpret_cast<uint32_t*>(&color_depth.data_d()[(pixel.y * W + pixel.x) * 4 + 3]);
-    //        uint32_t old_z = atomicMin(depth_ptr, view_z_u32);
-    //        if (old_z <= view_z_u32) return;
-    //        // Set color
-    //        glm::vec3 color(sqrtf(uv.x * uv.x + uv.y * uv.y));
-    //        color_depth.set_value(pixel.x, pixel.y, glm::vec4(color, 1));
-    //    };
-    //    g_app->disk_rasterizer().rasterize(disk_sel3d->disks(), m_camera, f, g_stream);
+    DiskRenderer_Params params{};
+    params.camera = &m_camera;
+    params.color_depth = &color_depth;
+    params.disk_buffer = &disk_buffer;
+    params.stream = g_stream;
+    DiskRenderer& disk_renderer = g_app->disk_renderer();
+    switch (m_render_disk_mode) {
+    case RenderDiskMode::HashedDiskId:
+        disk_renderer.render(params, [] __device__(uint32_t disk_id, float2 uv, float opacity, float* inout_color) {
+            // Reference:
+            // https://gist.github.com/mpottinger/54d99732d4831d8137d178b4a6007d1a#file-murmurhash-glsl-L213-L229
+            // murmurHash41
+            const uint M = 0x5bd1e995u;
+            glm::uvec4 h = glm::uvec4(1190494759u, 2147483647u, 3559788179u, 179424673u);
+            disk_id *= M;
+            disk_id ^= disk_id >> 24u;
+            disk_id *= M;
+            h *= M;
+            h = h ^ disk_id;
+            h = h ^ (h >> 13u);
+            h *= M;
+            h = h ^ (h >> 15u);
+            // hash41
+            glm::uvec4 enc = h & 0x007fffffu | 0x3f800000u;
+            inout_color[0] = __uint_as_float(enc.x) - 1.0f;
+            inout_color[1] = __uint_as_float(enc.y) - 1.0f;
+            inout_color[2] = __uint_as_float(enc.z) - 1.0f;
+            inout_color[2] = 1.0f;
+        });
+        break;
+    case RenderDiskMode::Mask:
+        disk_renderer.render(params, [] __device__(uint32_t disk_id, float2 uv, float opacity, float* inout_color) {
+            inout_color[0] = sqrtf(uv.x * uv.x + uv.y * uv.y);
+            inout_color[1] = 0.f;
+            inout_color[2] = 0.f;
+            inout_color[3] = 1.f;
+        });
+        break;
+    case RenderDiskMode::Tint:
+        disk_renderer.render(params, [] __device__(uint32_t disk_id, float2 uv, float opacity, float* inout_color) {
+            inout_color[0] = sqrtf(uv.x * uv.x + uv.y * uv.y);
+            inout_color[1] = 0.f;
+            inout_color[2] = 0.f;
+            inout_color[3] = 1.f;
+        });
+        break;
+    default:
+        break;
+    }
 }
 
 void MainScreen::render(Image4fHWC& color_depth)
@@ -193,6 +228,8 @@ void MainScreen::ui()
     });
     header.ui();
 
+    ui_3d_selection();
+
     // Footer
     if (ImGui::Begin(
             "##footer", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar)) {
@@ -200,6 +237,19 @@ void MainScreen::ui()
         ImGui::SetWindowPos(ImVec2(0, resolution.y - k_footer_height));
 
         m_training_cameras_ui->ui();
+    }
+    ImGui::End();
+}
+
+void MainScreen::ui_3d_selection()
+{
+    if (ImGui::Begin("3D Selection")) {
+        ImGui::Checkbox("View 3D selection", &m_view_selection);
+
+        // Render disks
+        ImGui::RadioButton("Hashed Disk ID##RenderDisksMode", (int*) &m_render_disk_mode, RenderDiskMode::HashedDiskId);
+        ImGui::RadioButton("Mask##RenderDisksMode", (int*) &m_render_disk_mode, RenderDiskMode::Mask);
+        ImGui::RadioButton("Tint##RenderDisksMode", (int*) &m_render_disk_mode, RenderDiskMode::Tint);
     }
     ImGui::End();
 }

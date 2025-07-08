@@ -134,7 +134,11 @@ void SelectScreen::_on_key(int key, int scancode, int action, int mods)
             glm::ivec2 resolution = g_app->resolution();
             // Populate the 3D selection with 2D selection unprojection
             m_sel2d->populate_sel3d(g_stream);
-            g_app->set_screen(std::make_shared<MainScreen>(m_camera.clone(g_stream)));
+            g_app->set_screen([&]() {
+                auto main_screen = std::make_shared<MainScreen>(m_camera.clone(g_stream));
+                main_screen->m_view_selection = true;
+                return main_screen;
+            }());
         } else if (key == GLFW_KEY_ESCAPE) {
             g_app->set_screen(std::make_shared<MainScreen>(m_camera.clone(g_stream)));
         }

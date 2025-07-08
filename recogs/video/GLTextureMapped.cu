@@ -7,6 +7,22 @@
 
 using namespace recogs;
 
+GLTextureMapped_MappedGuard::GLTextureMapped_MappedGuard(GLTextureMapped_MappedGuard&& other) noexcept
+    : graphics_resource(other.graphics_resource), cuda_array(other.cuda_array), surface_object(other.surface_object),
+      stream(other.stream)
+{
+    surface_object = 0;
+}
+
+GLTextureMapped_MappedGuard::~GLTextureMapped_MappedGuard()
+{
+    if (surface_object == 0) return; // Moved
+
+    CHECK_CUDA(cudaGraphicsUnmapResources(1, &graphics_resource, stream));
+    CHECK_CUDA(cudaStreamSynchronize(stream));
+    CHECK_CUDA(cudaDestroySurfaceObject(surface_object)); // TODO Destroy surface object on CUDA stream?
+}
+
 GLTextureMapped::GLTextureMapped(int width, int height, GLuint texture, cudaGraphicsResource_t gl_resource)
     : m_width(width), m_height(height), m_texture(texture), m_graphics_resource(gl_resource)
 {
@@ -26,24 +42,25 @@ GLTextureMapped::~GLTextureMapped()
     if (m_texture) glDeleteTextures(1, &m_texture);
 }
 
-void GLTextureMapped::map(const std::function<void(cudaArray_t, cudaSurfaceObject_t)>& scoped_fn, cudaStream_t stream)
+GLTextureMapped_MappedGuard GLTextureMapped::map(cudaStream_t stream)
 {
-    CHECK_CUDA(cudaGraphicsMapResources(1, &m_graphics_resource, stream));
     cudaArray_t cuda_array;
+    cudaSurfaceObject_t surface_object;
+
+    CHECK_CUDA(cudaGraphicsMapResources(1, &m_graphics_resource, stream));
     CHECK_CUDA(cudaGraphicsSubResourceGetMappedArray(&cuda_array, m_graphics_resource, 0, 0));
 
     cudaResourceDesc resource_desc{};
     resource_desc.resType = cudaResourceTypeArray;
     resource_desc.res.array.array = cuda_array;
-    cudaSurfaceObject_t surface_object;
     CHECK_CUDA(cudaCreateSurfaceObject(&surface_object, &resource_desc));
 
-    scoped_fn(cuda_array, surface_object);
-
-    CHECK_CUDA(cudaGraphicsUnmapResources(1, &m_graphics_resource, stream));
-    CHECK_CUDA(cudaStreamSynchronize(stream));
-
-    // TODO delete the surface object ?
+    GLTextureMapped_MappedGuard guard{};
+    guard.graphics_resource = m_graphics_resource;
+    guard.cuda_array = cuda_array;
+    guard.surface_object = surface_object;
+    guard.stream = stream;
+    return guard;
 }
 
 GLTextureMapped GLTextureMapped::create(const GLTextureMapped_CreateParams& params)
@@ -58,12 +75,11 @@ GLTextureMapped GLTextureMapped::create(const GLTextureMapped_CreateParams& para
     glEnable(GL_TEXTURE_2D); // TODO useless
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, W, H, 0, GL_RGBA, GL_FLOAT, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, params.internalformat, W, H, 0, params.format, params.type, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, params.min_filter);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, params.mag_filter);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, params.wrap_s);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, params.wrap_t);
-    glBindTexture(GL_TEXTURE_2D, 0);
 
     // Create GL resource
     CHECK_CUDA(

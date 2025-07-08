@@ -1,6 +1,6 @@
 #include "Window.h"
 
-#include "utils/misc_utils.h"
+#include "utils/exceptions.h"
 
 using namespace recogs;
 

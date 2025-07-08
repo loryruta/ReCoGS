@@ -14,6 +14,9 @@ public:
     explicit Sel3d() = default;
     ~Sel3d() = default;
 
+    /// Check whether the 3D selection is empty or not.
+    virtual bool empty() const = 0;
+
     /// Append the points set in the fill mask to the 3D selection.
     /// \param fill_mask Mask holding the 2D points to populate the 3D selection
     /// \param camera

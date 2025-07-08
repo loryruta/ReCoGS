@@ -50,14 +50,14 @@ const char* k_frag_shader_src = R"(#version 460 core
 DrawTexture::DrawTexture()
 {
     // Create shader program
+    printf("[INFO ] [DrawTexture] Creating \"DrawTexture\" shader program...\n");
+
     Shader vertex_shader(GL_VERTEX_SHADER);
     vertex_shader.source_from_str(k_vert_shader_src);
     vertex_shader.compile();
-
     Shader fragment_shader(GL_FRAGMENT_SHADER);
     fragment_shader.source_from_str(k_frag_shader_src);
     fragment_shader.compile();
-
     m_program.attach_shader(vertex_shader);
     m_program.attach_shader(fragment_shader);
     m_program.link();

@@ -41,8 +41,8 @@ void GLAPIENTRY MessageCallback(GLenum source,
 
 void App::Params::validate() const
 {
-    CHECK_ARG(std::filesystem::is_regular_file(scene_ply), "Invalid scene PLY: %s", scene_ply.c_str());
-    CHECK_ARG(scene_ply.extension() == ".ply", "Invalid scene PLY extension: %s", scene_ply.extension());
+    CHECK_ARG(std::filesystem::is_regular_file(scene_ply), "Invalid scene PLY: {}", scene_ply.string());
+    CHECK_ARG(scene_ply.extension() == ".ply", "Invalid scene PLY extension: {}", scene_ply.extension().string());
 }
 
 App::App(const Params& params)
@@ -100,7 +100,7 @@ App::App(const Params& params)
 
     m_gs_rasterizer = std::make_unique<GSRasterizer>();
     m_svo_renderer = std::make_unique<SVORenderer>();
-    m_triangle_renderer = std::make_unique<TriangleRenderer>();
+    m_disk_renderer = std::make_unique<DiskRenderer>();
 
     m_stereo_depth_estimator = std::make_unique<StereoDepthEstimator>(*this);
 

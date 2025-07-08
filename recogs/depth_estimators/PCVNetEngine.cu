@@ -211,8 +211,8 @@ void PCVNetEngine::load()
     engine_file.seekg(0, std::ios::beg);
     std::vector<char> engine_filedata(engine_filesize);
     CHECK_STATE(engine_file.read(engine_filedata.data(), engine_filesize),
-                "Failed to load TensorRT engine: %s",
-                m_options.engine_filepath);
+                "Failed to load TensorRT engine: {}",
+                m_options.engine_filepath.string());
     engine_file.close();
 
     // Load the engine to TensorRT
@@ -227,7 +227,7 @@ void PCVNetEngine::load()
 
     // Validate I/O tensors
     size_t num_io_tensors = m_engine->getNbIOTensors();
-    CHECK_STATE(num_io_tensors, num_io_tensors == 3, "Expected 3 I/O tensors: im0, im1 and disparity_map");
+    CHECK_STATE(num_io_tensors == 3, "Expected 3 I/O tensors: im0, im1 and disparity_map");
     for (int i = 0; i < num_io_tensors; ++i) {
         std::string name = m_engine->getIOTensorName(i);
         nvinfer1::TensorIOMode mode = m_engine->getTensorIOMode(name.c_str());

@@ -1,7 +1,7 @@
 #include "DiskRasterizerScreen.h"
 
 #include "App.h"
-#include "triangle/DiskBuffer.h"
+#include "disk/DiskBuffer.h"
 #include "utils/image/image_fill.h"
 
 using namespace recogs;
@@ -31,7 +31,18 @@ void DiskRasterizerScreen::render(Image4fHWC& color_depth)
 {
     image_fill(color_depth, glm::vec4(0), g_stream);
 
-    g_app->triangle_renderer().render_disks(m_camera, m_disk_buffer, color_depth, g_stream);
+    DiskRenderer_Params params{};
+    params.camera = &m_camera;
+    params.color_depth = &color_depth;
+    params.disk_buffer = &m_disk_buffer;
+    params.stream = g_stream;
+    g_app->disk_renderer().render(params,
+                                  [] __device__(uint32_t disk_id, float2 uv, float opacity, float* colordepth_ptr) {
+                                      colordepth_ptr[0] = 1.f;
+                                      colordepth_ptr[1] = 1.f;
+                                      colordepth_ptr[2] = 1.f;
+                                      colordepth_ptr[3] = 1.f;
+                                  });
 }
 
 void DiskRasterizerScreen::ui() {}
@@ -50,5 +61,5 @@ void DiskRasterizerScreen::init_disks_scene()
     disk3.position = {0, 0, -1, 0};
     disk3.scale = {0.6f, 0.8f};
     disk3.rotation = {0, 0, 0, 1};
-    m_disk_buffer.upload();
+    m_disk_buffer.upload(g_stream);
 }

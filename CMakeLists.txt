@@ -16,6 +16,9 @@ set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 # Catch2
 find_package(Catch2 CONFIG REQUIRED)
 
+# CUDA Toolkit
+find_package(CUDAToolkit REQUIRED)
+
 # cudaKDTree
 add_subdirectory(${THIRD_PARTY_DIR}/cudaKDTree)
 

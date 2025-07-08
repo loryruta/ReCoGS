@@ -5,6 +5,10 @@ set(LIB_SOURCES
         depth_estimators/StereoDepthEstimator.cu
         depth_estimators/StereoDepthEstimator.h
 
+        disk/DiskBuffer.h
+        disk/DiskRenderer.cu
+        disk/DiskRenderer.h
+
         gui/recogs_style.h
         gui/StereoTest.cu
         gui/StereoTest.h
@@ -49,9 +53,6 @@ set(LIB_SOURCES
         svo/SVORenderer.cu
         svo/SVORenderer.h
 
-        triangle/TriangleRenderer.cu
-        triangle/TriangleRenderer.h
-
         ui/DiskRasterizerScreen.cu
         ui/DiskRasterizerScreen.h
         ui/MainScreen.cu
@@ -75,6 +76,9 @@ set(LIB_SOURCES
         utils/image/image_save.h
         utils/image/image_visit_transform.h
         utils/DeviceBuffer.h
+        utils/exceptions.h
+        utils/GLPipelineCUDAAdapter.cu
+        utils/GLPipelineCUDAAdapter.h
         utils/cuda_utils.h
         utils/misc_utils.h
         utils/stb_image.cpp
@@ -105,6 +109,7 @@ set(VIDEO_SOURCES
         video/CudaTexture.h
         video/DrawTexture.cpp
         video/DrawTexture.h
+        video/gl_utils.cpp
         video/gl_utils.h
         video/GLTextureMapped.cu
         video/GLTextureMapped.h
@@ -115,8 +120,12 @@ set(VIDEO_SOURCES
 )
 
 add_library(recogs_lib STATIC ${LIB_SOURCES} ${VIDEO_SOURCES})
-target_include_directories(recogs_lib PUBLIC ${CMAKE_SOURCE_DIR}/recogs)
-target_link_libraries(recogs_lib PUBLIC
+target_include_directories(recogs_lib
+        PUBLIC
+        ${CMAKE_SOURCE_DIR}/recogs
+        ${CUDAToolkit_INCLUDE_DIRS})
+target_link_libraries(recogs_lib
+        PUBLIC
         cudaKDTree
         fmt::fmt
         glfw

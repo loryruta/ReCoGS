@@ -4,12 +4,15 @@
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
+#include <thrust/device_vector.h>
 
 namespace recogs
 {
 struct Disk {
     glm::vec4 position;
     glm::vec2 scale;
+    float opacity;
+    float p0;
     glm::vec4 rotation;
 };
 
@@ -21,6 +24,7 @@ private:
 
 public:
     std::vector<Disk> disks{};
+    thrust::device_vector<Disk> disks_d;
 
     DiskBuffer() = default;
     DiskBuffer(const DiskBuffer&) = delete;
@@ -38,7 +42,7 @@ public:
     [[nodiscard]] GLuint vao() const { return m_vao; }
     [[nodiscard]] GLuint vbo() const { return m_vbo; }
 
-    void upload()
+    void upload(cudaStream_t stream)
     {
         if (m_vao) glDeleteVertexArrays(1, &m_vao);
         glGenVertexArrays(1, &m_vao);
@@ -48,6 +52,7 @@ public:
         glGenBuffers(1, &m_vbo);
         glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
         glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr) (disks.size() * sizeof(Disk)), disks.data(), GL_STATIC_DRAW);
+        // TODO CUDA map the VBO instead of having a separate thrust buffer?
 
         glEnableVertexAttribArray(0); // Position
         glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, sizeof(Disk), (void*) offsetof(Disk, position));
@@ -58,6 +63,9 @@ public:
         glVertexAttribDivisor(0, 1); // Update vertex attribute every instance
         glVertexAttribDivisor(1, 1); // Update vertex attribute every instance
         glVertexAttribDivisor(2, 1); // Update vertex attribute every instance
+
+        disks_d.resize(disks.size());
+        thrust::copy(thrust::cuda::par.on(stream), disks.begin(), disks.end(), disks_d.begin());
     }
 };
 } // namespace recogs

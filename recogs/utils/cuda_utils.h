@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "exceptions.h"
 #include "utils/misc_utils.h"
 
 #define CHECK_CUDA(_error) recogs::check_cuda_error(_error, __FILE_NAME__, __LINE__)

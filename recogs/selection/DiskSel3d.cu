@@ -100,7 +100,7 @@ void DiskPcdSel3d::append(const Image1u8& fill_mask,
     CHECK_CUDA(cudaStreamSynchronize(stream));
     for (const Disk& disk : disks_host) m_disk_buffer.emplace_back() = disk;
     /* Upload to GPU (OpenGL) */
-    m_disk_buffer.upload();
+    m_disk_buffer.upload(stream);
 }
 
 void DiskPcdSel3d::clear(const Image1u8& clear_mask, const GSCamera& camera, cudaStream_t)

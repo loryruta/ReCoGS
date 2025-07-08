@@ -2,7 +2,7 @@
 
 #include "GSCameraController.h"
 #include "Screen.h"
-#include "triangle/DiskBuffer.h"
+#include "disk/DiskBuffer.h"
 
 namespace recogs
 {

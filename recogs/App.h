@@ -10,7 +10,7 @@
 #include "optimizer/Optimizer.h"
 #include "selection/Sel3d.h"
 #include "svo/SVORenderer.h"
-#include "triangle/TriangleRenderer.h"
+#include "disk/DiskRenderer.h"
 #include "ui/Screen.h"
 #include "utils/image/Image.h"
 #include "video/DrawTexture.h"
@@ -19,9 +19,6 @@
 
 namespace recogs
 {
-// Forward decl
-class DiskRasterizer;
-
 class App
 {
 public:
@@ -53,7 +50,7 @@ private:
 
     std::unique_ptr<GSRasterizer> m_gs_rasterizer;
     std::unique_ptr<SVORenderer> m_svo_renderer;
-    std::unique_ptr<TriangleRenderer> m_triangle_renderer;
+    std::unique_ptr<DiskRenderer> m_disk_renderer;
 
     std::unique_ptr<StereoDepthEstimator> m_stereo_depth_estimator;
 
@@ -87,7 +84,7 @@ public:
 
     [[nodiscard]] GSRasterizer& gs_rasterizer() { return *m_gs_rasterizer; }
     [[nodiscard]] SVORenderer& svo_renderer() { return *m_svo_renderer; }
-    [[nodiscard]] TriangleRenderer& triangle_renderer() { return *m_triangle_renderer; }
+    [[nodiscard]] DiskRenderer& disk_renderer() { return *m_disk_renderer; }
 
     [[nodiscard]] StereoDepthEstimator& stereo_depth_estimator() { return *m_stereo_depth_estimator; }
 

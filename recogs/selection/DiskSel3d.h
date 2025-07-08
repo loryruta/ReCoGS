@@ -4,7 +4,7 @@
 
 #include "GSCamera.h"
 #include "Sel3d.h"
-#include "triangle/DiskBuffer.h"
+#include "disk/DiskBuffer.h"
 #include "utils/image/Image.h"
 
 namespace recogs
@@ -19,6 +19,8 @@ public:
     ~DiskPcdSel3d() = default;
 
     [[nodiscard]] const DiskBuffer& disk_buffer() const { return m_disk_buffer; }
+
+    [[nodiscard]] bool empty() const override { return m_disk_buffer.empty(); }
 
     void
     append(const Image1u8& fill_mask, const GSCamera& camera, const Image4fHWC& depthmap, cudaStream_t stream) override;

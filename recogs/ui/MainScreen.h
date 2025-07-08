@@ -19,6 +19,8 @@ class App;
 /// allow the user to navigate the 3DGS scene and visualize the selection pointcloud if any
 class MainScreen : public Screen
 {
+    friend class SelectScreen;
+
 private:
     static constexpr int k_training_cameras_preview_resolution = 64;
 
@@ -34,6 +36,12 @@ private:
 
     std::unique_ptr<Image1u8> m_sel3d_mask;
 
+    enum RenderDiskMode : int {
+        HashedDiskId = 0, ///< Render the disks of different colors according to their ID.
+        Mask,             ///< Render the translucent region covered by disks in white.
+        Tint,             ///< Apply a color tint to the region covered by disks.
+    } m_render_disk_mode = RenderDiskMode::Mask;
+
 public:
     explicit MainScreen(std::optional<GSCamera> initial_view = std::nullopt);
     ~MainScreen() override;
@@ -47,5 +55,8 @@ public:
 
     void _render_sel3d(Image4fHWC& color_depth);
     void _render_disk_sel3d(Image4fHWC& color_depth);
+
+private:
+    void ui_3d_selection();
 };
 } // namespace recogs

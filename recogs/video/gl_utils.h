@@ -1,12 +1,15 @@
 #pragma once
 
+#include <array>
 #include <cstdlib>
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <span>
 
 #include <glad/glad.h>
 
+#include "utils/exceptions.h"
 #include "utils/misc_utils.h"
 #include "utils/stb_image.h"
 
@@ -118,7 +121,7 @@ inline GLuint load_texture(const std::filesystem::path& filepath, int channels, 
     int width, height;
     int channels_in_file;
     uint8_t* texture_data = stbi_load(filepath.c_str(), &width, &height, &channels_in_file, channels);
-    CHECK_ARG(texture_data, "Invalid texture file: %s", filepath);
+    CHECK_ARG(texture_data, "Invalid texture file: {}", filepath.string());
     // Create texture
     GLuint texture;
     glGenTextures(1, &texture);
@@ -134,4 +137,32 @@ inline GLuint load_texture(const std::filesystem::path& filepath, int channels, 
     glBindTexture(GL_TEXTURE_2D, 0);
     return texture;
 }
+
+struct Framebuffer {
+    glm::ivec2 resolution;
+    GLuint handle;
+    /* Texture references */
+    std::array<GLuint, 32> color_attachments{};
+    GLuint depth_texture = 0;
+    /* Renderbuffers */
+    GLuint renderbuffer = 0; ///< Owned renderbuffer for depth
+
+    explicit Framebuffer(glm::ivec2 resolution);
+    Framebuffer(const Framebuffer&) = delete;
+    Framebuffer(Framebuffer&& other) noexcept;
+    ~Framebuffer();
+
+    void set_name(const char* name);
+    void bind();
+
+    void attach_color(int slot, GLuint texture);
+    void attach_depth_texture(GLuint texture);
+    void create_and_attach_depth_renderbuffer();
+
+    void blit_from(const Framebuffer& other, GLbitfield mask, GLenum filter = GL_NEAREST);
+
+    void draw_buffers(const std::vector<GLenum>& slots);
+
+    GLenum status();
+};
 } // namespace recogs

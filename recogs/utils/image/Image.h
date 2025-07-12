@@ -118,15 +118,20 @@ public:
         return cloned_ref;
     }
 
-    __host__ void to_host(T* out_data) const
+    __host__ void to_host(T* out_data, cudaStream_t stream) const
     {
-        CHECK_CUDA(cudaMemcpy(out_data, m_data_d, width * height * C * sizeof(T), cudaMemcpyDeviceToHost));
+        CHECK_CUDA(cudaMemcpyAsync( //
+            out_data,
+            m_data_d,
+            width * height * C * sizeof(T),
+            cudaMemcpyDeviceToHost,
+            stream));
     }
 
-    __host__ void to_host(std::vector<T>& out_data) const
+    __host__ void to_host(std::vector<T>& out_data, cudaStream_t stream) const
     {
         out_data.resize(width * height * C);
-        to_host(out_data.data());
+        to_host(out_data.data(), stream);
     }
 
     __host__ Image& operator=(Image&& other) noexcept

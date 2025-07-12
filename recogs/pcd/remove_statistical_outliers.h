@@ -58,7 +58,7 @@ __global__ void compute_avg_distances_kernel( //
     atomicAdd(out_avg_distances_sum, avg_distance);
 }
 
-__global__ void compute_var_kernel( //
+__global__ inline void compute_var_kernel( //
     size_t num_points,
     const float* avg_distances,
     const float* inout_avg_distances_sum,
@@ -72,7 +72,7 @@ __global__ void compute_var_kernel( //
     atomicAdd(out_variance, d * d);
 }
 
-__global__ void filter_pointcloud_kernel( //
+__global__ inline void filter_pointcloud_kernel( //
     const glm::vec3* points,
     size_t num_points,
     const float* inout_avg_distances_sum,

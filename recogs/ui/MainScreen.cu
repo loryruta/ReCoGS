@@ -135,7 +135,6 @@ void MainScreen::_render_disk_sel3d(Image4fHWC& color_depth)
             inout_color[0] = __uint_as_float(enc.x) - 1.0f;
             inout_color[1] = __uint_as_float(enc.y) - 1.0f;
             inout_color[2] = __uint_as_float(enc.z) - 1.0f;
-            inout_color[2] = 1.0f;
         });
         break;
     case RenderDiskMode::Mask:

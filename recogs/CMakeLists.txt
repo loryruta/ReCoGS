@@ -38,6 +38,10 @@ set(LIB_SOURCES
         rasterizer/rasterizer_impl.cu
         rasterizer/rasterizer_impl.h
 
+        selection/ClusterIntGrid.cu
+        selection/ClusterIntGrid.h
+        selection/CompactDiskPopulator.cu
+        selection/CompactDiskPopulator.h
         selection/DiskSel3d.cu
         selection/DiskSel3d.h
         selection/Sel2d.cu

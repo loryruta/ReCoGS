@@ -75,12 +75,13 @@ void Optimizer::start()
 
     // Load training cameras, make sure they live on GPU
     std::vector<GSCamera> training_cameras;
-    for (const GSCamera& camera : m_app.cameras()) {
-        GSCamera& training_camera = training_cameras.emplace_back();
-        training_camera.copy(camera);
-        training_camera.set_resolution(m_resolution.x, m_resolution.y);
-        training_camera.update(stream);
-    }
+// TODO FIX ME!
+//    for (const GSCamera& camera : m_app.cameras()) {
+//        GSCamera& training_camera = training_cameras.emplace_back();
+//        training_camera.copy(camera);
+//        training_camera.set_resolution(m_resolution.x, m_resolution.y);
+//        training_camera.update(stream);
+//    }
     CHECK_CUDA(cudaStreamSynchronize(stream));
 
     Image4fHWC gt = Image4fHWC::malloc(m_resolution.x, m_resolution.y);

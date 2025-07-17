@@ -9,10 +9,22 @@
 #include "ui/SelectScreen.h"
 #include "utils/image/depthmap_to_normalmap.h"
 #include "utils/image/image_fill.h"
+#include "utils/image/image_misc.h"
 #include "utils/image/image_save.h"
 #include "utils/imgui_utils.h"
 
 using namespace recogs;
+
+namespace
+{
+__global__ void add_depth_epsilon_kernel(int W, int H, float* color_depth, float epsilon)
+{
+    uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+    uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x >= W || y >= H) return;
+    color_depth[(y * W + x) * 4 + 3] += epsilon;
+}
+} // namespace
 
 MainScreen::MainScreen(std::optional<GSCamera> initial_view)
 {
@@ -20,9 +32,9 @@ MainScreen::MainScreen(std::optional<GSCamera> initial_view)
     if (initial_view) {
         m_camera = std::move(*initial_view);
     } else if (!g_app->cameras().empty()) {
-        m_camera.copy(g_app->cameras().at(18), g_stream);
+        m_camera.copy(g_app->cameras().at(18));
     } else {
-        m_camera.copy(GSCamera{}, g_stream);
+        m_camera = GSCamera{};
     }
 
     m_camera_controller = std::make_unique<GSCameraController>(g_app->window(), m_camera);
@@ -44,13 +56,21 @@ MainScreen::MainScreen(std::optional<GSCamera> initial_view)
 
     // Init training cameras UI
     m_training_cameras_ui = std::make_unique<ui::TrainingCamerasSlider>(k_training_cameras_preview_resolution);
-    m_training_cameras_ui->on_select = [this](int i) {
-        printf("[DEBUG] [MainScreen] Setting view to training camera: %d\n", i);
+    m_training_cameras_ui->on_select = [this](int camera_idx) {
+        m_selected_training_camera_idx = camera_idx;
         glm::ivec2 resolution = g_app->window().framebuffer_size();
-        m_camera.copy(g_app->cameras().at(i), g_stream);
+        m_camera.copy(g_app->cameras().at(camera_idx));
         m_camera.set_resolution(resolution.x, resolution.y);
         m_camera.update(g_stream);
     };
+
+    m_training_camera_cache = std::make_unique<TrainingCameraPool>(
+        g_app->cameras(),
+        window.resolution(),
+        1 /* max_size */,
+        [this](const GSCamera& camera, Image4fHWC& out_image, cudaStream_t stream) {
+            render_training_camera_image(camera, out_image, stream);
+        });
 }
 
 MainScreen::~MainScreen()
@@ -67,6 +87,8 @@ void MainScreen::resize(int width, int height)
 
     m_sel3d_mask = std::make_unique<Image1u8>(Image1u8::malloc(width, height, g_stream));
 
+    m_training_camera_cache->set_resolution({width, height});
+
     printf("[DEBUG] [MainScreen] Screen resized to (%d, %d)\n", width, height);
 }
 
@@ -75,10 +97,13 @@ void MainScreen::update(float dt)
     if (!imgui_want_ui_interaction()) {
         bool updated = m_camera_controller->update(dt);
         if (updated) {
+            // If visualizing a training camera, unlock it
+            if (m_selected_training_camera_idx >= 0) m_selected_training_camera_idx = -1;
+
             m_camera.update(g_stream);
             if (m_ui_stereo_test.current_capture) {
                 m_ui_stereo_test.current_capture = 0;
-                g_app->show_depth = false;
+                m_ui_stereo_test.render_transform = RenderTransform::COLOR;
             }
         }
     }
@@ -142,7 +167,6 @@ void MainScreen::_render_disk_sel3d(Image4fHWC& color_depth)
             inout_color[0] = sqrtf(uv.x * uv.x + uv.y * uv.y);
             inout_color[1] = 0.f;
             inout_color[2] = 0.f;
-            inout_color[3] = 1.f;
         });
         break;
     case RenderDiskMode::Tint:
@@ -150,7 +174,6 @@ void MainScreen::_render_disk_sel3d(Image4fHWC& color_depth)
             inout_color[0] = sqrtf(uv.x * uv.x + uv.y * uv.y);
             inout_color[1] = 0.f;
             inout_color[2] = 0.f;
-            inout_color[3] = 1.f;
         });
         break;
     default:
@@ -158,22 +181,15 @@ void MainScreen::_render_disk_sel3d(Image4fHWC& color_depth)
     }
 }
 
-void MainScreen::render(Image4fHWC& color_depth)
+void MainScreen::_render_user_camera(Image4fHWC& color_depth)
 {
-    Scene& scene = g_app->scene();
-
     if (m_ui_stereo_test.current_capture == ui::StereoTest::Capture_NONE) {
         // Clear depth
         image_fill(color_depth, glm::vec4(1, 0, 0, INFINITY), g_stream);
         // Render 3DGS scene
         g_app->gs_rasterizer().forward(
-            g_app->background_d(), scene, true /* scene_2 */, m_camera, color_depth, g_stream);
-        // Render selection
-        if (m_view_selection) {
-            _render_disk_sel3d(color_depth);
-        }
+            g_app->background_d(), g_app->scene(), true /* scene_2 */, m_camera, color_depth, g_stream);
     }
-
     // Capture stereo
     if (m_ui_stereo_test.capture != ui::StereoTest::Capture_NONE) {
         StereoDepthEstimatorParams stereo_params;
@@ -196,14 +212,50 @@ void MainScreen::render(Image4fHWC& color_depth)
             g_app->stereo_depth_estimator().estimate_hv(stereo_params);
         }
     }
+}
+
+void MainScreen::_render_training_camera(int camera_idx, Image4fHWC& color_depth)
+{
+    auto entry = m_training_camera_cache->get(camera_idx, g_stream);
+    image_copy(entry->image, color_depth, g_stream);
+}
+
+void MainScreen::_add_depth_epsilon(Image4fHWC& color_depth, float epsilon)
+{
+    dim3 num_blocks((color_depth.width + 15) / 16, (color_depth.height + 15) / 16);
+    dim3 block_dim(16, 16);
+    add_depth_epsilon_kernel<<<num_blocks, block_dim, 0, g_stream>>>(
+        int(color_depth.width), int(color_depth.height), color_depth.data_d(), epsilon);
+}
+
+void MainScreen::render(Image4fHWC& color_depth)
+{
+    if (m_selected_training_camera_idx < 0) {
+        _render_user_camera(color_depth);
+    } else {
+        _render_training_camera(m_selected_training_camera_idx, color_depth);
+    }
+
+    if (m_ui_stereo_test.scene_depth_epsilon != 0) {
+        _add_depth_epsilon(color_depth, m_ui_stereo_test.scene_depth_epsilon);
+    }
+
+    // Render selection
+    if (m_view_selection) {
+        _render_disk_sel3d(color_depth);
+    }
 
     if (m_ui_stereo_test.capture != ui::StereoTest::Capture_NONE) { // Only once and display it
         m_ui_stereo_test.current_capture = m_ui_stereo_test.capture;
         m_ui_stereo_test.capture = ui::StereoTest::Capture_NONE;
-        g_app->show_depth = true;
+        m_ui_stereo_test.render_transform = RenderTransform::DEPTHMAP;
     }
 
-    if (m_ui_stereo_test.show_normalmap) {
+    if (m_ui_stereo_test.render_transform == RenderTransform::COLOR) {
+        // Do nothing
+    } else if (m_ui_stereo_test.render_transform == RenderTransform::DEPTHMAP) {
+        image_depth_to_rgb_inplace(color_depth, g_stream, 0.5);
+    } else if (m_ui_stereo_test.render_transform == RenderTransform::NORMAL_MAP) {
         depthmap_to_normalmap<true /* Display */>(color_depth, color_depth, g_stream);
     }
 }
@@ -251,4 +303,27 @@ void MainScreen::ui_3d_selection()
         ImGui::RadioButton("Tint##RenderDisksMode", (int*) &m_render_disk_mode, RenderDiskMode::Tint);
     }
     ImGui::End();
+}
+
+void MainScreen::render_training_camera_image(const GSCamera& camera, Image4fHWC& out_image, cudaStream_t stream)
+{
+    /* Clear image */
+    image_fill(out_image, Image4fCHW::Value{INFINITY}, stream);
+
+    /* Render image */
+    g_app->gs_rasterizer().forward(
+        g_app->background_d(), g_app->scene(), true /* scene_2 */, camera, out_image, stream);
+    // TODO enable choosing between original scene and edited scene (scene 1 and 2)
+
+    /* Estimate depth */
+    StereoDepthEstimatorParams stereo_params;
+    stereo_params.background_d = g_app->background_d();
+    stereo_params.scene = &g_app->scene();
+    stereo_params.camera = &camera;
+    stereo_params.rasterizer = &g_app->gs_rasterizer();
+    stereo_params.b = 0.07f;
+    stereo_params.inout_color_depth = &out_image;
+    stereo_params.stream = stream;
+    stereo_params.debug = false;
+    g_app->stereo_depth_estimator().estimate_hv(stereo_params);
 }

@@ -6,11 +6,13 @@
 
 #include "GSRasterizer.h"
 #include "Scene.h"
+#include "TrainingCameraPool.h"
 #include "depth_estimators/StereoDepthEstimator.h"
+#include "disk/DiskRenderer.h"
 #include "optimizer/Optimizer.h"
+#include "scene_io.h"
 #include "selection/Sel3d.h"
 #include "svo/SVORenderer.h"
-#include "disk/DiskRenderer.h"
 #include "ui/Screen.h"
 #include "utils/image/Image.h"
 #include "video/DrawTexture.h"
@@ -36,7 +38,7 @@ private:
     std::unique_ptr<Scene> m_scene;
     DeviceBuffer m_scene_background{"background"};
     std::unique_ptr<Sel3d> m_sel3d;
-    std::vector<GSCamera> m_training_cameras;
+    std::vector<CameraData> m_training_cameras;
 
     /* UI/Display */
     std::unique_ptr<Window> m_window;
@@ -64,7 +66,6 @@ private:
 
 public:
     bool ui_enabled = true;
-    bool show_depth = false;
 
     explicit App(const Params& params);
     ~App();
@@ -78,7 +79,7 @@ public:
     [[nodiscard]] Scene& scene() const { return *m_scene; }
     [[nodiscard]] const float* background_d() const { return m_scene_background.data_ptr<float>(); }
     [[nodiscard]] Sel3d& sel3d() const { return *m_sel3d; }
-    [[nodiscard]] std::vector<GSCamera> const& cameras() const { return m_training_cameras; }
+    [[nodiscard]] std::vector<CameraData> const& cameras() const { return m_training_cameras; }
 
     [[nodiscard]] Image4fHWC& colordepth() const { return *m_color_depth; }
 

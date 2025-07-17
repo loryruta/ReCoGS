@@ -104,6 +104,8 @@ set(LIB_SOURCES
         scene_io.h
         ScenePointcloud.cu
         ScenePointcloud.h
+        TrainingCameraPool.cu
+        TrainingCameraPool.h
 )
 
 set(VIDEO_SOURCES

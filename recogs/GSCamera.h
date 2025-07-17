@@ -12,6 +12,9 @@
 
 namespace recogs
 {
+// Forward decl
+struct CameraData;
+
 /// A class representing a camera compatible with the 3DGS rasterizer from INRIA.
 class GSCamera
 {
@@ -37,6 +40,7 @@ public:
     float zfar = 1000.0f;
 
     explicit GSCamera();
+    explicit GSCamera(const CameraData& data);
     GSCamera(const GSCamera&) = delete;
     GSCamera(GSCamera&&) noexcept = default;
     ~GSCamera() = default;
@@ -68,6 +72,7 @@ public:
 
     void set_resolution(int width, int height);
 
+    void copy(const CameraData& data, cudaStream_t stream = nullptr);
     /// Copy another camera object into the current one.
     void copy(const GSCamera& other, cudaStream_t stream = nullptr);
     /// Clone the camera to a new one.

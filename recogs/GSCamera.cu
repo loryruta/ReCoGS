@@ -2,9 +2,19 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+#include "scene_io.h"
+
 using namespace recogs;
 
 GSCamera::GSCamera()
+{
+    m_viewmatrix.resize(16);
+    m_projmatrix.resize(16);
+    m_campos.resize(3);
+}
+
+GSCamera::GSCamera(const CameraData& data)
+    : position(data.position), rotation(data.rotation), fx(data.fx), fy(data.fy), width(data.width), height(data.height)
 {
     m_viewmatrix.resize(16);
     m_projmatrix.resize(16);
@@ -38,6 +48,17 @@ void GSCamera::set_resolution(int new_width, int new_height)
     fy *= aspect;
     width = new_width;
     height = new_height;
+}
+
+void GSCamera::copy(const CameraData& data, cudaStream_t stream)
+{
+    position = data.position;
+    rotation = data.rotation;
+    fx = data.fx;
+    fy = data.fy;
+    width = data.width;
+    height = data.height;
+    if (stream) update(stream);
 }
 
 void GSCamera::copy(const GSCamera& other, cudaStream_t stream)

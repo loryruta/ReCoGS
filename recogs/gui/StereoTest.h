@@ -7,6 +7,8 @@
 
 namespace recogs
 {
+enum class RenderTransform : int { COLOR, DEPTHMAP, NORMAL_MAP };
+
 namespace ui
 {
 class StereoTest
@@ -25,7 +27,8 @@ public:
     /// The currently displayed capture.
     int current_capture = Capture_NONE;
 
-    bool show_normalmap = false;
+    float scene_depth_epsilon = 0.f;
+    RenderTransform render_transform = RenderTransform::COLOR;
 
     explicit StereoTest();
     ~StereoTest();

@@ -90,7 +90,7 @@ App::App(const Params& params)
     m_scene->compute_minmax(g_stream);
 
     // Load cameras
-    m_training_cameras = read_cameras_from_json(m_scene_folder, g_stream);
+    read_cameras_from_json(m_scene_folder, m_training_cameras);
 
     // Init screenbuffers
     glm::ivec2 resolution = m_window->framebuffer_size();
@@ -112,9 +112,6 @@ App::App(const Params& params)
             } else if (key == GLFW_KEY_F2) {
                 printf("[DEBUG] [App] Screenshot triggered\n");
                 m_take_screenshot = true;
-            } else if (key == GLFW_KEY_F5) {
-                printf("[DEBUG] [App] Show depth: %d\n", show_depth);
-                show_depth = !show_depth;
             }
         }
     });
@@ -185,12 +182,6 @@ void App::start()
 
         // Render
         if (m_screen) m_screen->render(*m_color_depth);
-
-        // Show depth
-        if (show_depth) {
-            // TODO depth scale factor in app args
-            image_depth_to_rgb_inplace(*m_color_depth, g_stream, 0.5);
-        }
 
         // CUDA colorbuffer -> OpenGL texture
         m_gl_mapped_resource->write(*m_color_depth, g_stream);

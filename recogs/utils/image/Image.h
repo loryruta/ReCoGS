@@ -74,6 +74,8 @@ public:
     }
 
     [[nodiscard]] __host__ __device__ glm::uvec2 size() const { return {width, height}; }
+    [[nodiscard]] __host__ size_t bytesize() const { return width * height * C * sizeof(T); }
+
     [[nodiscard]] __host__ __device__ T* data_d() const { return m_data_d; }
 
     /// Read the pixel at (x, y)

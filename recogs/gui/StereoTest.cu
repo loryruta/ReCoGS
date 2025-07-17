@@ -38,5 +38,12 @@ void StereoTest::ui()
             capture = Capture_HV;
         }
     });
-    ImGui::Checkbox("Show Normal map", &show_normalmap);
+    ImGui::SliderFloat("Scene depth epsilon", &scene_depth_epsilon, -0.4f, 0.4f, "%.3f");
+
+    ImGui::Text("Render transform:");
+    ImGui::RadioButton("Color", (int*) &render_transform, int(RenderTransform::COLOR));
+    ImGui::SameLine();
+    ImGui::RadioButton("Depthmap", (int*) &render_transform, int(RenderTransform::DEPTHMAP));
+    ImGui::SameLine();
+    ImGui::RadioButton("Normal map", (int*) &render_transform, int(RenderTransform::NORMAL_MAP));
 }

@@ -3,6 +3,7 @@
 #include "GSCamera.h"
 #include "GSCameraController.h"
 #include "Screen.h"
+#include "TrainingCameraPool.h"
 #include "depth_estimators/StereoDepthEstimator.h"
 #include "gui/StereoTest.h"
 #include "gui/TrainingCamerasSlider.h"
@@ -42,6 +43,11 @@ private:
         Tint,             ///< Apply a color tint to the region covered by disks.
     } m_render_disk_mode = RenderDiskMode::Mask;
 
+    std::unique_ptr<TrainingCameraPool> m_training_camera_cache;
+
+    int m_selected_training_camera_idx = -1;
+
+
 public:
     explicit MainScreen(std::optional<GSCamera> initial_view = std::nullopt);
     ~MainScreen() override;
@@ -55,8 +61,13 @@ public:
 
     void _render_sel3d(Image4fHWC& color_depth);
     void _render_disk_sel3d(Image4fHWC& color_depth);
+    void _render_user_camera(Image4fHWC& color_depth);
+    void _render_training_camera(int camera_idx, Image4fHWC& color_depth);
 
 private:
     void ui_3d_selection();
+
+    void _add_depth_epsilon(Image4fHWC& color_depth, float epsilon);
+    void render_training_camera_image(const GSCamera& camera, Image4fHWC& out_image, cudaStream_t stream);
 };
 } // namespace recogs

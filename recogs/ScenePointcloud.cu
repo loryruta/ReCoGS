@@ -78,7 +78,7 @@ void ScenePointcloud::export_voxels_to_pcd(const std::unordered_map<uint64_t, ui
     }
 }
 
-void ScenePointcloud::generate(const Scene& scene, const std::vector<GSCamera>& cameras, glm::ivec2 resolution)
+void ScenePointcloud::generate(const Scene& scene, const std::vector<CameraData>& cameras, glm::ivec2 resolution)
 {
     CHECK_ARG(!cameras.empty(), "No camera provided");
 
@@ -87,9 +87,8 @@ void ScenePointcloud::generate(const Scene& scene, const std::vector<GSCamera>& 
 
     // Adapt cameras to the provided resolution, and upload them
     std::vector<GSCamera> adapted_cameras;
-    for (const GSCamera& camera : cameras) {
-        GSCamera& adapted_camera = adapted_cameras.emplace_back();
-        adapted_camera.copy(camera);
+    for (const CameraData& camera_data : cameras) {
+        GSCamera& adapted_camera = adapted_cameras.emplace_back(camera_data);
         adapted_camera.set_resolution(resolution.x, resolution.y);
         adapted_camera.update(stream);
     }

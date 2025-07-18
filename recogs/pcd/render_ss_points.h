@@ -6,14 +6,14 @@
 #include <glm/glm.hpp>
 #include <thrust/device_vector.h>
 
-#include "GSCamera.h"
+#include "Camera.h"
 #include "utils/image/Image.h"
 
 namespace recogs
 {
 template <typename CALLBACK>
 void render_ss_points(const thrust::device_vector<glm::vec3>& ws_points,
-                      const GSCamera& camera,
+                      const Camera& camera,
                       int r,
                       const Image4fHWC& depthmap,
                       bool test_depth,

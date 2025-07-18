@@ -3,7 +3,7 @@
 #include <utility>
 #include <vector>
 
-#include "GSCamera.h"
+#include "Camera.h"
 #include "Scene.h"
 
 namespace recogs

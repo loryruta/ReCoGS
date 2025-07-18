@@ -9,7 +9,7 @@ using namespace recogs;
 DiskRasterizerScreen::DiskRasterizerScreen()
 {
     init_disks_scene();
-    m_camera_controller = std::make_unique<GSCameraController>(g_app->window(), m_camera);
+    m_camera_controller = std::make_unique<CameraController>(g_app->window(), m_camera);
 }
 
 void DiskRasterizerScreen::resize(int width, int height)

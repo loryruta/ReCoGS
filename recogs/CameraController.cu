@@ -1,10 +1,10 @@
-#include "GSCameraController.h"
+#include "CameraController.h"
 
 #include "utils/imgui_utils.h"
 
 using namespace recogs;
 
-GSCameraController::GSCameraController(Window& window, GSCamera& camera) : m_window(window), m_camera(camera)
+CameraController::CameraController(Window& window, Camera& camera) : m_window(window), m_camera(camera)
 {
     m_mouse_button_callback = window.add_mouse_button_callback([&](int button, int action, int mods) {
         // The user wants to interact with ImGui, so no capture...
@@ -27,15 +27,15 @@ GSCameraController::GSCameraController(Window& window, GSCamera& camera) : m_win
     });
 }
 
-GSCameraController::~GSCameraController()
+CameraController::~CameraController()
 {
     m_window.remove_mouse_button_callback(m_mouse_button_callback);
     m_window.remove_key_callback(m_key_callback);
 }
 
-bool GSCameraController::is_cursor_captured() const { return m_window.cursor_mode() == GLFW_CURSOR_DISABLED; }
+bool CameraController::is_cursor_captured() const { return m_window.cursor_mode() == GLFW_CURSOR_DISABLED; }
 
-bool GSCameraController::update(float dt)
+bool CameraController::update(float dt)
 {
     // The cursor is not captured! So no update needed!
     if (!is_cursor_captured()) return false;
@@ -59,13 +59,11 @@ bool GSCameraController::update(float dt)
     const float k_rotation_speed = 0.06f; // rad/s
     glm::dvec2 cur_pos = m_window.cursor_pos();
     if (m_last_cursor_pos) {
-        glm::dvec2 dcur_pos = cur_pos - *m_last_cursor_pos;
+        glm::vec2 dcur_pos = cur_pos - *m_last_cursor_pos;
         if (dcur_pos.x != 0 || dcur_pos.y != 0) {
-            // TODO rotation is broken and I don't know how to fix it...
-            glm::quat drot = glm::identity<glm::quat>();
-            drot = glm::rotate(drot, (float) dcur_pos.x * k_rotation_speed * dt, glm::vec3(0, 1, 0));
-            drot = glm::rotate(drot, (float) -dcur_pos.y * k_rotation_speed * dt, glm::vec3(1, 0, 0));
-            m_camera.rotation = m_camera.rotation * drot;
+            m_camera.yaw += dcur_pos.x * k_rotation_speed * dt;
+            m_camera.pitch += dcur_pos.y * k_rotation_speed * dt;
+            m_camera.update_quaternion_from_yaw_pitch_roll();
             updated = true;
         }
     }
@@ -74,7 +72,7 @@ bool GSCameraController::update(float dt)
     return updated;
 }
 
-void GSCameraController::ui()
+void CameraController::ui()
 {
     if (is_cursor_captured()) {
         imgui_disable_ui_interaction();

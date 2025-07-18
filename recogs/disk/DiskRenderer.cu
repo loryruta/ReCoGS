@@ -131,7 +131,7 @@ void DiskRenderer::fill_disk_id_map(const recogs::DiskRenderer_Params& params)
     CHECK_ARG(params.disk_buffer);
     CHECK_ARG(params.stream);
 
-    const GSCamera& camera = *params.camera;
+    const Camera& camera = *params.camera;
     Image4fHWC& color_depth = *params.color_depth;
     const DiskBuffer& disk_buffer = *params.disk_buffer;
 

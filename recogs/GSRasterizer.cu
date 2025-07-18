@@ -74,7 +74,7 @@ int GSRasterizer::forward( //
 int GSRasterizer::forward(const float* background_d,
                           const Scene& scene,
                           bool scene_2,
-                          const GSCamera& camera,
+                          const Camera& camera,
                           Image4fHWC& out_color_depth,
                           cudaStream_t stream)
 {
@@ -102,7 +102,7 @@ void GSRasterizer::backward( //
     bool scene_2,
     int num_rendered,
     const float* background_d,
-    const GSCamera& camera,
+    const Camera& camera,
     const float* dL_dy,
     cudaStream_t stream)
 {

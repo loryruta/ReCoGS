@@ -48,7 +48,7 @@ __global__ void unproject_points_kernel( //
 
 template <typename CALLBACK>
 void project_points(const thrust::device_vector<glm::vec3>& ws_points,
-                    const GSCamera& camera,
+                    const Camera& camera,
                     CALLBACK callback,
                     cudaStream_t stream)
 {
@@ -68,7 +68,7 @@ void project_points(const thrust::device_vector<glm::vec3>& ws_points,
 template <typename CALLBACK>
 void unproject_points(const thrust::device_vector<glm::ivec2>& ss_points,
                       const Image4fHWC& color_depth,
-                      const GSCamera& camera,
+                      const Camera& camera,
                       CALLBACK callback,
                       cudaStream_t stream)
 {

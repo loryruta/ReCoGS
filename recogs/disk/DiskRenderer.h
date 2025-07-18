@@ -1,7 +1,7 @@
 #pragma once
 
+#include "Camera.h"
 #include "DiskBuffer.h"
-#include "GSCamera.h"
 #include "utils/image/Image.h"
 #include "video/GLTextureMapped.h"
 #include "video/gl_utils.h"
@@ -34,7 +34,7 @@ __global__ void render_disk_id_map(cudaSurfaceObject_t disk_id_map,
 } // namespace detail
 
 struct DiskRenderer_Params {
-    const GSCamera* camera;
+    const Camera* camera;
     Image4fHWC* color_depth;
     const DiskBuffer* disk_buffer;
     /// (Optional) A map indicating where very disk was rasterized (used e.g. for clearing).

@@ -4,7 +4,7 @@
 
 #include <glad/glad.h>
 
-#include "GSCamera.h"
+#include "Camera.h"
 #include "disk/DiskBuffer.h"
 #include "utils/image/Image.h"
 #include "video/GLTextureMapped.h"
@@ -38,7 +38,7 @@ public:
     /// <li>The output color and depth buffer are re-converted to the color-depth buffer</li>
     /// </ul>
     static void
-    use_gl(const GSCamera& camera, Image4fHWC& color_depth, const GLRenderFunction& gl_render, cudaStream_t stream);
+    use_gl(const Camera& camera, Image4fHWC& color_depth, const GLRenderFunction& gl_render, cudaStream_t stream);
 
 private:
     explicit GLPipelineCUDAAdapter();
@@ -47,6 +47,6 @@ private:
     void setup_screenbuffers(int width, int height);
 
     void
-    use_gl0(const GSCamera& camera, Image4fHWC& color_depth, const GLRenderFunction& gl_pipeline, cudaStream_t stream);
+    use_gl0(const Camera& camera, Image4fHWC& color_depth, const GLRenderFunction& gl_pipeline, cudaStream_t stream);
 };
 } // namespace recogs

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "GSCamera.h"
-#include "GSCameraController.h"
+#include "Camera.h"
+#include "CameraController.h"
 #include "Screen.h"
 #include "TrainingCameraPool.h"
 #include "depth_estimators/StereoDepthEstimator.h"
@@ -25,8 +25,8 @@ class MainScreen : public Screen
 private:
     static constexpr int k_training_cameras_preview_resolution = 64;
 
-    GSCamera m_camera{};
-    std::unique_ptr<GSCameraController> m_camera_controller;
+    Camera m_camera{};
+    std::unique_ptr<CameraController> m_camera_controller;
 
     int m_key_callback = -1;
 
@@ -49,7 +49,7 @@ private:
 
 
 public:
-    explicit MainScreen(std::optional<GSCamera> initial_view = std::nullopt);
+    explicit MainScreen(std::optional<Camera> initial_view = std::nullopt);
     ~MainScreen() override;
 
     [[nodiscard]] const char* name() const override { return "MainScreen"; }
@@ -68,6 +68,6 @@ private:
     void ui_3d_selection();
 
     void _add_depth_epsilon(Image4fHWC& color_depth, float epsilon);
-    void render_training_camera_image(const GSCamera& camera, Image4fHWC& out_image, cudaStream_t stream);
+    void render_training_camera_image(const Camera& camera, Image4fHWC& out_image, cudaStream_t stream);
 };
 } // namespace recogs

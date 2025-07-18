@@ -86,9 +86,9 @@ void ScenePointcloud::generate(const Scene& scene, const std::vector<CameraData>
     CHECK_CUDA(cudaStreamCreate(&stream));
 
     // Adapt cameras to the provided resolution, and upload them
-    std::vector<GSCamera> adapted_cameras;
+    std::vector<Camera> adapted_cameras;
     for (const CameraData& camera_data : cameras) {
-        GSCamera& adapted_camera = adapted_cameras.emplace_back(camera_data);
+        Camera& adapted_camera = adapted_cameras.emplace_back(camera_data);
         adapted_camera.set_resolution(resolution.x, resolution.y);
         adapted_camera.update(stream);
     }
@@ -133,7 +133,7 @@ void ScenePointcloud::generate(const Scene& scene, const std::vector<CameraData>
 
     for (int camera_idx = 0; camera_idx < adapted_cameras.size(); ++camera_idx) {
         Stopwatch stopwatch;
-        const GSCamera& camera = adapted_cameras.at(camera_idx);
+        const Camera& camera = adapted_cameras.at(camera_idx);
         CHECK_STATE(glm::ivec2(camera.resolution()) == resolution, "All cameras must share the same resolution");
         CHECK_STATE(camera.is_uploaded());
         // Clear depth (due to depth testing occurring in StereoDepthEstimator)

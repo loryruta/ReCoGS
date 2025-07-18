@@ -16,7 +16,7 @@ namespace recogs
 struct CameraData;
 
 /// A class representing a camera compatible with the 3DGS rasterizer from INRIA.
-class GSCamera
+class Camera
 {
 private:
     /* Computed */
@@ -30,8 +30,13 @@ private:
     thrust::device_vector<float> m_campos;
 
 public:
+    /* Extrinsic params */
+    /// Camera position in world-space.
     glm::vec3 position{0, 0, 0};
-    glm::quat rotation{0, 0, 0, 1};
+    glm::quat quaternion{0, 0, 0, 1};
+    float yaw = 0.f;   ///< Rotation around the world-up axis.
+    float pitch = 0.f; ///< Rotation around the right axis.
+    /* Intrinsic params */
     float fx = 1159.588073303806f;
     float fy = 1164.6601287484507f;
     int width = 1959;
@@ -39,28 +44,32 @@ public:
     float znear = 0.01f;
     float zfar = 1000.0f;
 
-    explicit GSCamera();
-    explicit GSCamera(const CameraData& data);
-    GSCamera(const GSCamera&) = delete;
-    GSCamera(GSCamera&&) noexcept = default;
-    ~GSCamera() = default;
+    explicit Camera();
+    explicit Camera(const CameraData& data);
+    Camera(const Camera&) = delete;
+    Camera(Camera&&) noexcept = default;
+    ~Camera() = default;
 
     [[nodiscard]] glm::uvec2 resolution() const { return {width, height}; }
-
     [[nodiscard]] float tan_fovx() const { return m_tan_fovx; }
     [[nodiscard]] float tan_fovy() const { return m_tan_fovy; }
-
-    [[nodiscard]] glm::vec3 right() const { return rotation * glm::vec3(1, 0, 0); }
-    [[nodiscard]] glm::vec3 up() const { return rotation * glm::vec3(0, 1, 0); };
-    [[nodiscard]] glm::vec3 forward() const { return rotation * glm::vec3(0, 0, 1); };
 
     /// Return the view matrix (or extrinsic parameters matrix).
     [[nodiscard]] const glm::mat4& viewmatrix() const { return m_view_matrix; }
     [[nodiscard]] const glm::mat4& projmatrix() const { return m_proj_matrix; }
     /// Return the view/projection matrix.
     [[nodiscard]] const glm::mat4& viewproj() const { return m_view_proj; }
+    /// Update the camera rotation quaternion from yaw/pitch/roll attributes.
+    /// This must be called to apply the rotation from such attributes.
+    void update_quaternion_from_yaw_pitch_roll();
+
     /// Return the inverse of the view matrix.
     [[nodiscard]] glm::mat4 inv_view() const;
+
+    [[nodiscard]] glm::vec3 right() const { return inv_view()[0]; }
+    [[nodiscard]] glm::vec3 up() const { return inv_view()[1]; }
+    [[nodiscard]] glm::vec3 forward() const { return inv_view()[2]; }
+
     /// Return the intrinsic parameters matrix.
     [[nodiscard]] glm::mat3 K() const;
     /// Return the inverse of the intrinsic parameters matrix.
@@ -74,9 +83,9 @@ public:
 
     void copy(const CameraData& data, cudaStream_t stream = nullptr);
     /// Copy another camera object into the current one.
-    void copy(const GSCamera& other, cudaStream_t stream = nullptr);
+    void copy(const Camera& other, cudaStream_t stream = nullptr);
     /// Clone the camera to a new one.
-    GSCamera clone(cudaStream_t stream = nullptr) const;
+    Camera clone(cudaStream_t stream = nullptr) const;
 
     /// Check whether the camera parameters were uploaded to GPU.
     [[nodiscard]] bool is_uploaded() const { return !m_viewmatrix.empty(); }
@@ -86,6 +95,6 @@ public:
     void deserialize(nlohmann::json json);
     void log_info() const;
 
-    GSCamera& operator=(GSCamera&& other) noexcept;
+    Camera& operator=(Camera&& other) noexcept;
 };
 } // namespace recogs

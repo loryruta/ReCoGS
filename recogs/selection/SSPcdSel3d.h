@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <thrust/device_vector.h>
 
-#include "GSCamera.h"
+#include "Camera.h"
 #include "Sel3d.h"
 #include "selection/Sel2d.h"
 #include "utils/image/Image.h"
@@ -28,13 +28,13 @@ public:
     [[nodiscard]] size_t size() const { return m_points.size(); }
 
     void append(const Image1u8& fill_mask,
-                const GSCamera& camera,
+                const Camera& camera,
                 const Image4fHWC& color_depth,
                 cudaStream_t stream) override;
 
-    void clear(const Image1u8& clear_mask, const GSCamera& camera, cudaStream_t stream) override;
+    void clear(const Image1u8& clear_mask, const Camera& camera, cudaStream_t stream) override;
 
-    void project(const GSCamera& camera,
+    void project(const Camera& camera,
                  const Image4fHWC& depthmap,
                  Image1u8& sel3d_mask,
                  cudaStream_t stream) const override;

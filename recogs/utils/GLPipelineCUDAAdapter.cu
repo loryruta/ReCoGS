@@ -188,7 +188,7 @@ void GLPipelineCUDAAdapter::setup_screenbuffers(int width, int height) // TODO r
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void GLPipelineCUDAAdapter::use_gl0(const GSCamera& camera,
+void GLPipelineCUDAAdapter::use_gl0(const Camera& camera,
                                     Image4fHWC& color_depth,
                                     const GLRenderFunction& gl_render,
                                     cudaStream_t stream)
@@ -276,7 +276,7 @@ void GLPipelineCUDAAdapter::use_gl0(const GSCamera& camera,
         stream);
 }
 
-void GLPipelineCUDAAdapter::use_gl(const GSCamera& camera,
+void GLPipelineCUDAAdapter::use_gl(const Camera& camera,
                                    Image4fHWC& color_depth,
                                    const GLRenderFunction& gl_render,
                                    cudaStream_t stream)

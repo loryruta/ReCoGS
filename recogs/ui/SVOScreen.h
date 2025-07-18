@@ -1,7 +1,7 @@
 #pragma once
 
-#include "GSCamera.h"
-#include "GSCameraController.h"
+#include "Camera.h"
+#include "CameraController.h"
 #include "Screen.h"
 #include "svo/SVONode.h"
 #include "utils/image/Image.h"
@@ -16,8 +16,8 @@ class SVOScreen : public Screen
 {
 private:
     App& m_app;
-    GSCamera m_camera;
-    std::unique_ptr<GSCameraController> m_camera_controller;
+    Camera m_camera;
+    std::unique_ptr<CameraController> m_camera_controller;
     std::shared_ptr<SVO> m_svo; ///< The SVO being visualized
 
 public:

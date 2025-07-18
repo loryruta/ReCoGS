@@ -5,8 +5,8 @@
 #include <glm/gtx/quaternion.hpp>
 #include <thrust/gather.h>
 
+#include "Camera.h"
 #include "ClusterIntGrid.h"
-#include "GSCamera.h"
 #include "Sel2d.h"
 #include "pcd/remove_statistical_outliers.h"
 #include "utils/camera_projections.h"
@@ -60,7 +60,7 @@ bool is_same_plane(const Plane& a, const Plane& b)
 } // namespace
 
 std::vector<glm::ivec2> CompactDiskPopulator::_identify_statistical_outliers(const Image1u8& fill_mask,
-                                                                             const GSCamera& camera,
+                                                                             const Camera& camera,
                                                                              const Image4fHWC& color_depth,
                                                                              cudaStream_t stream)
 {
@@ -117,7 +117,7 @@ std::vector<glm::ivec2> CompactDiskPopulator::_identify_statistical_outliers(con
 }
 
 void CompactDiskPopulator::_create_disk_at_aabb(const ClusterIntGrid_AABB& aabb,
-                                                const GSCamera& camera,
+                                                const Camera& camera,
                                                 int W,
                                                 const std::vector<float>& depths,
                                                 const std::vector<float>& normals,
@@ -191,7 +191,7 @@ void CompactDiskPopulator::_create_disk_at_aabb(const ClusterIntGrid_AABB& aabb,
 }
 
 std::unique_ptr<DiskBuffer> CompactDiskPopulator::populate(const Image1u8& fill_mask,
-                                                           const GSCamera& camera,
+                                                           const Camera& camera,
                                                            const Image4fHWC& color_depth,
                                                            const Image4fHWC& normal_map,
                                                            cudaStream_t stream)

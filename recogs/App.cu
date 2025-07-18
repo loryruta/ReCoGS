@@ -55,7 +55,7 @@ App::App(const Params& params)
     // Init window
     m_window = std::make_unique<Window>(Window::create(1080, 720, "ReCoGS", false));
     m_window->make_context();
-    glfwSwapInterval(0);
+    // glfwSwapInterval(0);
 
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(MessageCallback, 0);

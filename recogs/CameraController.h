@@ -2,24 +2,24 @@
 
 #include <optional>
 
-#include "GSCamera.h"
+#include "Camera.h"
 #include "video/Window.h"
 
 namespace recogs
 {
-class GSCameraController
+class CameraController
 {
 private:
     Window& m_window;
-    GSCamera& m_camera;
+    Camera& m_camera;
     std::optional<glm::dvec2> m_last_cursor_pos;
 
     int m_mouse_button_callback;
     int m_key_callback;
 
 public:
-    explicit GSCameraController(Window& window, GSCamera& camera);
-    ~GSCameraController();
+    explicit CameraController(Window& window, Camera& camera);
+    ~CameraController();
 
     [[nodiscard]] bool is_cursor_captured() const;
 

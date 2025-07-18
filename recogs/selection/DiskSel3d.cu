@@ -10,7 +10,7 @@ using namespace recogs;
 DiskPcdSel3d::DiskPcdSel3d() {}
 
 void DiskPcdSel3d::append(const Image1u8& fill_mask,
-                          const GSCamera& camera,
+                          const Camera& camera,
                           const Image4fHWC& color_depth,
                           cudaStream_t stream)
 {
@@ -21,12 +21,12 @@ void DiskPcdSel3d::append(const Image1u8& fill_mask,
     m_disk_buffer = compact_disk_populator.populate(fill_mask, camera, color_depth, normal_map, stream);
 }
 
-void DiskPcdSel3d::clear(const Image1u8& clear_mask, const GSCamera& camera, cudaStream_t)
+void DiskPcdSel3d::clear(const Image1u8& clear_mask, const Camera& camera, cudaStream_t)
 {
     // TODO
 }
 
-void DiskPcdSel3d::project(const GSCamera& camera,
+void DiskPcdSel3d::project(const Camera& camera,
                            const Image4fHWC& depthmap,
                            Image1u8& sel3d_mask,
                            cudaStream_t stream) const

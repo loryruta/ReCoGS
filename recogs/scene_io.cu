@@ -338,7 +338,7 @@ ColmapOutputReader::read_dataparser_transforms(const std::filesystem::path& data
     return {transform, scale};
 }
 
-std::vector<GSCamera> ColmapOutputReader::read_cameras(const std::filesystem::path& output_folder)
+std::vector<Camera> ColmapOutputReader::read_cameras(const std::filesystem::path& output_folder)
 {
     // Reference:
     // https://colmap.github.io/format.html#binary-file-format
@@ -357,11 +357,11 @@ std::vector<GSCamera> ColmapOutputReader::read_cameras(const std::filesystem::pa
         read_dataparser_transforms("/home/loryruta/Desktop/custom_splats/felicien_1/outputs/.processed_data/splatfacto/"
                                    "2025-03-17_095944/dataparser_transforms.json");
 
-    std::vector<GSCamera> cameras;
+    std::vector<Camera> cameras;
     cameras.reserve(colmap_images.size());
     for (const ColmapImage& image : colmap_images) {
         // ---------------------------------------------------------------- Read camera pose
-        GSCamera& camera = cameras.emplace_back();
+        Camera& camera = cameras.emplace_back();
 
         glm::quat R = glm::quat(float(image.R[0]), float(image.R[1]), float(image.R[2]), float(image.R[3]));
         glm::vec3 t = glm::make_vec3(image.t);
@@ -388,8 +388,8 @@ std::vector<GSCamera> ColmapOutputReader::read_cameras(const std::filesystem::pa
         // Apply dataparser JSON transforms
         glm::mat4 c2w_ = (transform * glm::mat4(c2w)) * scale;
 
-        camera.rotation = glm::quat_cast(glm::transpose(glm::mat3(c2w_)));
-        camera.rotation = glm::normalize(camera.rotation);
+        camera.quaternion = glm::quat_cast(glm::transpose(glm::mat3(c2w_)));
+        camera.quaternion = glm::normalize(camera.quaternion);
         camera.position = c2w_[3];
 
         // ---------------------------------------------------------------- Read camera intrinsics (shared)
@@ -408,7 +408,7 @@ std::vector<GSCamera> ColmapOutputReader::read_cameras(const std::filesystem::pa
     return cameras;
 }
 
-std::vector<GSCamera> NerfStudioOutputReader::read_cameras(const std::filesystem::path& output_dir)
+std::vector<Camera> NerfStudioOutputReader::read_cameras(const std::filesystem::path& output_dir)
 {
     std::unordered_map<uint32_t, ColmapCamera> colmap_cameras = m_colmap_reader.read_cameras_(
         "/home/loryruta/Desktop/custom_splats/felicien_1/.processed_data/colmap/sparse/0/cameras.bin");
@@ -418,7 +418,7 @@ std::vector<GSCamera> NerfStudioOutputReader::read_cameras(const std::filesystem
         "/home/loryruta/Desktop/custom_splats/felicien_1/output/transforms_train.json";
     std::ifstream is(transforms_train_filepath);
     nlohmann::json json = nlohmann::json::parse(is);
-    std::vector<GSCamera> cameras{};
+    std::vector<Camera> cameras{};
     for (nlohmann::json pose_json : json) {
         std::string filepath = pose_json["file_path"];
         printf("[DEBUG] [NerfStudioOutputReader] File path: %s\n", filepath.c_str());
@@ -429,9 +429,9 @@ std::vector<GSCamera> NerfStudioOutputReader::read_cameras(const std::filesystem
                 transform[c][r] = transform_json[r][c];
             }
         }
-        GSCamera& camera = cameras.emplace_back();
+        Camera& camera = cameras.emplace_back();
         camera.position = -transform[3];
-        camera.rotation = glm::quat_cast(glm::transpose(glm::mat3(transform)));
+        camera.quaternion = glm::quat_cast(glm::transpose(glm::mat3(transform)));
         camera.width = (int) colmap_camera.width;
         camera.height = (int) colmap_camera.height;
         CHECK_STATE(colmap_camera.model_id == 4, "Only OPENCV camera model is supported");

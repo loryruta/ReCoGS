@@ -48,7 +48,7 @@ void SelectScreen_Toolbar::ui()
     });
 }
 
-SelectScreen::SelectScreen(GSCamera camera) : m_camera(std::move(camera))
+SelectScreen::SelectScreen(Camera camera) : m_camera(std::move(camera))
 {
     Window& window = g_app->window();
     m_key_callback = window.add_key_callback(

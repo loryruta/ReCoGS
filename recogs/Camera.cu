@@ -1,4 +1,4 @@
-#include "GSCamera.h"
+#include "Camera.h"
 
 #include <glm/gtc/type_ptr.hpp>
 
@@ -6,22 +6,22 @@
 
 using namespace recogs;
 
-GSCamera::GSCamera()
+Camera::Camera()
 {
     m_viewmatrix.resize(16);
     m_projmatrix.resize(16);
     m_campos.resize(3);
 }
 
-GSCamera::GSCamera(const CameraData& data)
-    : position(data.position), rotation(data.rotation), fx(data.fx), fy(data.fy), width(data.width), height(data.height)
+Camera::Camera(const CameraData& data)
+    : position(data.position), quaternion(data.rotation), fx(data.fx), fy(data.fy), width(data.width), height(data.height)
 {
     m_viewmatrix.resize(16);
     m_projmatrix.resize(16);
     m_campos.resize(3);
 }
 
-glm::mat3 GSCamera::K() const
+glm::mat3 Camera::K() const
 {
     glm::mat3 K{};
     K[0][0] = fx;
@@ -32,16 +32,24 @@ glm::mat3 GSCamera::K() const
     return K;
 }
 
-glm::mat4 GSCamera::inv_view() const
+void Camera::update_quaternion_from_yaw_pitch_roll()
 {
-    glm::mat4 world2cam = glm::mat3_cast(rotation);
+    glm::mat4 orientation = glm::identity<glm::mat4>();
+    orientation = glm::rotate(orientation, yaw, glm::vec3(0, 1, 0));
+    orientation = glm::rotate(orientation, -pitch, glm::vec3(1, 0, 0));
+    quaternion = glm::quat_cast(orientation);
+}
+
+glm::mat4 Camera::inv_view() const
+{
+    glm::mat4 world2cam = glm::mat3_cast(quaternion);
     world2cam[3] = glm::vec4(position, 1.0f);
     return world2cam;
 }
 
-glm::mat3 GSCamera::inv_K() const { return glm::inverse(K()); }
+glm::mat3 Camera::inv_K() const { return glm::inverse(K()); }
 
-void GSCamera::set_resolution(int new_width, int new_height)
+void Camera::set_resolution(int new_width, int new_height)
 {
     float aspect = float(new_height) / float(height);
     fx *= aspect;
@@ -50,10 +58,10 @@ void GSCamera::set_resolution(int new_width, int new_height)
     height = new_height;
 }
 
-void GSCamera::copy(const CameraData& data, cudaStream_t stream)
+void Camera::copy(const CameraData& data, cudaStream_t stream)
 {
     position = data.position;
-    rotation = data.rotation;
+    quaternion = data.rotation;
     fx = data.fx;
     fy = data.fy;
     width = data.width;
@@ -61,10 +69,10 @@ void GSCamera::copy(const CameraData& data, cudaStream_t stream)
     if (stream) update(stream);
 }
 
-void GSCamera::copy(const GSCamera& other, cudaStream_t stream)
+void Camera::copy(const Camera& other, cudaStream_t stream)
 {
     position = other.position;
-    rotation = other.rotation;
+    quaternion = other.quaternion;
     fx = other.fx;
     fy = other.fy;
     width = other.width;
@@ -72,14 +80,14 @@ void GSCamera::copy(const GSCamera& other, cudaStream_t stream)
     if (stream) update(stream);
 }
 
-GSCamera GSCamera::clone(cudaStream_t stream) const
+Camera Camera::clone(cudaStream_t stream) const
 {
-    GSCamera cloned;
+    Camera cloned;
     cloned.copy(*this, stream);
     return cloned;
 }
 
-void GSCamera::update(cudaStream_t stream)
+void Camera::update(cudaStream_t stream)
 {
     m_tan_fovx = (float(width) * 0.5f) / fx;
     m_tan_fovy = (float(height) * 0.5f) / fy;
@@ -111,7 +119,7 @@ void GSCamera::update(cudaStream_t stream)
         RCGS_TPTR(m_campos), glm::value_ptr(position), 3 * sizeof(float), cudaMemcpyHostToDevice, stream));
 }
 
-void GSCamera::deserialize(nlohmann::json json)
+void Camera::deserialize(nlohmann::json json)
 {
     width = json["width"];
     height = json["height"];
@@ -126,12 +134,12 @@ void GSCamera::deserialize(nlohmann::json json)
             rot_mat[c][r] = json["rotation"][r][c];
         }
     }
-    rotation = glm::quat_cast(rot_mat); // Rotation matrix -> Quaternion
+    quaternion = glm::quat_cast(rot_mat); // Rotation matrix -> Quaternion
     fx = json["fx"];
     fy = json["fy"];
 }
 
-void GSCamera::log_info() const
+void Camera::log_info() const
 {
     glm::vec3 forward_ = forward();
     glm::vec3 up_ = up();
@@ -143,10 +151,10 @@ void GSCamera::log_info() const
     // clang-format on
 }
 
-GSCamera& GSCamera::operator=(GSCamera&& other) noexcept
+Camera& Camera::operator=(Camera&& other) noexcept
 {
     position = other.position;
-    rotation = other.rotation;
+    quaternion = other.quaternion;
     fx = other.fx;
     fy = other.fy;
     width = other.width;

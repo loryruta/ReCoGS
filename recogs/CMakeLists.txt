@@ -92,10 +92,10 @@ set(LIB_SOURCES
 
         App.cu
         App.h
-        GSCamera.cu
-        GSCamera.h
-        GSCameraController.cu
-        GSCameraController.h
+        Camera.cu
+        Camera.h
+        CameraController.cu
+        CameraController.h
         GSRasterizer.cu
         GSRasterizer.h
         Scene.cu

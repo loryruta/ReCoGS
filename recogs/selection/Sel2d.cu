@@ -51,7 +51,7 @@ __global__ void clear_line_kernel(
 }
 } // namespace
 
-Sel2d::Sel2d(const GSCamera& camera, const Image4fHWC& color_depth) : m_camera(camera), m_color_depth(color_depth)
+Sel2d::Sel2d(const Camera& camera, const Image4fHWC& color_depth) : m_camera(camera), m_color_depth(color_depth)
 {
     int W = (int) camera.width;
     int H = (int) camera.height;

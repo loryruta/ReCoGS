@@ -27,7 +27,7 @@
 
 #include "SVORenderer.h"
 
-#include "GSCamera.h"
+#include "Camera.h"
 #include "utils/cuda_utils.h"
 
 using namespace recogs;
@@ -281,7 +281,7 @@ __global__ void cast_ray_kernel(glm::vec3 svo_min,
 }
 } // namespace
 
-void SVORenderer::render(const SVO& svo, const GSCamera& camera, Image4fHWC& color_depth, cudaStream_t stream)
+void SVORenderer::render(const SVO& svo, const Camera& camera, Image4fHWC& color_depth, cudaStream_t stream)
 {
     glm::ivec2 resolution = camera.resolution();
     dim3 num_blocks;

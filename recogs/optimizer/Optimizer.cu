@@ -74,7 +74,7 @@ void Optimizer::start()
     CHECK_CUDA(cudaStreamCreate(&stream));
 
     // Load training cameras, make sure they live on GPU
-    std::vector<GSCamera> training_cameras;
+    std::vector<Camera> training_cameras;
 // TODO FIX ME!
 //    for (const GSCamera& camera : m_app.cameras()) {
 //        GSCamera& training_camera = training_cameras.emplace_back();
@@ -131,7 +131,7 @@ void Optimizer::start()
 
     while (m_running) {
         int camera_idx = training_cameras_dist(random);
-        const GSCamera& sampled_camera = training_cameras.at(camera_idx);
+        const Camera& sampled_camera = training_cameras.at(camera_idx);
 
         // Compute ground truth
         gs_rasterizer.forward(m_app.background_d(), scene, false /* scene_2 */, sampled_camera, gt, stream);

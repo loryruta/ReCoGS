@@ -2,7 +2,7 @@
 
 #include <thrust/device_vector.h>
 
-#include "GSCamera.h"
+#include "Camera.h"
 #include "utils/DeviceBuffer.h"
 #include "utils/image/Image.h"
 
@@ -18,7 +18,7 @@ class Sel3d;
 class Sel2d
 {
 private:
-    const GSCamera& m_camera;
+    const Camera& m_camera;
     const Image4fHWC& m_color_depth; ///< Rendering of the 3DGS scene and accurate depthmap estimation
 
     std::unique_ptr<Image1u8> m_fill_mask;
@@ -26,10 +26,10 @@ private:
     std::unique_ptr<Image1u8> m_sel3d_mask;
 
 public:
-    explicit Sel2d(const GSCamera& camera, const Image4fHWC& color_depth);
+    explicit Sel2d(const Camera& camera, const Image4fHWC& color_depth);
     ~Sel2d() = default;
 
-    [[nodiscard]] const GSCamera& view() const { return m_camera; }
+    [[nodiscard]] const Camera& view() const { return m_camera; }
     [[nodiscard]] glm::uvec2 resolution() const { return m_camera.resolution(); }
 
     [[nodiscard]] const Image1u8& fill_mask() const { return *m_fill_mask; }

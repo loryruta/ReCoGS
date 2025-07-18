@@ -11,7 +11,7 @@ SVOScreen::SVOScreen(App& app, std::shared_ptr<SVO> svo) : m_app(app)
     } else {
         m_svo = create_simple_svo();
     }
-    m_camera_controller = std::make_unique<GSCameraController>(m_app.window(), m_camera);
+    m_camera_controller = std::make_unique<CameraController>(m_app.window(), m_camera);
 }
 
 void SVOScreen::resize(int width, int height) {}

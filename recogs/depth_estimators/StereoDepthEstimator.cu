@@ -90,7 +90,7 @@ void StereoDepthEstimator::estimate_single_axis(const StereoDepthEstimatorParams
 {
     const float* background_d = params.background_d;
     const Scene& scene = *params.scene;
-    const GSCamera& camera = *params.camera;
+    const Camera& camera = *params.camera;
     GSRasterizer& rasterizer = *params.rasterizer;
     cudaStream_t stream = params.stream;
     int axis = params.axis;

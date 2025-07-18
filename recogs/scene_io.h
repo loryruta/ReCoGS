@@ -2,7 +2,7 @@
 
 #include <filesystem>
 
-#include "GSCamera.h"
+#include "Camera.h"
 #include "Scene.h"
 
 namespace recogs
@@ -57,7 +57,7 @@ public:
     ~ColmapOutputReader() = default;
 
     /// Read COLMAP output files (cameras.bin, images.bin), and output a list of cameras
-    std::vector<GSCamera> read_cameras(const std::filesystem::path& filepath);
+    std::vector<Camera> read_cameras(const std::filesystem::path& filepath);
 
     std::pair<glm::mat4, float> read_dataparser_transforms(const std::filesystem::path& dataparser_transforms_filepath);
     /// Read cameras from the cameras.bin file
@@ -76,7 +76,7 @@ public:
     explicit NerfStudioOutputReader(ColmapOutputReader& colmap_reader) : m_colmap_reader(colmap_reader) {}
     ~NerfStudioOutputReader() = default;
 
-    std::vector<GSCamera> read_cameras(const std::filesystem::path& output_dir);
+    std::vector<Camera> read_cameras(const std::filesystem::path& output_dir);
 };
 
 } // namespace recogs

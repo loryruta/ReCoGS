@@ -4,14 +4,14 @@
 #include <list>
 #include <queue>
 
-#include "GSCamera.h"
+#include "Camera.h"
 #include "utils/image/Image.h"
 
 namespace recogs
 {
 struct TrainingCameraPool_Entry {
     int camera_index;
-    GSCamera camera;
+    Camera camera;
     Image4fHWC image; // Example size: 1080 x 720 x 4 x sizeof(float) = 12MB
 };
 
@@ -20,7 +20,7 @@ class TrainingCameraPool // TODO rename to cache
 {
 public:
     using RenderImageFunc =
-        std::function<void(const GSCamera& camera, Image4fHWC& out_image, cudaStream_t stream)>;
+        std::function<void(const Camera& camera, Image4fHWC& out_image, cudaStream_t stream)>;
 
 private:
     std::vector<CameraData> m_cameras;

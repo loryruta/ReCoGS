@@ -2,7 +2,7 @@
 
 #include <atomic>
 
-#include "GSCamera.h"
+#include "Camera.h"
 #include "GSRasterizer.h"
 
 namespace recogs

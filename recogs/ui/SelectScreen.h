@@ -1,7 +1,7 @@
 #pragma once
 
-#include "GSCamera.h"
-#include "GSCameraController.h"
+#include "Camera.h"
+#include "CameraController.h"
 #include "Screen.h"
 #include "depth_estimators/StereoDepthEstimator.h"
 #include "selection/Sel2d.h"
@@ -39,7 +39,7 @@ private:
     static constexpr float k_select_drag_speed = 0.1f;  // Drag speed applied in normalized space
     static constexpr float k_select_zoom_speed = 0.07f; // Scale speed applied in normalized  space
 
-    GSCamera m_camera;
+    Camera m_camera;
     std::unique_ptr<Image4fHWC> m_color_depth;
 
     std::unique_ptr<Image4fHWC> m_camera_colorbuffer;
@@ -62,7 +62,7 @@ private:
     enum class Mode { BRUSH, ERASE } m_mode = Mode::BRUSH;
 
 public:
-    explicit SelectScreen(GSCamera camera);
+    explicit SelectScreen(Camera camera);
     ~SelectScreen() override;
 
     [[nodiscard]] const char* name() const override { return "SelectScreen"; }

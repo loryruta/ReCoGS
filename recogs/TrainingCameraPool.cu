@@ -51,7 +51,7 @@ std::shared_ptr<TrainingCameraPool_Entry> TrainingCameraPool::get(int camera_idx
     // Create a new entry
     std::shared_ptr<TrainingCameraPool_Entry> entry_ptr;
     {
-        GSCamera camera = GSCamera(m_cameras[camera_idx]);
+        Camera camera = Camera(m_cameras[camera_idx]);
         camera.update(stream);
         Image4fHWC image = Image4fHWC::malloc(m_resolution.x, m_resolution.y, stream);
         m_render_image_func(camera, image, stream);

@@ -4,7 +4,7 @@
 
 #include <glm/glm.hpp>
 
-#include "GSCamera.h"
+#include "Camera.h"
 #include "GSRasterizer.h"
 #include "PCVNetEngine.h"
 #include "Scene.h"
@@ -19,7 +19,7 @@ class App;
 struct StereoDepthEstimatorParams {
     const float* background_d;
     const Scene* scene;
-    const GSCamera* camera;
+    const Camera* camera;
     GSRasterizer* rasterizer;
     int axis = 0;                   ///< 0 = Horizontal, 1 = Vertical
     float b = 0.07f;                ///< The stereo baseline
@@ -39,7 +39,7 @@ private:
 
     std::unique_ptr<PCVNetEngine> m_pcvnet_engine;
 
-    GSCamera m_rview;
+    Camera m_rview;
     thrust::device_vector<float> m_im0;
     thrust::device_vector<float> m_im1;
     thrust::device_vector<float> m_pcvnet_im0;           // Padded/rotated

@@ -2,7 +2,7 @@
 
 #include <thrust/device_vector.h>
 
-#include "GSCamera.h"
+#include "Camera.h"
 #include "Scene.h"
 #include "optimizer/GSLoss.h"
 #include "utils/image/Image.h"
@@ -33,7 +33,7 @@ public:
     int forward(const float* background_d,
                 const Scene& scene,
                 bool scene_2,
-                const GSCamera& camera,
+                const Camera& camera,
                 Image4fHWC& out_color_depth,
                 cudaStream_t stream);
 
@@ -53,7 +53,7 @@ public:
         bool scene_2,
         int num_rendered,
         const float* background_d,
-        const GSCamera& camera,
+        const Camera& camera,
         const float* dL_dy,
         cudaStream_t stream);
 

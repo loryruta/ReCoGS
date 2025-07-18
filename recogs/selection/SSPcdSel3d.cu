@@ -7,7 +7,7 @@
 using namespace recogs;
 
 void SSPcdSel3d::append(const Image1u8& fill_mask,
-                        const GSCamera& camera,
+                        const Camera& camera,
                         const Image4fHWC& color_depth,
                         cudaStream_t stream)
 {
@@ -40,7 +40,7 @@ void SSPcdSel3d::append(const Image1u8& fill_mask,
     printf("[INFO ] [SSPcdSel3d] 3D selection pointcloud has %zu points\n", m_points.size());
 }
 
-void SSPcdSel3d::clear(const Image1u8& clear_mask, const GSCamera& camera, cudaStream_t stream)
+void SSPcdSel3d::clear(const Image1u8& clear_mask, const Camera& camera, cudaStream_t stream)
 {
     thrust::device_vector<bool> clear_bitmask(m_points.size(), false /* value */);
     // Project the points to screen, if they overlap the clear mask, then mark them (in a bitmask) to be deleted
@@ -64,7 +64,7 @@ void SSPcdSel3d::clear(const Image1u8& clear_mask, const GSCamera& camera, cudaS
     m_points = std::move(new_points);
 }
 
-void SSPcdSel3d::project(const GSCamera& camera,
+void SSPcdSel3d::project(const Camera& camera,
                          const Image4fHWC& depthmap,
                          Image1u8& sel3d_mask,
                          cudaStream_t stream) const

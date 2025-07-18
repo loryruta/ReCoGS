@@ -26,7 +26,7 @@ __global__ void add_depth_epsilon_kernel(int W, int H, float* color_depth, float
 }
 } // namespace
 
-MainScreen::MainScreen(std::optional<GSCamera> initial_view)
+MainScreen::MainScreen(std::optional<Camera> initial_view)
 {
     // Init camera
     if (initial_view) {
@@ -34,10 +34,10 @@ MainScreen::MainScreen(std::optional<GSCamera> initial_view)
     } else if (!g_app->cameras().empty()) {
         m_camera.copy(g_app->cameras().at(18));
     } else {
-        m_camera = GSCamera{};
+        m_camera = Camera{};
     }
 
-    m_camera_controller = std::make_unique<GSCameraController>(g_app->window(), m_camera);
+    m_camera_controller = std::make_unique<CameraController>(g_app->window(), m_camera);
 
     // Action listener
     Window& window = g_app->window();
@@ -68,7 +68,7 @@ MainScreen::MainScreen(std::optional<GSCamera> initial_view)
         g_app->cameras(),
         window.resolution(),
         1 /* max_size */,
-        [this](const GSCamera& camera, Image4fHWC& out_image, cudaStream_t stream) {
+        [this](const Camera& camera, Image4fHWC& out_image, cudaStream_t stream) {
             render_training_camera_image(camera, out_image, stream);
         });
 }
@@ -305,7 +305,7 @@ void MainScreen::ui_3d_selection()
     ImGui::End();
 }
 
-void MainScreen::render_training_camera_image(const GSCamera& camera, Image4fHWC& out_image, cudaStream_t stream)
+void MainScreen::render_training_camera_image(const Camera& camera, Image4fHWC& out_image, cudaStream_t stream)
 {
     /* Clear image */
     image_fill(out_image, Image4fCHW::Value{INFINITY}, stream);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GSCameraController.h"
+#include "CameraController.h"
 #include "Screen.h"
 #include "disk/DiskBuffer.h"
 
@@ -9,8 +9,8 @@ namespace recogs
 class DiskRasterizerScreen : public Screen
 {
 private:
-    GSCamera m_camera;
-    std::unique_ptr<GSCameraController> m_camera_controller;
+    Camera m_camera;
+    std::unique_ptr<CameraController> m_camera_controller;
     DiskBuffer m_disk_buffer;
 
 public:

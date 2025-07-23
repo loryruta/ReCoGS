@@ -1,6 +1,7 @@
 #include "SVOScreen.h"
 
 #include "App.h"
+#include "svo/SVORenderer.h"
 
 using namespace recogs;
 

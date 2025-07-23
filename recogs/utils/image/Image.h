@@ -37,11 +37,11 @@ private:
     T* m_data_d = nullptr;
 
 public:
-    uint32_t width; // TODO use int so no explicit casting
-    uint32_t height;
+    int width; // TODO use int so no explicit casting
+    int height;
     bool owned = true;
 
-    explicit Image(uint32_t width, uint32_t height, T* data_d = nullptr)
+    explicit Image(int width, int height, T* data_d = nullptr)
         : width(width), height(height), m_data_d(data_d)
     {
     }
@@ -73,7 +73,7 @@ public:
 #endif
     }
 
-    [[nodiscard]] __host__ __device__ glm::uvec2 size() const { return {width, height}; }
+    [[nodiscard]] __host__ __device__ glm::ivec2 size() const { return {width, height}; }
     [[nodiscard]] __host__ size_t bytesize() const { return width * height * C * sizeof(T); }
 
     [[nodiscard]] __host__ __device__ T* data_d() const { return m_data_d; }

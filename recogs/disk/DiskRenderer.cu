@@ -89,7 +89,7 @@ void DiskRenderer::setup_screenbuffers(glm::ivec2 resolution)
         GLTextureMapped_CreateParams params{};
         params.width = resolution.x;
         params.height = resolution.y;
-        params.internalformat = GL_R32UI;
+        params.internalformat = GL_R32I;
         params.format = GL_RED_INTEGER;
         params.type = GL_UNSIGNED_INT;
         params.min_filter = GL_NEAREST;

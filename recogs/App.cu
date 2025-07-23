@@ -8,16 +8,21 @@
 #include <imgui_impl_opengl3.h>
 
 #include "ScenePointcloud.h"
+#include "depth_estimators/FoundationStereo.h"
+#include "depth_estimators/FoundationStereo_DepthEstimator.h"
 #include "gui/recogs_style.h"
+#include "disk/DiskRenderer.h"
+#include "optimizer/Optimizer.h"
 #include "scene_io.h"
 #include "selection/DiskSel3d.h"
+#include "svo/SVORenderer.h"
 #include "ui/DiskRasterizerScreen.h"
 #include "ui/MainScreen.h"
 #include "utils/image/image_misc.h"
 #include "utils/image/image_save.h"
 #include "utils/str_utils.h"
 
-using namespace recogs;
+USING_NAMESPACE
 
 namespace
 {
@@ -39,13 +44,16 @@ void GLAPIENTRY MessageCallback(GLenum source,
 }
 } // namespace
 
-void App::Params::validate() const
+void AppParams::validate() const
 {
     CHECK_ARG(std::filesystem::is_regular_file(scene_ply), "Invalid scene PLY: {}", scene_ply.string());
     CHECK_ARG(scene_ply.extension() == ".ply", "Invalid scene PLY extension: {}", scene_ply.extension().string());
+    CHECK_ARG(!app_title.empty());
 }
 
-App::App(const Params& params)
+App::App(const AppParams& params)
+    : //
+      m_scene_ply(params.scene_ply), m_app_title(params.app_title)
 {
     CHECK_STATE(!g_app, "Only one App can be instanced");
     g_app = this;
@@ -53,14 +61,13 @@ App::App(const Params& params)
     params.validate();
 
     // Init window
-    m_window = std::make_unique<Window>(Window::create(1080, 720, "ReCoGS", false));
+    m_window = std::make_unique<Window>(Window::create_bordered_fullscreen(m_app_title));
     m_window->make_context();
     // glfwSwapInterval(0);
 
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(MessageCallback, 0);
 
-    m_scene_ply = params.scene_ply;
     m_scene_folder = m_scene_ply.parent_path().parent_path().parent_path();
 
     // Load scene/background
@@ -101,8 +108,6 @@ App::App(const Params& params)
     m_gs_rasterizer = std::make_unique<GSRasterizer>();
     m_svo_renderer = std::make_unique<SVORenderer>();
     m_disk_renderer = std::make_unique<DiskRenderer>();
-
-    m_stereo_depth_estimator = std::make_unique<StereoDepthEstimator>(*this);
 
     m_window->add_key_callback([this](int key, int scancode, int action, int mods) {
         if (action == GLFW_PRESS) {
@@ -163,7 +168,7 @@ void App::start()
         if (fps_dt > 1.0) {
             m_fps = double(frame_counter) / (fps_t - last_fps_t);
             char window_title[256];
-            sprintf(window_title, "ReCoGS - %02.1f FPS", m_fps);
+            sprintf(window_title, "%s (%02.1f FPS)", m_app_title.c_str(), m_fps);
             m_window->set_title(window_title);
             frame_counter = 0;
             last_fps_t = fps_t;

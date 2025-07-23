@@ -62,8 +62,8 @@ typename Image<C, T, MEMORY_LAYOUT>::Value image_reduce( //
     const uint32_t h = image.height;
 
     Image<C, T, MEMORY_LAYOUT> src_ref = image.create_ref();
-    uint32_t dst_w = div_ceil(image.width, 32u);
-    uint32_t dst_h = div_ceil(image.height, 32u);
+    uint32_t dst_w = div_ceil(image.width, 32);
+    uint32_t dst_h = div_ceil(image.height, 32);
     Image<C, T, MEMORY_LAYOUT> dst = Image<C, T, MEMORY_LAYOUT>::malloc(dst_w, dst_h, stream);
 
     while (true) {

@@ -38,8 +38,8 @@ template <int C, typename T, ImageMemoryLayout MEMORY_LAYOUT>
 void image_flip_x(const Image<C, T, MEMORY_LAYOUT>& image)
 {
     dim3 num_blocks{};
-    num_blocks.x = div_ceil(image.width >> 1, 32u);
-    num_blocks.y = div_ceil(image.height >> 1, 32u);
+    num_blocks.x = div_ceil(image.width >> 1, 32);
+    num_blocks.y = div_ceil(image.height >> 1, 32);
     dim3 block_dim{32, 32};
     detail::image_flip_x_kernel<<<num_blocks, block_dim>>>(image);
 }
@@ -49,8 +49,8 @@ template <int C, typename T, ImageMemoryLayout MEMORY_LAYOUT>
 void image_flip_y(const Image<C, T, MEMORY_LAYOUT>& image)
 {
     dim3 num_blocks{};
-    num_blocks.x = div_ceil(image.width, 32u);
-    num_blocks.y = div_ceil(image.height >> 1, 32u);
+    num_blocks.x = div_ceil(image.width, 32);
+    num_blocks.y = div_ceil(image.height >> 1, 32);
     dim3 block_dim{32, 32};
     detail::image_flip_y_kernel<<<num_blocks, block_dim>>>(image);
 }

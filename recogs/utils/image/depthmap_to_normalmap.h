@@ -56,9 +56,9 @@ template <bool DISPLAY>
 void depthmap_to_normalmap(const Image4fHWC& color_depth, Image4fHWC& out_normal_map, cudaStream_t stream)
 {
     dim3 num_blocks{};
-    num_blocks.x = div_ceil(color_depth.width, 16u);
-    num_blocks.y = div_ceil(color_depth.height, 16u);
-    dim3 block_dim = {16, 16};
+    num_blocks.x = div_ceil(color_depth.width, 16);
+    num_blocks.y = div_ceil(color_depth.height, 16);
+    dim3 block_dim(16, 16);
     depthmap_to_normalmap_kernel<DISPLAY><<<num_blocks, block_dim, 0, stream>>>(color_depth, out_normal_map);
 }
 

@@ -4,9 +4,9 @@
 #include "CameraController.h"
 #include "Screen.h"
 #include "TrainingCameraPool.h"
-#include "depth_estimators/StereoDepthEstimator.h"
-#include "gui/StereoTest.h"
+#include "depth_estimators/PCVNetHV_DepthEstimator.h"
 #include "gui/TrainingCamerasSlider.h"
+#include "ui/windows/DepthEstimatorWindow.h"
 #include "utils/image/Image.h"
 #include "video/GLTextureMapped.h"
 #include "video/ImageSlider.h"
@@ -32,7 +32,6 @@ private:
 
     bool m_view_selection = false;
 
-    ui::StereoTest m_ui_stereo_test;
     std::unique_ptr<ui::TrainingCamerasSlider> m_training_cameras_ui;
 
     std::unique_ptr<Image1u8> m_sel3d_mask;
@@ -44,9 +43,14 @@ private:
     } m_render_disk_mode = RenderDiskMode::Mask;
 
     std::unique_ptr<TrainingCameraPool> m_training_camera_cache;
+    std::unique_ptr<Image4fHWC> m_depth_estimate;
 
     int m_selected_training_camera_idx = -1;
 
+    /* UI */
+    struct {
+        ui::DepthEstimatorWindow depth_estimator;
+    } m_ui;
 
 public:
     explicit MainScreen(std::optional<Camera> initial_view = std::nullopt);
@@ -58,6 +62,10 @@ public:
     void update(float dt) override;
     void render(Image4fHWC& color_depth) override;
     void ui() override;
+
+    void _handle_depth_estimator_gaussians(Image4fHWC& colordepth);
+    void _handle_depth_estimator_pcvnet_hv(Image4fHWC& colordepth);
+    void _handle_depth_estimator_foundation_stereo(Image4fHWC& colordepth);
 
     void _render_sel3d(Image4fHWC& color_depth);
     void _render_disk_sel3d(Image4fHWC& color_depth);

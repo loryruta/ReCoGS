@@ -2,36 +2,39 @@
 
 #include <filesystem>
 #include <functional>
+#include <string>
 #include <thread>
 
-#include "GSRasterizer.h"
-#include "Scene.h"
-#include "TrainingCameraPool.h"
-#include "depth_estimators/StereoDepthEstimator.h"
-#include "disk/DiskRenderer.h"
-#include "optimizer/Optimizer.h"
 #include "scene_io.h"
-#include "selection/Sel3d.h"
-#include "svo/SVORenderer.h"
 #include "ui/Screen.h"
 #include "utils/image/Image.h"
 #include "video/DrawTexture.h"
 #include "video/GLTextureMapped.h"
 #include "video/Window.h"
 
-namespace recogs
-{
+BEGIN_NAMESPACE
+
+// Forward decl
+class Optimizer;
+class DiskRenderer;
+class TrainingCameraPool;
+class Scene;
+class GSRasterizer;
+class Sel3d;
+class SVORenderer;
+
+struct AppParams {
+    std::filesystem::path scene_ply;
+    std::string app_title;
+
+    [[nodiscard]] void validate() const;
+};
+
 class App
 {
-public:
-    struct Params {
-        std::filesystem::path scene_ply;
-
-        [[nodiscard]] void validate() const;
-    };
-
 private:
-    std::filesystem::path m_scene_ply;
+    const std::filesystem::path m_scene_ply;
+    const std::string m_app_title;
     std::filesystem::path m_scene_folder;
 
     /* Scene */
@@ -50,11 +53,13 @@ private:
     // Stats
     double m_fps = 0.0;
 
+    // ----------------------------------------------------------------
+    /* Renderers */
+    // ----------------------------------------------------------------
+
     std::unique_ptr<GSRasterizer> m_gs_rasterizer;
     std::unique_ptr<SVORenderer> m_svo_renderer;
     std::unique_ptr<DiskRenderer> m_disk_renderer;
-
-    std::unique_ptr<StereoDepthEstimator> m_stereo_depth_estimator;
 
     std::shared_ptr<Screen> m_screen; // Would be a unique_ptr if std::move_only_function
 
@@ -67,7 +72,7 @@ private:
 public:
     bool ui_enabled = true;
 
-    explicit App(const Params& params);
+    explicit App(const AppParams& params);
     ~App();
 
     [[nodiscard]] std::filesystem::path const& scene_ply() const { return m_scene_ply; }
@@ -86,8 +91,6 @@ public:
     [[nodiscard]] GSRasterizer& gs_rasterizer() { return *m_gs_rasterizer; }
     [[nodiscard]] SVORenderer& svo_renderer() { return *m_svo_renderer; }
     [[nodiscard]] DiskRenderer& disk_renderer() { return *m_disk_renderer; }
-
-    [[nodiscard]] StereoDepthEstimator& stereo_depth_estimator() { return *m_stereo_depth_estimator; }
 
     /// Display a new screen within the application.
     /// This function must only be called by the application thread (i.e. main thread).
@@ -111,6 +114,9 @@ public:
         });
     }
 
+    /// Enqueue a job on the main thread.
+    void enqueue_job(std::function<void()> job) { m_end_of_frame_jobs.emplace_back(job); }
+
     void start();
 
 private:
@@ -128,4 +134,5 @@ inline App* g_app = nullptr;
 /// The stream where all UI -related CUDA operations are done.
 /// It must be used instead of the default stream.
 inline cudaStream_t g_stream = nullptr;
-} // namespace recogs
+
+END_NAMESPACE

@@ -27,8 +27,8 @@ void image_fill_custom(Image<C, T, MEMORY_LAYOUT>& image,
                        cudaStream_t stream)
 {
     dim3 num_blocks{};
-    num_blocks.x = div_ceil(image.width, 32u);
-    num_blocks.y = div_ceil(image.height, 32u);
+    num_blocks.x = div_ceil(image.width, 32);
+    num_blocks.y = div_ceil(image.height, 32);
     dim3 block_dim{32, 32};
     detail::image_fill_custom_kernel<Image<C, T, MEMORY_LAYOUT>>
         <<<num_blocks, block_dim, 0, stream>>>(image, x_num, y_num, fill_value);

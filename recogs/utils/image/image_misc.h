@@ -2,6 +2,7 @@
 
 #include "Image.h"
 #include "image_visit_transform.h"
+#include "utils/image/image_copy.h"
 
 // TODO Lord forgive me for the mess of this file but I have a deadline...
 
@@ -110,17 +111,17 @@ __device__ inline glm::vec3 viridis(float x)
 
 template <ImageMemoryLayout RGB_MEMORY_LAYOUT, ImageMemoryLayout SCALAR_IMAGE_MEMORY_LAYOUT>
 void image_scalar_to_rgb(const Image<1, float, SCALAR_IMAGE_MEMORY_LAYOUT>& scalar_image,
+                         float scale,
                          Image<3, float, RGB_MEMORY_LAYOUT>& out_rgb,
-                         cudaStream_t stream,
-                         float scale_factor = 1.0f)
+                         cudaStream_t stream)
 {
     CHECK_ARG(scalar_image.size() == out_rgb.size(), "scalar_image and out_colorbuffer sizes must match");
     using ScalarImage = Image<1, float, SCALAR_IMAGE_MEMORY_LAYOUT>;
     image_visit(
         scalar_image,
-        [out_rgb, scale_factor] __device__(const ScalarImage& scalar_image, int x, int y) mutable {
+        [out_rgb, scale] __device__(const ScalarImage& scalar_image, int x, int y) mutable {
             float v = scalar_image.value(x, y).r;
-            float t = glm::clamp(v * scale_factor, 0.0f, 1.0f);
+            float t = glm::clamp(v * scale, 0.0f, 1.0f);
             out_rgb.set_value(x, y, viridis(t));
             return 0; // TODO temporary
         },
@@ -130,23 +131,23 @@ void image_scalar_to_rgb(const Image<1, float, SCALAR_IMAGE_MEMORY_LAYOUT>& scal
 /// Convert a depthbuffer to an RGB image by warping depthbuffer values in a log-scale.
 template <ImageMemoryLayout MEMORY_LAYOUT>
 Image<3, float, MEMORY_LAYOUT>
-image_scalar_to_rgb(const Image<1, float, MEMORY_LAYOUT>& scalar_map, cudaStream_t stream, float max_depth = 10.0f)
+image_scalar_to_rgb(const Image<1, float, MEMORY_LAYOUT>& scalar_map, float scale, cudaStream_t stream)
 {
     using RGBImage = Image<3, float, MEMORY_LAYOUT>;
-    RGBImage out_rgb = RGBImage::malloc(scalar_map.width, scalar_map.height);
-    image_scalar_to_rgb(scalar_map, out_rgb, stream, max_depth);
+    RGBImage out_rgb = RGBImage::malloc(scalar_map.width, scalar_map.height, stream);
+    image_scalar_to_rgb(scalar_map, scale, out_rgb, stream);
     return out_rgb;
 }
 
 /// Convert the depth information stored as the 4-th component of a HWC image, into the RGB stored (in-place).
-inline void image_depth_to_rgb_inplace(Image4fHWC& color_depth, cudaStream_t stream, float scale_factor = 1.0f)
+inline void image_depth_to_rgb_inplace(Image4fHWC& color_depth, float scale, cudaStream_t stream)
 {
     image_visit(
         color_depth,
-        [scale_factor] __device__(Image4fHWC & image, int x, int y) mutable {
+        [scale] __device__(Image4fHWC & image, int x, int y) mutable {
             int W = (int) image.width;
             float* rgbd = &image.data_d()[y * W * 4 + x * 4];
-            float t = glm::clamp(rgbd[3] * scale_factor, 0.0f, 1.0f);
+            float t = glm::clamp(rgbd[3] * scale, 0.0f, 1.0f);
             glm::vec3 rgb = viridis(t);
             rgbd[0] = rgb.r;
             rgbd[1] = rgb.g;
@@ -154,6 +155,20 @@ inline void image_depth_to_rgb_inplace(Image4fHWC& color_depth, cudaStream_t str
             return 0; // TODO temporary
         },
         stream);
+}
+
+inline void image_depth_to_rgb(Image4fHWC& colordepth, float scale, Image4fHWC& out_rgb, cudaStream_t stream)
+{
+    image_copy(colordepth, out_rgb, stream);
+    image_depth_to_rgb_inplace(out_rgb, scale, stream);
+}
+
+inline Image4fHWC image_depth_to_rgb(Image4fHWC& colordepth, float scale, cudaStream_t stream)
+{
+    Image4fHWC out_rgb = Image4fHWC::malloc(colordepth.width, colordepth.height, stream);
+    image_copy(colordepth, out_rgb, stream);
+    image_depth_to_rgb_inplace(out_rgb, scale, stream);
+    return out_rgb;
 }
 
 } // namespace recogs

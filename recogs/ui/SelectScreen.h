@@ -3,7 +3,7 @@
 #include "Camera.h"
 #include "CameraController.h"
 #include "Screen.h"
-#include "depth_estimators/StereoDepthEstimator.h"
+#include "depth_estimators/PCVNetHV_DepthEstimator.h"
 #include "selection/Sel2d.h"
 #include "utils/image/Image.h"
 #include "video/CudaTexture.h"

@@ -50,7 +50,7 @@ public:
     Camera(Camera&&) noexcept = default;
     ~Camera() = default;
 
-    [[nodiscard]] glm::uvec2 resolution() const { return {width, height}; }
+    [[nodiscard]] glm::ivec2 resolution() const { return {width, height}; }
     [[nodiscard]] float tan_fovx() const { return m_tan_fovx; }
     [[nodiscard]] float tan_fovy() const { return m_tan_fovy; }
 

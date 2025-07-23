@@ -3,8 +3,9 @@
 #include <imgui.h>
 
 #include "App.h"
+#include "GSRasterizer.h"
 
-using namespace recogs;
+USING_NAMESPACE
 using namespace recogs::ui;
 
 TrainingCamerasSlider::TrainingCamerasSlider(int resolution) : m_resolution(resolution)

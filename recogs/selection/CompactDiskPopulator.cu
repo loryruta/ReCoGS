@@ -206,7 +206,7 @@ std::unique_ptr<DiskBuffer> CompactDiskPopulator::populate(const Image1u8& fill_
     std::vector<uint8_t> fill_mask_h(W * H, 0);
     std::vector<float> depths_h;
     std::vector<float> normals_h;
-    fill_mask.to_host(fill_mask_h, stream);
+    //fill_mask.to_host(fill_mask_h, stream);
     color_depth.to_host(depths_h, stream);
     normal_map.to_host(normals_h, stream);
     CHECK_CUDA(cudaStreamSynchronize(stream));
@@ -215,13 +215,13 @@ std::unique_ptr<DiskBuffer> CompactDiskPopulator::populate(const Image1u8& fill_
     /* Initialize fill mask (after statistical outlier removal) */
     // ----------------------------------------------------------------
 
-//    {
-//        std::vector<glm::ivec2> filtered_pixels =
-//            _identify_statistical_outliers(fill_mask, camera, color_depth, stream);
-//        for (glm::ivec2 pixel : filtered_pixels) {
-//            fill_mask_h[pixel.y * W + pixel.x] = 1; // Mark as filled
-//        }
-//    }
+    {
+        std::vector<glm::ivec2> filtered_pixels =
+            _identify_statistical_outliers(fill_mask, camera, color_depth, stream);
+        for (glm::ivec2 pixel : filtered_pixels) {
+            fill_mask_h[pixel.y * W + pixel.x] = 1; // Mark as filled
+        }
+    }
 
     // ----------------------------------------------------------------
     /* Assign planes */

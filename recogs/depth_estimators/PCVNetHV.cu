@@ -1,79 +1,20 @@
-#include "PCVNetEngine.h"
+#include "PCVNetHV.h"
 
 #include <cstring>
 #include <fstream>
 #include <thread>
 
 #include "NvOnnxParser.h"
-#include "utils/cuda_utils.h"
 #include "utils/exceptions.h"
 #include "utils/misc_utils.h"
+#include "utils/nvinfer_utils.h"
 
 // Reference:
 // https://github.com/cyrusbehr/tensorrt-cpp-api
 
-using namespace recogs;
+USING_NAMESPACE
 
-namespace
-{
-class Logger : public nvinfer1::ILogger
-{
-    void log(Severity severity, const char* message) noexcept override
-    {
-        switch (severity) {
-        case Severity::kINTERNAL_ERROR:
-        case Severity::kERROR:
-            printf("[ERROR] [PCVNetEngine] TensorRT: %s\n", message);
-            break;
-        case Severity::kWARNING:
-            printf("[WARN ] [PCVNetEngine] TensorRT: %s\n", message);
-            break;
-        case Severity::kINFO:
-            // printf("[INFO ] [PCVNetEngine] TensorRT: %s\n", message);
-            break;
-        case Severity::kVERBOSE:
-            // printf("[DEBUG] [PCVNetEngine] TensorRT: %s\n", message);
-            break;
-        }
-    }
-};
-
-std::string to_string(nvinfer1::Dims dims)
-{
-    std::string str = "(";
-    for (int i = 0; i < dims.nbDims; ++i) {
-        if (i > 0) str += ", ";
-        str += std::to_string(dims.d[i]);
-    }
-    str += ")";
-    return str;
-}
-
-std::string to_string(nvinfer1::TensorIOMode mode)
-{
-    switch (mode) {
-    case nvinfer1::TensorIOMode::kNONE:
-        return "NONE";
-    case nvinfer1::TensorIOMode::kINPUT:
-        return "INPUT";
-    case nvinfer1::TensorIOMode::kOUTPUT:
-        return "OUTPUT";
-    }
-}
-
-std::string to_string(nvinfer1::TensorLocation location)
-{
-    switch (location) {
-    case nvinfer1::TensorLocation::kHOST:
-        return "HOST";
-    case nvinfer1::TensorLocation::kDEVICE:
-        return "DEVICE";
-    }
-}
-
-} // namespace
-
-void PCVNetEngine::Options::validate() const
+void PCVNetHV_Options::validate() const
 {
     CHECK_ARG(std::filesystem::exists(onnx_filepath), "Invalid .onnx filepath: %s", onnx_filepath.c_str());
     bool check_optprofile_image_sizes = optprofile_min_image_size.x <= optprofile_opt_image_size.x &&
@@ -85,27 +26,30 @@ void PCVNetEngine::Options::validate() const
     }
 }
 
-PCVNetEngine::PCVNetEngine(Options options) : m_options(std::move(options))
+PCVNetHV::PCVNetHV(const PCVNetHV_Options& options) : m_options(options)
 {
     m_options.validate();
+    m_logger = std::make_unique<SimpleNvInferLogger>("PCVNetHV");
 
-    m_logger = std::make_unique<Logger>();
-
-    printf("[INFO ] [PCVNetEngine] TensorRT version: %d.%d.%d.%d\n",
+    printf("[INFO ] [PCVNetHV] TensorRT version: %d.%d.%d.%d\n",
            getInferLibMajorVersion(),
            getInferLibMinorVersion(),
            getInferLibPatchVersion(),
            getInferLibBuildVersion());
+
+    build_or_load();
 }
 
-void PCVNetEngine::build()
+PCVNetHV::~PCVNetHV() { printf("[DEBUG] [PCVNetHV] Destroying\n"); }
+
+void PCVNetHV::build()
 {
-    printf("[DEBUG] [PCVNetEngine] Creating the TensorRT builder...\n");
+    printf("[DEBUG] [PCVNetHV] Creating the TensorRT builder...\n");
     auto builder = std::unique_ptr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(*m_logger));
     CHECK_STATE(builder, "Failed to create the TensorRT builder");
     int max_threads = (int) std::thread::hardware_concurrency();
     builder->setMaxThreads(max_threads);
-    printf("[INFO ] [PCVNetEngine] TensorRT builder will use up to %d threads\n", max_threads);
+    printf("[INFO ] [PCVNetHV] TensorRT builder will use up to %d threads\n", max_threads);
 
     nvinfer1::NetworkDefinitionCreationFlags flags = 0;
     flags |= (uint32_t) nvinfer1::NetworkDefinitionCreationFlag::kSTRONGLY_TYPED;
@@ -113,7 +57,7 @@ void PCVNetEngine::build()
     CHECK_STATE(network, "Failed to create the TensorRT network");
 
     {
-        printf("[DEBUG] [PCVNetEngine] Loading the ONNX model file \"%s\"...\n",
+        printf("[DEBUG] [PCVNetHV] Loading the ONNX model file \"%s\"...\n",
                m_options.onnx_filepath.filename().c_str());
         std::ifstream onnx_file(m_options.onnx_filepath, std::ios::binary | std::ios::ate);
         std::streamsize onnx_filesize = onnx_file.tellg();
@@ -121,7 +65,7 @@ void PCVNetEngine::build()
         std::vector<char> onnx_filedata(onnx_filesize);
         CHECK_STATE(onnx_file.read(onnx_filedata.data(), onnx_filesize), "Can't read the ONNX file");
 
-        printf("[DEBUG] [PCVNetEngine] Parsing the ONNX model to TensorRT...\n");
+        printf("[DEBUG] [PCVNetHV] Parsing the ONNX model to TensorRT...\n");
         auto parser = nvonnxparser::createParser(*network, *m_logger);
         CHECK_STATE(parser, "Failed to create the ONNX parser");
         CHECK_STATE(parser->parse(onnx_filedata.data(), onnx_filesize), "TensorRT can't parse the ONNX file");
@@ -186,21 +130,21 @@ void PCVNetEngine::build()
     // NOTE: only seen working with kNONE; otherwise "Skipping tactic" and the plan doesn't build
     // builder_cfg->setTilingOptimizationLevel(nvinfer1::TilingOptimizationLevel::kFULL);
 
-    printf("[DEBUG] [PCVNetEngine] Tiling optimization level: %d\n", builder_cfg->getTilingOptimizationLevel());
+    printf("[DEBUG] [PCVNetHV] Tiling optimization level: %d\n", builder_cfg->getTilingOptimizationLevel());
     builder_cfg->setMemoryPoolLimit(nvinfer1::MemoryPoolType::kWORKSPACE, (size_t) 6 * (1 << 30) /* 6GB */);
 
     // Build the engine
-    printf("[INFO ] [PCVNetEngine] Building the TensorRT engine (might take several minutes)...\n");
+    printf("[INFO ] [PCVNetHV] Building the TensorRT engine (might take several minutes)...\n");
     fflush(stdout); // So we know the program arrived here!
     std::unique_ptr<nvinfer1::IHostMemory> plan{builder->buildSerializedNetwork(*network, *builder_cfg)};
     CHECK_STATE(plan, "Failed to create the TensorRT engine");
 
     std::ofstream engine_file(m_options.engine_filepath, std::ofstream::binary);
     engine_file.write(reinterpret_cast<const char*>(plan->data()), (std::streamsize) plan->size());
-    printf("[INFO ] [PCVNetEngine] TensorRT engine written to: %s\n", m_options.engine_filepath.c_str());
+    printf("[INFO ] [PCVNetHV] TensorRT engine written to: %s\n", m_options.engine_filepath.c_str());
 }
 
-void PCVNetEngine::load()
+void PCVNetHV::load()
 {
     m_runtime = std::unique_ptr<nvinfer1::IRuntime>{nvinfer1::createInferRuntime(*m_logger)};
     CHECK_STATE(m_runtime, "Failed to create TensorRT runtime");
@@ -257,21 +201,19 @@ void PCVNetEngine::load()
     }
 }
 
-void PCVNetEngine::build_or_load()
+void PCVNetHV::build_or_load()
 {
+    if (m_runtime) return;
     std::filesystem::path engine_filepath = m_options.engine_filepath;
     if (!std::filesystem::exists(engine_filepath)) {
-        printf("[INFO ] [PCVNetEngine] Engine file not found at: %s\n", engine_filepath.c_str());
+        printf("[INFO ] [PCVNetHV] Engine file not found at: %s\n", engine_filepath.c_str());
         build();
     }
-    printf("[INFO ] [PCVNetEngine] Loading engine file: %s\n", engine_filepath.c_str());
+    printf("[INFO ] [PCVNetHV] Loading engine file: %s\n", engine_filepath.c_str());
     load();
 }
 
-void PCVNetEngine::infer(const Image3fCHW& im0,
-                         const Image3fCHW& im1,
-                         Image1fCHW& out_disparity_map,
-                         cudaStream_t stream)
+void PCVNetHV::infer(const Image3fCHW& im0, const Image3fCHW& im1, Image1fCHW& out_disparity_map, cudaStream_t stream)
 {
     assert(im0.size() == im1.size());
     assert(im0.size() == out_disparity_map.size());

@@ -3,6 +3,7 @@
 #include <imgui.h>
 
 #include "App.h"
+#include "GSRasterizer.h"
 #include "ui/MainScreen.h"
 #include "utils/image/image_cast.h"
 #include "utils/image/image_fill.h"
@@ -10,7 +11,7 @@
 #include "utils/imgui_utils.h"
 #include "video/gl_utils.h"
 
-using namespace recogs;
+USING_NAMESPACE
 
 SelectScreen_Toolbar::SelectScreen_Toolbar(SelectScreen& parent) : m_parent(parent)
 {
@@ -92,16 +93,16 @@ void SelectScreen::_render_scene_and_accurate_depth()
     g_app->gs_rasterizer().forward(
         g_app->background_d(), g_app->scene(), true /* scene_2 */, m_camera, *m_color_depth, g_stream);
     // Estimate an accurate depthmap with stereo matching
-    StereoDepthEstimatorParams stereo_params;
+    DepthEstimatorParams stereo_params{};
     stereo_params.background_d = g_app->background_d();
     stereo_params.scene = &g_app->scene();
     stereo_params.camera = &m_camera;
-    stereo_params.rasterizer = &g_app->gs_rasterizer();
+    stereo_params.gs_rasterizer = &g_app->gs_rasterizer();
     stereo_params.b = 0.07f;
-    stereo_params.inout_color_depth = m_color_depth.get();
+    stereo_params.inout_colordepth = m_color_depth.get();
     stereo_params.stream = g_stream;
     stereo_params.debug = false;
-    g_app->stereo_depth_estimator().estimate_hv(stereo_params);
+    DepthEstimator::get().estimate(stereo_params);
 }
 
 CudaTexture& SelectScreen::_render_camera_texture()

@@ -2,6 +2,7 @@
 
 #include "App.h"
 #include "disk/DiskBuffer.h"
+#include "disk/DiskRenderer.h"
 #include "utils/image/image_fill.h"
 
 using namespace recogs;

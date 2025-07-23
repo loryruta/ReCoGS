@@ -37,11 +37,9 @@ void image_cast( //
     CHECK_ARG(src_image.size() == dst_image.size(), "src_image must have the same dim of dst_image");
 
     dim3 num_blocks{};
-    num_blocks.x = div_ceil<uint32_t>(src_image.width, 32);
-    num_blocks.y = div_ceil<uint32_t>(src_image.height, 32);
-    dim3 block_dim{};
-    block_dim.x = 32;
-    block_dim.y = 32;
+    num_blocks.x = div_ceil(src_image.width, 32);
+    num_blocks.y = div_ceil(src_image.height, 32);
+    dim3 block_dim(32, 32);
     detail::image_cast_kernel<<<num_blocks, block_dim, 0, stream>>>(src_image, dst_image);
 }
 } // namespace recogs

@@ -1,17 +1,21 @@
 
 set(LIB_SOURCES
-        depth_estimators/PCVNetEngine.cu
-        depth_estimators/PCVNetEngine.h
-        depth_estimators/StereoDepthEstimator.cu
-        depth_estimators/StereoDepthEstimator.h
+        depth_estimators/DepthEstimator.cu
+        depth_estimators/DepthEstimator.h
+        depth_estimators/FoundationStereo.cu
+        depth_estimators/FoundationStereo.h
+        depth_estimators/FoundationStereo_DepthEstimator.cu
+        depth_estimators/FoundationStereo_DepthEstimator.h
+        depth_estimators/PCVNetHV.cu
+        depth_estimators/PCVNetHV.h
+        depth_estimators/PCVNetHV_DepthEstimator.cu
+        depth_estimators/PCVNetHV_DepthEstimator.h
 
         disk/DiskBuffer.h
         disk/DiskRenderer.cu
         disk/DiskRenderer.h
 
         gui/recogs_style.h
-        gui/StereoTest.cu
-        gui/StereoTest.h
         gui/TrainingCamerasSlider.cu
         gui/TrainingCamerasSlider.h
 
@@ -57,6 +61,8 @@ set(LIB_SOURCES
         svo/SVORenderer.cu
         svo/SVORenderer.h
 
+        ui/windows/DepthEstimatorWindow.cu
+        ui/windows/DepthEstimatorWindow.h
         ui/DiskRasterizerScreen.cu
         ui/DiskRasterizerScreen.h
         ui/MainScreen.cu
@@ -84,11 +90,28 @@ set(LIB_SOURCES
         utils/GLPipelineCUDAAdapter.cu
         utils/GLPipelineCUDAAdapter.h
         utils/cuda_utils.h
+        utils/murmur_hash.h
+        utils/nvinfer_utils.h
         utils/misc_utils.h
         utils/stb_image.cpp
         utils/stb_image.h
         utils/stb_image_write.h
         utils/Stopwatch.h
+
+        video/CudaImageVisualizer.cu
+        video/CudaImageVisualizer.h
+        video/CudaTexture.cu
+        video/CudaTexture.h
+        video/DrawTexture.cpp
+        video/DrawTexture.h
+        video/gl_utils.cpp
+        video/gl_utils.h
+        video/GLTextureMapped.cu
+        video/GLTextureMapped.h
+        video/ImageSlider.cpp
+        video/ImageSlider.h
+        video/Window.cpp
+        video/Window.h
 
         App.cu
         App.h
@@ -108,24 +131,7 @@ set(LIB_SOURCES
         TrainingCameraPool.h
 )
 
-set(VIDEO_SOURCES
-        video/CudaImageVisualizer.cu
-        video/CudaImageVisualizer.h
-        video/CudaTexture.cu
-        video/CudaTexture.h
-        video/DrawTexture.cpp
-        video/DrawTexture.h
-        video/gl_utils.cpp
-        video/gl_utils.h
-        video/GLTextureMapped.cu
-        video/GLTextureMapped.h
-        video/ImageSlider.cpp
-        video/ImageSlider.h
-        video/Window.cpp
-        video/Window.h
-)
-
-add_library(recogs_lib STATIC ${LIB_SOURCES} ${VIDEO_SOURCES})
+add_library(recogs_lib STATIC ${LIB_SOURCES})
 target_include_directories(recogs_lib
         PUBLIC
         ${CMAKE_SOURCE_DIR}/recogs
@@ -144,6 +150,14 @@ target_link_libraries(recogs_lib
         trt::nvonnxparser)
 
 target_compile_options(recogs_lib PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>)
+
+set(CPP_NAMESPACE recogs)
+
+add_definitions(
+        "-DBEGIN_NAMESPACE=namespace ${CPP_NAMESPACE} {"
+        "-DEND_NAMESPACE=}"
+        "-DUSING_NAMESPACE=using namespace ${CPP_NAMESPACE}\\\;"
+)
 
 # main
 add_executable(recogs main.cu)

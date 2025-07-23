@@ -3,8 +3,10 @@
 #include <filesystem>
 
 #include "App.h"
+#include "depth_estimators/FoundationStereo.h"
+#include "utils/Stopwatch.h"
 
-using namespace recogs;
+USING_NAMESPACE
 
 int main(int argc, char* argv[])
 {
@@ -27,8 +29,19 @@ int main(int argc, char* argv[])
     printf("[INFO ] CUB_DEBUG_SYNC enabled\n");
 #endif
 
-    App::Params app_params{};
+    { // TODO temporary
+        printf("[INFO ] [DepthEstimator] Loading Foundation Stereo model...\n");
+        Stopwatch stopwatch{};
+        FoundationStereo_Options options{};
+        options.onnx_filepath = "foundation_stereo_736_960.onnx";
+        options.engine_filepath = "foundation_stereo_736_960.engine";
+        auto foundation_stereo = std::make_unique<FoundationStereo>(options);
+        foundation_stereo->build_or_load();
+    }
+
+    AppParams app_params{};
     app_params.scene_ply = std::filesystem::absolute(argv[0]);
+    app_params.app_title = "RECOGS";
 
     App app(app_params);
     app.start();

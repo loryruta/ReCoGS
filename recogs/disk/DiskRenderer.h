@@ -77,8 +77,8 @@ void DiskRenderer::render(const DiskRenderer_Params& params, WRITE_COLOR write_c
     const Disk* disks = RCGS_TPTR(params.disk_buffer->disks_d);
 
     dim3 num_blocks{};
-    num_blocks.x = div_ceil(color_depth.width, 32u);
-    num_blocks.y = div_ceil(color_depth.height, 32u);
+    num_blocks.x = div_ceil(color_depth.width, 32);
+    num_blocks.y = div_ceil(color_depth.height, 32);
     dim3 block_dim(32, 32);
     detail::render_disk_id_map<<<num_blocks, block_dim, 0, stream>>>( //
         disk_id_map_guard.surface_object,

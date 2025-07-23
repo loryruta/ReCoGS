@@ -4,6 +4,8 @@
 
 #include "App.h"
 #include "GSRasterizer.h"
+#include "depth_estimators/FoundationStereo_DepthEstimator.h"
+#include "disk/DiskRenderer.h"
 #include "gui/Header.h"
 #include "selection/DiskSel3d.h"
 #include "ui/SelectScreen.h"
@@ -13,7 +15,7 @@
 #include "utils/image/image_save.h"
 #include "utils/imgui_utils.h"
 
-using namespace recogs;
+USING_NAMESPACE
 
 namespace
 {
@@ -64,13 +66,13 @@ MainScreen::MainScreen(std::optional<Camera> initial_view)
         m_camera.update(g_stream);
     };
 
-    m_training_camera_cache = std::make_unique<TrainingCameraPool>(
-        g_app->cameras(),
-        window.resolution(),
-        1 /* max_size */,
-        [this](const Camera& camera, Image4fHWC& out_image, cudaStream_t stream) {
-            render_training_camera_image(camera, out_image, stream);
-        });
+    m_training_camera_cache =
+        std::make_unique<TrainingCameraPool>(g_app->cameras(),
+                                             window.resolution(),
+                                             1 /* max_size */,
+                                             [this](const Camera& camera, Image4fHWC& out_image, cudaStream_t stream) {
+                                                 render_training_camera_image(camera, out_image, stream);
+                                             });
 }
 
 MainScreen::~MainScreen()
@@ -82,6 +84,8 @@ MainScreen::~MainScreen()
 
 void MainScreen::resize(int width, int height)
 {
+    printf("[DEBUG] [MainScreen] Resizing screen to (%d, %d)\n", width, height);
+
     m_camera.set_resolution(width, height);
     m_camera.update(g_stream);
 
@@ -89,7 +93,10 @@ void MainScreen::resize(int width, int height)
 
     m_training_camera_cache->set_resolution({width, height});
 
-    printf("[DEBUG] [MainScreen] Screen resized to (%d, %d)\n", width, height);
+    if (m_depth_estimate) {
+        m_depth_estimate.reset();
+        printf("[DEBUG] [MainScreen] Clearing depth estimate\n");
+    }
 }
 
 void MainScreen::update(float dt)
@@ -98,15 +105,80 @@ void MainScreen::update(float dt)
         bool updated = m_camera_controller->update(dt);
         if (updated) {
             // If visualizing a training camera, unlock it
-            if (m_selected_training_camera_idx >= 0) m_selected_training_camera_idx = -1;
-
-            m_camera.update(g_stream);
-            if (m_ui_stereo_test.current_capture) {
-                m_ui_stereo_test.current_capture = 0;
-                m_ui_stereo_test.render_transform = RenderTransform::COLOR;
+            if (m_selected_training_camera_idx >= 0) {
+                m_selected_training_camera_idx = -1;
             }
+            m_camera.update(g_stream);
+            // If the camera has moved, de-allocate any depth estimate
+            if (m_depth_estimate) m_depth_estimate.reset();
         }
     }
+}
+
+void MainScreen::_handle_depth_estimator_gaussians(Image4fHWC& color_depth)
+{
+    CHECK_STATE(DepthEstimator::get().type() == DepthEstimatorType::Gaussians);
+}
+
+void MainScreen::_handle_depth_estimator_pcvnet_hv(Image4fHWC& color_depth)
+{
+    CHECK_STATE(DepthEstimator::get().type() == DepthEstimatorType::PCVNetHV);
+    ui::PCVNetHVWindow& pcvnethv_ui = m_ui.depth_estimator.pcvnethv;
+    if (!pcvnethv_ui.estimate) return;
+    pcvnethv_ui.estimate = false;
+
+    PCVNetHV_DepthEstimator& pcvnethv = (PCVNetHV_DepthEstimator&) DepthEstimator::get();
+    PCVNetHV_DepthEstimatorParams params{};
+    params.background_d = g_app->background_d();
+    params.scene = &g_app->scene();
+    params.gs_rasterizer = &g_app->gs_rasterizer();
+    params.inout_colordepth = &color_depth;
+    params.camera = &m_camera;
+    params.overwrite_depth = true;
+#ifndef NDEBUG
+    params.debug = true;
+#endif
+    params.stream = g_stream;
+    params.axis = pcvnethv_ui.axis;
+    if (params.axis == PCVNetHV_DepthEstimatorParams::Axis_Horizontal) {
+        pcvnethv.estimate_single_axis(params);
+    } else if (params.axis == PCVNetHV_DepthEstimatorParams::Axis_Vertical) {
+        pcvnethv.estimate_single_axis(params);
+    } else {
+        pcvnethv.estimate(params);
+    }
+
+    m_depth_estimate =
+        std::make_unique<Image4fHWC>(Image4fHWC::malloc(color_depth.width, color_depth.height, g_stream));
+    image_copy(color_depth, *m_depth_estimate, g_stream);
+    image_depth_to_rgb_inplace(*m_depth_estimate, 0.1f, g_stream); // TODO scale in view settings window
+}
+
+void MainScreen::_handle_depth_estimator_foundation_stereo(Image4fHWC& color_depth)
+{
+    CHECK_STATE(DepthEstimator::get().type() == DepthEstimatorType::FoundationStereo);
+    ui::FoundationStereoWindow& foundation_stereo_ui = m_ui.depth_estimator.foundation_stereo;
+    if (!foundation_stereo_ui.estimate) return;
+    foundation_stereo_ui.estimate = false;
+
+    FoundationStereo_DepthEstimator& foundation_stereo = (FoundationStereo_DepthEstimator&) DepthEstimator::get();
+    DepthEstimatorParams params{};
+    params.background_d = g_app->background_d();
+    params.scene = &g_app->scene();
+    params.gs_rasterizer = &g_app->gs_rasterizer();
+    params.inout_colordepth = &color_depth;
+    params.camera = &m_camera;
+    params.overwrite_depth = true;
+#ifndef NDEBUG
+    params.debug = true;
+#endif
+    params.stream = g_stream;
+    foundation_stereo.estimate(params);
+
+    m_depth_estimate =
+        std::make_unique<Image4fHWC>(Image4fHWC::malloc(color_depth.width, color_depth.height, g_stream));
+    image_copy(color_depth, *m_depth_estimate, g_stream);
+    image_depth_to_rgb_inplace(*m_depth_estimate, 0.1f, g_stream);
 }
 
 void MainScreen::_render_sel3d(Image4fHWC& color_depth)
@@ -183,35 +255,34 @@ void MainScreen::_render_disk_sel3d(Image4fHWC& color_depth)
 
 void MainScreen::_render_user_camera(Image4fHWC& color_depth)
 {
-    if (m_ui_stereo_test.current_capture == ui::StereoTest::Capture_NONE) {
-        // Clear depth
-        image_fill(color_depth, glm::vec4(1, 0, 0, INFINITY), g_stream);
-        // Render 3DGS scene
-        g_app->gs_rasterizer().forward(
-            g_app->background_d(), g_app->scene(), true /* scene_2 */, m_camera, color_depth, g_stream);
-    }
-    // Capture stereo
-    if (m_ui_stereo_test.capture != ui::StereoTest::Capture_NONE) {
-        StereoDepthEstimatorParams stereo_params;
-        stereo_params.background_d = g_app->background_d();
-        stereo_params.scene = &g_app->scene();
-        stereo_params.camera = &m_camera;
-        stereo_params.rasterizer = &g_app->gs_rasterizer();
-        stereo_params.b = 0.07f;
-        stereo_params.inout_color_depth = &color_depth;
-        stereo_params.stream = g_stream;
-        stereo_params.debug = false;
+    // Clear depth
+    image_fill(color_depth, glm::vec4(1, 0, 0, INFINITY), g_stream);
+    // Render 3DGS scene
+    g_app->gs_rasterizer().forward(
+        g_app->background_d(), g_app->scene(), true /* scene_2 */, m_camera, color_depth, g_stream);
 
-        if (m_ui_stereo_test.capture == ui::StereoTest::Capture_HORIZONTAL) {
-            stereo_params.axis = 0;
-            g_app->stereo_depth_estimator().estimate_single_axis(stereo_params);
-        } else if (m_ui_stereo_test.capture == ui::StereoTest::Capture_VERTICAL) {
-            stereo_params.axis = 1;
-            g_app->stereo_depth_estimator().estimate_single_axis(stereo_params);
-        } else if (m_ui_stereo_test.capture == ui::StereoTest::Capture_HV) {
-            g_app->stereo_depth_estimator().estimate_hv(stereo_params);
-        }
-    }
+    //    // Capture stereo
+    //    if (m_ui_stereo_test.capture != ui::StereoTest::Capture_NONE) {
+    //        StereoDepthEstimatorParams stereo_params;
+    //        stereo_params.background_d = g_app->background_d();
+    //        stereo_params.scene = &g_app->scene();
+    //        stereo_params.camera = &m_camera;
+    //        stereo_params.rasterizer = &g_app->gs_rasterizer();
+    //        stereo_params.b = 0.07f;
+    //        stereo_params.inout_color_depth = &color_depth;
+    //        stereo_params.stream = g_stream;
+    //        stereo_params.debug = false;
+    //
+    //        if (m_ui_stereo_test.capture == ui::StereoTest::Capture_HORIZONTAL) {
+    //            stereo_params.axis = 0;
+    //            g_app->pcvnet_depth_estimator().estimate_single_axis(stereo_params);
+    //        } else if (m_ui_stereo_test.capture == ui::StereoTest::Capture_VERTICAL) {
+    //            stereo_params.axis = 1;
+    //            g_app->pcvnet_depth_estimator().estimate_single_axis(stereo_params);
+    //        } else if (m_ui_stereo_test.capture == ui::StereoTest::Capture_HV) {
+    //            g_app->pcvnet_depth_estimator().estimate_hv(stereo_params);
+    //        }
+    //    }
 }
 
 void MainScreen::_render_training_camera(int camera_idx, Image4fHWC& color_depth)
@@ -230,33 +301,43 @@ void MainScreen::_add_depth_epsilon(Image4fHWC& color_depth, float epsilon)
 
 void MainScreen::render(Image4fHWC& color_depth)
 {
+    if (m_depth_estimate) {
+        image_copy(*m_depth_estimate, color_depth, g_stream);
+        return;
+    }
+
     if (m_selected_training_camera_idx < 0) {
+        // Render the 3DGS scene uncached
         _render_user_camera(color_depth);
     } else {
+        // Render the 3DGS scene from a training camera viewpoint polling cache first
         _render_training_camera(m_selected_training_camera_idx, color_depth);
     }
 
-    if (m_ui_stereo_test.scene_depth_epsilon != 0) {
-        _add_depth_epsilon(color_depth, m_ui_stereo_test.scene_depth_epsilon);
+    // Adjust the depth
+    if (m_ui.depth_estimator.scene_depth_epsilon != 0) {
+        _add_depth_epsilon(color_depth, m_ui.depth_estimator.scene_depth_epsilon);
     }
 
-    // Render selection
+    // Estimate depthmap at the current view if needed
+    DepthEstimatorType depth_estimator_type = DepthEstimator::get().type();
+    if (depth_estimator_type == DepthEstimatorType::Gaussians) {
+        _handle_depth_estimator_gaussians(color_depth); // Real-time
+    } else if (depth_estimator_type == DepthEstimatorType::PCVNetHV) {
+        _handle_depth_estimator_pcvnet_hv(color_depth); // Set m_depth_estimate
+    } else if (depth_estimator_type == DepthEstimatorType::FoundationStereo) {
+        _handle_depth_estimator_foundation_stereo(color_depth); // Set m_depth_estimate
+    }
+
+    // Render 3D selection
     if (m_view_selection) {
         _render_disk_sel3d(color_depth);
     }
 
-    if (m_ui_stereo_test.capture != ui::StereoTest::Capture_NONE) { // Only once and display it
-        m_ui_stereo_test.current_capture = m_ui_stereo_test.capture;
-        m_ui_stereo_test.capture = ui::StereoTest::Capture_NONE;
-        m_ui_stereo_test.render_transform = RenderTransform::DEPTHMAP;
-    }
-
-    if (m_ui_stereo_test.render_transform == RenderTransform::COLOR) {
-        // Do nothing
-    } else if (m_ui_stereo_test.render_transform == RenderTransform::DEPTHMAP) {
-        image_depth_to_rgb_inplace(color_depth, g_stream, 0.5);
-    } else if (m_ui_stereo_test.render_transform == RenderTransform::NORMAL_MAP) {
-        depthmap_to_normalmap<true /* Display */>(color_depth, color_depth, g_stream);
+    if (depth_estimator_type == DepthEstimatorType::Gaussians) {
+        if (m_ui.depth_estimator.gaussians.show_depth) {
+            image_depth_to_rgb_inplace(color_depth, 0.1f, g_stream);
+        }
     }
 }
 
@@ -271,7 +352,7 @@ void MainScreen::ui()
     // Header
     ui::Header header;
     header.height = 70;
-    header.section("Depth Test", [this]() { m_ui_stereo_test.ui(); });
+    // header.section("Depth Test", [this]() { m_ui_stereo_test.ui(); });
     header.section("View Settings", []() {
         GSRasterizer& rasterizer = g_app->gs_rasterizer();
         ImGui::Checkbox("Show borders", &rasterizer.show_borders);
@@ -280,6 +361,7 @@ void MainScreen::ui()
     header.ui();
 
     ui_3d_selection();
+    m_ui.depth_estimator.ui();
 
     // Footer
     if (ImGui::Begin(
@@ -316,14 +398,14 @@ void MainScreen::render_training_camera_image(const Camera& camera, Image4fHWC& 
     // TODO enable choosing between original scene and edited scene (scene 1 and 2)
 
     /* Estimate depth */
-    StereoDepthEstimatorParams stereo_params;
-    stereo_params.background_d = g_app->background_d();
-    stereo_params.scene = &g_app->scene();
-    stereo_params.camera = &camera;
-    stereo_params.rasterizer = &g_app->gs_rasterizer();
-    stereo_params.b = 0.07f;
-    stereo_params.inout_color_depth = &out_image;
-    stereo_params.stream = stream;
-    stereo_params.debug = false;
-    g_app->stereo_depth_estimator().estimate_hv(stereo_params);
+    DepthEstimatorParams params{};
+    params.background_d = g_app->background_d();
+    params.scene = &g_app->scene();
+    params.camera = &camera;
+    params.gs_rasterizer = &g_app->gs_rasterizer();
+    params.b = 0.07f;
+    params.inout_colordepth = &out_image;
+    params.stream = stream;
+    params.debug = false;
+    DepthEstimator::get().estimate(params);
 }

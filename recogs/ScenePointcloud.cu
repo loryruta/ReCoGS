@@ -5,7 +5,7 @@
 #include <fmt/format.h>
 
 #include "App.h"
-#include "depth_estimators/StereoDepthEstimator.h"
+#include "depth_estimators/PCVNetHV_DepthEstimator.h"
 #include "svo/SVOBuilder.h"
 #include "svo/svo_utils.h"
 #include "utils/Stopwatch.h"
@@ -100,18 +100,15 @@ void ScenePointcloud::generate(const Scene& scene, const std::vector<CameraData>
     thrust::device_vector<uint32_t> num_points_d(1);          // Number of generated voxels
     std::vector<uint64_t> points(max_num_points);             // Number of points
 
-    StereoDepthEstimatorParams stereo_params;
-    stereo_params.background_d = m_app.background_d();
-    stereo_params.scene = &scene;
+    DepthEstimatorParams depthest_params;
+    depthest_params.background_d = m_app.background_d();
+    depthest_params.scene = &scene;
     // stereo_params.camera =
-    stereo_params.rasterizer = &m_app.gs_rasterizer();
-    stereo_params.axis = 0;
-    stereo_params.b = 0.07f;
-    stereo_params.inout_color_depth = &colordepth;
-    stereo_params.stream = stream;
-    stereo_params.debug = false;
-
-    StereoDepthEstimator& stereo = m_app.stereo_depth_estimator();
+    depthest_params.gs_rasterizer = &m_app.gs_rasterizer();
+    depthest_params.b = 0.07f;
+    depthest_params.inout_colordepth = &colordepth;
+    depthest_params.stream = stream;
+    depthest_params.debug = false;
 
     // Write the unprojected points to a binary file.
     // The content is divided in two sections:
@@ -139,10 +136,10 @@ void ScenePointcloud::generate(const Scene& scene, const std::vector<CameraData>
         // Clear depth (due to depth testing occurring in StereoDepthEstimator)
         image_fill(colordepth, Image4fCHW::Value{INFINITY}, stream);
         // Estimate depth
-        stereo_params.camera = &camera;
+        depthest_params.camera = &camera;
         // stereo_params.debug = camera_idx <= 4;
         // stereo_params.debug_image_prefix = fmt::format("scenepcd-{}-", camera_idx);
-        stereo.estimate_hv(stereo_params);
+        DepthEstimator::get().estimate(depthest_params);
         // Unproject points
         CHECK_CUDA(cudaMemsetAsync(RCGS_TPTR(num_points_d), 0, sizeof(uint32_t), stream));
         const float k_max_depth_threshold = 4.0f;

@@ -57,7 +57,11 @@ void ImageSlider::ui()
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.f, 0.f, 0.f, 0.f));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.f, 0.f, 0.f, 0.f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.f, 0.f, 0.f, 0.f));
-        if (ImGui::ImageButton((ImTextureID) (intptr_t) m_textures.at(i), ImVec2(image_w, image_h))) {
+
+        char image_button_str_id[256];
+        sprintf(image_button_str_id, "##ImageSlider%d", i);
+        if (ImGui::ImageButton(
+                image_button_str_id, (ImTextureID) (intptr_t) m_textures.at(i), ImVec2(image_w, image_h))) {
             on_image_click(i);
         }
         ImGui::PopStyleColor(3);

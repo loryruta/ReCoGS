@@ -19,19 +19,22 @@ StereoTest::~StereoTest()
 void StereoTest::ui()
 {
     RCGS_IMGUI_DISABLE_BUTTON(current_capture == Capture_HORIZONTAL, {
-        if (ImGui::ImageButton((ImTextureID) (intptr_t) m_ht_stereo_icon, ImVec2(button_size, button_size))) {
+        if (ImGui::ImageButton(
+                "##StereoHorizontal", (ImTextureID) (intptr_t) m_ht_stereo_icon, ImVec2(button_size, button_size))) {
             capture = Capture_HORIZONTAL;
         }
     });
     ImGui::SameLine();
     RCGS_IMGUI_DISABLE_BUTTON(current_capture == Capture_VERTICAL, {
-        if (ImGui::ImageButton((ImTextureID) (intptr_t) m_vt_stereo_icon, ImVec2(button_size, button_size))) {
+        if (ImGui::ImageButton(
+                "##StereoVertical", (ImTextureID) (intptr_t) m_vt_stereo_icon, ImVec2(button_size, button_size))) {
             capture = Capture_VERTICAL;
         }
     });
     ImGui::SameLine();
     RCGS_IMGUI_DISABLE_BUTTON(current_capture == Capture_HV, {
-        if (ImGui::ImageButton((ImTextureID) (intptr_t) m_hv_stereo_icon, ImVec2(button_size, button_size))) {
+        if (ImGui::ImageButton(
+                "##StereoHV", (ImTextureID) (intptr_t) m_hv_stereo_icon, ImVec2(button_size, button_size))) {
             capture = Capture_HV;
         }
     });

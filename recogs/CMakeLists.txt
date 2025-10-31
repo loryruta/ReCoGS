@@ -113,3 +113,12 @@ target_compile_options(recogs_lib PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_
 # main
 add_executable(recogs main.cu)
 target_link_libraries(recogs PRIVATE recogs_lib)
+
+# Copy assets to build directory
+add_custom_command(
+    TARGET recogs POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_SOURCE_DIR}/assets"
+    "$<TARGET_FILE_DIR:recogs>/assets"
+    COMMENT "Copying assets folder to build directory"
+)

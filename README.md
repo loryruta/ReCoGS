@@ -7,7 +7,7 @@
   </a>
 </p>
 
-<h3>University of Modena and Reggio Emilia</h3>
+**University of Modena and Reggio Emilia**
 
 [Lorenzo Rutayisire](https://loryruta.github.io/),
 [Nicola Capodieci](https://scholar.google.com/citations?user=0_onpPkAAAAJ&hl=it),
@@ -17,8 +17,7 @@
 
 ## Overview
 
-todo
-
+TODO
 
 ## How to run (Linux)
 
@@ -55,9 +54,9 @@ Run recogs:
 ./build/recogs ./data/mipnerf360/kitchen/point_cloud/iteration_30000/point_cloud.ply
 ```
 
-> :warning: **NOTE: on the first launch, recogs will take a long time to bootstrap**
-> because TensorRT has to compile the Stereo Matching model
-> to an optimized version tailored to your specific device.
+> :warning: **NOTE: on the first launch, recogs will take a long time to bootstrap (more than 10 minutes).**
+> This caused by TensorRT having to compile the Stereo Matching model to an optimized version tailored
+> to your specific device.
 
 ## Gallery
 

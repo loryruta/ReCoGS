@@ -55,7 +55,7 @@ Run recogs:
 ```
 
 > :warning: **NOTE: on the first launch, recogs will take a long time to bootstrap (more than 10 minutes).**
-> This caused by TensorRT having to compile the Stereo Matching model to an optimized version tailored
+> This is caused by TensorRT having to compile the Stereo Matching model to an optimized version tailored
 > to your specific device.
 
 ## Gallery

@@ -14,9 +14,9 @@ using namespace gs_train;
 
 SelectScreen_Toolbar::SelectScreen_Toolbar(SelectScreen& parent) : m_parent(parent)
 {
-    m_select_texture = load_texture("selectscreen_select.png", 4, GL_LINEAR);
-    m_paintbrush_texture = load_texture("selectscreen_paintbrush.png", 4, GL_LINEAR);
-    m_eraser_texture = load_texture("selectscreen_eraser.png", 4, GL_LINEAR);
+    m_select_texture = load_texture("assets/selectscreen_select.png", 4, GL_LINEAR);
+    m_paintbrush_texture = load_texture("assets/selectscreen_paintbrush.png", 4, GL_LINEAR);
+    m_eraser_texture = load_texture("assets/selectscreen_eraser.png", 4, GL_LINEAR);
 }
 
 SelectScreen_Toolbar::~SelectScreen_Toolbar()

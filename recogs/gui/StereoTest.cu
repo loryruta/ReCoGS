@@ -4,9 +4,9 @@ using namespace gs_train::ui;
 
 StereoTest::StereoTest()
 {
-    m_ht_stereo_icon = load_texture("ui_stereo_ht_icon.png", 4, GL_LINEAR);
-    m_vt_stereo_icon = load_texture("ui_stereo_vt_icon.png", 4, GL_LINEAR);
-    m_hv_stereo_icon = load_texture("ui_stereo_hv_icon.png", 4, GL_LINEAR);
+    m_ht_stereo_icon = load_texture("assets/ui_stereo_ht_icon.png", 4, GL_LINEAR);
+    m_vt_stereo_icon = load_texture("assets/ui_stereo_vt_icon.png", 4, GL_LINEAR);
+    m_hv_stereo_icon = load_texture("assets/ui_stereo_hv_icon.png", 4, GL_LINEAR);
 }
 
 StereoTest::~StereoTest()

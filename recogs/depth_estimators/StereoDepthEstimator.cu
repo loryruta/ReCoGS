@@ -81,8 +81,8 @@ StereoDepthEstimator::StereoDepthEstimator(App& app, Options options)
     : m_app(app), m_options(std::move(options)), debug(options.debug), debug_image_prefix(options.debug_image_prefix)
 {
     PCVNetEngine::Options pcvnet_engine_options{};
-    pcvnet_engine_options.onnx_filepath = "pcvnet.onnx";
-    pcvnet_engine_options.engine_filepath = "pcvnet.engine";
+    pcvnet_engine_options.onnx_filepath = "assets/pcvnet_quant.onnx";
+    pcvnet_engine_options.engine_filepath = "assets/pcvnet_quant.engine";
     m_pcvnet_engine = std::make_unique<PCVNetEngine>(pcvnet_engine_options);
     m_pcvnet_engine->build_or_load();
 }

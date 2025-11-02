@@ -2,7 +2,7 @@
 <h1>:art: ReCoGS: Real-time ReColoring for Gaussian Splatting scenes</h1>
 
 <p align="center">
-  <a href="https://google.com?q=TODO">
+  <a href="https://google.com?q=TODO" target="_blank">
     <img src="https://img.shields.io/badge/arXiv-ReCoGS-red?logo=arxiv" alt="Paper PDF">
   </a>
 </p>

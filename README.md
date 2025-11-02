@@ -21,12 +21,12 @@ ReCoGS is a pipeline and a tool for interactively ReColoring a pre-trained gauss
 
 <p align="center">  
     <img src="https://github.com/user-attachments/assets/6e585aa8-fde9-4816-a829-ccacecc1fc8d" alt="ReCoGS demo treehill"/>
-    <img src="https://github.com/user-attachments/assets/d068c3b9-bf92-413b-8a19-f3f3b3201435" alt="ReCoGS demo train"/>
 </p>
 
 <details>
 <summary>Additional scenes</summary>
 <p align="center">  
+  <img src="https://github.com/user-attachments/assets/d068c3b9-bf92-413b-8a19-f3f3b3201435" alt="ReCoGS demo train"/>
   <img src="https://github.com/user-attachments/assets/953b8cbc-aceb-49b8-8358-820b969b61c8" alt="ReCoGS demo train"/>
   <img src="https://github.com/user-attachments/assets/c60c3cef-2ab3-4e5e-a968-8a316a819e0e" alt="RecoGS demo flowers" />
 </p>

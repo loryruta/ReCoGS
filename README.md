@@ -17,7 +17,9 @@
 
 ## Overview
 
-TODO
+ReCoGS is a pipeline and a tool for interactively ReColoring a pre-trained gaussian splatting scene.
+
+
 
 ## How to run (Linux)
 
@@ -30,9 +32,11 @@ Requirements:
 Clone and build the repository:
 
 ```bash
-git clone https://github.com/loryruta/recogs
+git clone https://github.com/loryruta/recogs update --init --recursive
+cd recogs
+# Download large assets
 bash ./download_assets.sh
-
+# Build
 mkdir build
 cd build
 cmake .. \

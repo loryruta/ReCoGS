@@ -9,7 +9,7 @@
 
 **University of Modena and Reggio Emilia**
 
-[Lorenzo Rutayisire](https://loryruta.github.io/),
+Lorenzo Rutayisire,
 [Nicola Capodieci](https://scholar.google.com/citations?user=0_onpPkAAAAJ&hl=it),
 [Fabio Pellacini](https://xelatihy.github.io/)
 

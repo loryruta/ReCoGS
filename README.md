@@ -81,8 +81,18 @@ This code is distributed under the MIT license.
 
 ## Citation
 
-If you find our work helpful, you can cite us as:
+If you find our work helpful, you can cite us with this snippet:
 
 ```
-TODO
+@inproceedings{10.2312:stag.20251329,
+booktitle = {Smart Tools and Applications in Graphics - Eurographics Italian Chapter Conference},
+editor = {Comino Trinidad, Marc and Mancinelli, Claudio and Maggioli, Filippo and Romanengo, Chiara and Cabiddu, Daniela and Giorgi, Daniela},
+title = {{ReCoGS: Real-time ReColoring for Gaussian Splatting scenes}},
+author = {Rutayisire, Lorenzo and Capodieci, Nicola and Pellacini, Fabio},
+year = {2025},
+publisher = {The Eurographics Association},
+ISSN = {2617-4855},
+ISBN = {978-3-03868-296-7},
+DOI = {10.2312/stag.20251329}
+}
 ```
